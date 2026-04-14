@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>주례여중 게임기</title>
+    <link rel="stylesheet" href="styles.css" />
+
+    <style>
+      /* 모바일 브라우저 툴바 가림 완벽 해결 */
+      body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
+      .screen {
+        position: fixed !important; top: 0; left: 0; width: 100vw !important; height: 100dvh !important;
+        overflow: hidden !important; display: none; flex-direction: column; align-items: center; justify-content: center; box-sizing: border-box;
+      }
+      .screen.active { display: flex !important; }
+
+      /* 스페셜 땡스 크레딧 */
+      #credits-container { position: absolute; bottom: 0; left: 0; width: 100%; height: 25vh; overflow: hidden; z-index: 1; pointer-events: none; perspective: 400px; }
+      .crawl { position: relative; top: 100%; animation: crawl-anim 20s linear infinite; text-align: center; }
+      .credits-title { font-size: 20px; color: rgba(120, 140, 150, 0.8); margin-bottom: 15px; letter-spacing: 2px; }
+      .credits-columns { display: flex; justify-content: center; gap: 70px; font-size: 15px; line-height: 1.8; color: rgba(120, 140, 150, 0.6); }
+      .class-title { font-size: 15px; font-weight: bold; color: rgba(120, 140, 150, 0.8); margin-bottom: 8px; }
+      @keyframes crawl-anim { 0% { top: 100%; transform: rotateX(25deg) translateY(0); } 100% { top: -50px; transform: rotateX(25deg) translateY(-100%); } }
+
+      /* 오답 노트 모달 */
+      #unknown-modal {
+        display: none; position: absolute; right: 50%; transform: translateX(50%); top: 10%; width: 320px;
+        max-height: 80vh; background-color: rgba(255, 255, 255, 0.95); border: 3px solid #ff4081; border-radius: 15px; padding: 20px;
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2); z-index: 200; overflow-y: auto; font-family: "Paperlogy-4Regular", sans-serif;
+      }
+      #unknown-modal h3 { color: #ff4081; margin-top: 0; text-align: center; }
+      #unknown-list { list-style: none; padding: 0; }
+      #unknown-list li { background: #ffe4e1; margin-bottom: 8px; padding: 10px; border-radius: 8px; font-size: 16px; color: #333; }
+
+      /* 깜빡이 컴팩트 디자인 */
+      #flashcard-screen { justify-content: center; padding: 10px; }
+      #fc-score { margin-top: 10px !important; font-size: 26px !important; }
+      #fc-progress { font-size: 18px !important; margin: 5px 0 !important; }
+      #fc-event { font-size: 18px !important; height: 25px !important; margin: 0 !important; }
+      #card-container { perspective: 1000px; width: 95%; max-width: 500px; height: 230px !important; margin: 5px auto !important; position: relative; }
+      .flash-card { width: 100%; height: 100%; position: absolute; transform-style: preserve-3d; transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1); border-radius: 20px; }
+      .card-face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; display: flex; justify-content: center; align-items: center; border-radius: 20px; padding: 15px; box-sizing: border-box; font-size: 32px; font-weight: bold; color: #333; text-align: center; word-break: keep-all; line-height: 1.3; }
+      .card-front { background: white; border: 4px solid #ddd; }
+      .card-back { background: #fff9c4; border: 4px solid #fbc02d; transform: rotateY(180deg); }
+      .retry-badge { display: none; position: absolute; top: 10px; font-size: 14px; color: #999; width: 100%; text-align: center; }
+      .flash-card.is-flipped { transform: rotateY(180deg); }
+      .flash-card.fly-left { transform: translateX(-150vw) rotate(-20deg); opacity: 0; transition: all 0.4s ease-in; }
+      
+      .btn-disabled { background: #999 !important; color: #ddd !important; box-shadow: none !important; transform: none !important; cursor: not-allowed !important; }
+      #btn-know, #btn-dont-know { padding: 10px !important; font-size: 18px !important; width: 130px !important; transition: 0.2s; }
+      .stats-bar { font-size: 16px !important; padding: 5px 15px !important; margin-top: 5px !important; display: inline-block; background: rgba(255, 255, 255, 0.7); border-radius: 20px; color: #555; }
+      #fc-list-btn { position: static !important; margin-top: 10px !important; padding: 10px 20px !important; font-size: 16px !important; background: #bbdefb; color: #333; border: none; border-radius: 15px; box-shadow: 0 4px 0 #90caf9; cursor: pointer; font-family: "Paperlogy-4Regular", sans-serif; }
+
+      /* 메모리 게임용 3D 카드 디자인 */
+      .memory-card-wrapper { flex: 1; perspective: 1000px; cursor: pointer; width: 100%; }
+      .memory-card { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+      .memory-card.flipped { transform: rotateY(180deg); }
+      .memory-card-face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; display: flex; justify-content: center; align-items: center; text-align: center; border-radius: 10px; padding: 5px; box-sizing: border-box; font-size: 14px; font-weight: bold; color: #333; word-break: keep-all; line-height: 1.2; border: 2px solid rgba(0,0,0,0.1); }
+      .memory-card-front { background: #ddd; font-size: 28px; color: #888; }
+      .memory-card-back { transform: rotateY(180deg); }
+      .memory-card-left .memory-card-back { background: #BBDEFB; border-color: #2196F3; } 
+      .memory-card-right .memory-card-back { background: #F8BBD0; border-color: #E91E63; } 
+      .memory-card.matched { opacity: 0; pointer-events: none; transition: opacity 0.5s 0.5s; transform: scale(0); }
+      .memory-card-wrapper.disabled { pointer-events: none; opacity: 0.6; }
+
+      /* 스피드 짝맞추기 게임 디자인 */
+      .sm-card-wrapper { flex: 1; cursor: pointer; width: 100%; display: flex; overflow: hidden; margin-bottom: 2px;}
+      .sm-card { flex: 1; background: white; border: 3px solid #ddd; border-radius: 10px; display: flex; justify-content: center; align-items: center; text-align: center; font-weight: bold; padding: 2px 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: 0.1s; word-break: keep-all; line-height: 1.1; width: 100%; height: 100%;}
+      .sm-card.selected { border-color: #FF5722; background: #FFCCBC; transform: scale(1.05); }
+      .sm-card.wrong { animation: shake 0.4s; background: #FFCDD2; border-color: #F44336; }
+      .sm-card.matched { opacity: 0; pointer-events: none; transition: opacity 0.3s; transform: scale(0); }
+      .sm-card-wrapper.disabled { pointer-events: none; opacity: 0.6; }
+      
+      /* 스피드 퀴즈용 디자인 */
+      .sq-word-box { width: 90%; max-width: 400px; height: 180px; background: white; border: 5px solid #333; border-radius: 20px; display: flex; justify-content: center; align-items: center; font-size: 32px; font-weight: bold; text-align: center; word-break: keep-all; box-shadow: 0 10px 20px rgba(0,0,0,0.1); margin-bottom: 30px;}
+      .sq-btn { width: 90%; max-width: 400px; height: 80px; font-size: 20px; margin: 0 0 15px 0 !important; word-break: keep-all; line-height: 1.2;}
+
+      /* 낚시 게임 디자인 */
+      .fish-card { position: absolute; background: rgba(255, 255, 255, 0.9); border: 3px solid #00bcd4; border-radius: 20px; padding: 10px 15px; cursor: pointer; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; word-break: keep-all; user-select: none; transition: border-color 0.2s, box-shadow 0.2s; min-width: 80px; max-width: 140px; }
+      .fish-card.selected { border-color: #ff4081; background: #ffcdd2; transform: scale(1.1) !important; box-shadow: 0 0 20px rgba(255, 64, 129, 0.6); z-index: 100; }
+      .fish-emoji { font-size: 28px; margin-bottom: 5px; }
+      .fish-text { font-size: 14px; font-weight: bold; color: #333; line-height: 1.2; }
+      
+      /* 공통 애니메이션 & 팝업 */
+      .wrong { animation: shake 0.4s; }
+      #game-countdown-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.7); z-index: 300; justify-content: center; align-items: center; overflow: hidden; }
+      .countdown-text { font-size: 150px; color: #ff4081; font-weight: bold; text-shadow: 0 10px 20px rgba(0, 0, 0, 0.3); animation: swoosh 1s linear infinite; }
+      
+      #game-praise-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(1); z-index: 400; pointer-events: none; opacity: 0; width: 100%; text-align: center; font-family: "Paperlogy-4Regular", sans-serif; display:flex; flex-direction:column; align-items:center; word-break: keep-all;}
+      .praise-anim-pop { animation: popPraise 1.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+      #praise-title { font-size: 55px; font-weight: bold; color: #FF4081; text-shadow: 2px 2px 10px rgba(0,0,0,0.3); margin:0;}
+      #praise-score { font-size: 35px; font-weight: bold; color: #2196F3; text-shadow: 2px 2px 5px rgba(255,255,255,0.8); margin-top:10px;}
+
+      /* 중앙 흐르는 버프 알림 팝업 */
+      #buff-msg-overlay { 
+        display: none; position: absolute; top: 40%; left: 50%; z-index: 600; padding: 20px 40px; 
+        border-radius: 20px; color: white; font-size: 35px; font-weight: bold; text-align: center; 
+        flex-direction: column; gap: 10px; font-family: 'Paperlogy-4Regular', sans-serif; 
+        white-space: pre-line; word-break: keep-all; width: 85%; max-width: 400px;
+        cursor: pointer; pointer-events: auto; 
+      }
+      .drift-anim { animation: driftBanner 2.5s ease-in-out forwards; }
+
+      /* 스피드퀴즈 페널티 오버레이 */
+      #sq-penalty-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9); z-index: 500; flex-direction: column; align-items: center; justify-content: center; color: white; font-family: 'Paperlogy-4Regular', sans-serif; text-align: center; padding: 20px; box-sizing: border-box;}
+
+      /* 보물상자 오버레이 */
+      #treasure-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); z-index: 500; flex-direction: column; justify-content: center; align-items: center; animation: fadeIn 0.3s ease-out; }
+      .treasure-chest { font-size: 80px; background: none; border: none; cursor: pointer; transition: transform 0.2s; margin: 0 10px; text-shadow: none !important; box-shadow: none !important; outline: none; -webkit-tap-highlight-color: transparent;}
+      .treasure-chest:hover { transform: scale(1.1); }
+      .treasure-chest:active { transform: scale(0.9); }
+      .chest-explode { animation: explodeAnim 0.5s ease-out forwards; pointer-events: none; }
+
+      /* 인벤토리 카드 스태킹 */
+      .inventory-pile { display: flex; flex-direction: row; align-items: center; }
+      .inventory-item { padding: 3px 8px; border-radius: 8px; font-size: 12px; font-weight: bold; color: white; box-shadow: -2px 0 5px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.4); position: relative; }
+      .inventory-item + .inventory-item { margin-left: -40px; } 
+
+      /* 🌟 관리자 화면용 심플한 리스트 박스 디자인 */
+      .admin-list-box { width: 90%; max-width: 500px; height: 300px; background: white; border: 3px solid #00bcd4; border-radius: 10px; padding: 10px; overflow-y: auto; margin-top: 15px; font-size: 16px; text-align: left;}
+      .admin-list-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #eee; }
+      .admin-btn-small { font-size: 14px; padding: 5px 10px; margin: 0; border-radius: 8px; box-shadow: none; background-color: #f44336; color: white; }
+      .admin-btn-edit { background-color: #2196F3; }
+
+      @keyframes popIn { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+      @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-10px); } 50% { transform: translateX(10px); } 75% { transform: translateX(-10px); } 100% { transform: translateX(0); } }
+      @keyframes swoosh { 0% { transform: translateX(100vw) skewX(-20deg); } 20% { transform: translateX(0) skewX(0); } 80% { transform: translateX(0) skewX(0); } 100% { transform: translateX(-100vw) skewX(20deg); } }
+      @keyframes popPraise { 0% { transform: translate(-50%, -50%) scale(0); opacity: 0; } 20% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; } 80% { transform: translate(-50%, -50%) scale(1); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; } }
+      
+      @keyframes driftBanner {
+        0% { transform: translate(100vw, -50%) skewX(-20deg); opacity: 0; }
+        12% { transform: translate(-50%, -50%) skewX(0); opacity: 1; }
+        88% { transform: translate(-50%, -60%) skewX(0); opacity: 1; }
+        100% { transform: translate(-200vw, -60%) skewX(20deg); opacity: 0; }
+      }
+      
+      @keyframes explodeAnim {
+        0% { transform: scale(1); filter: brightness(1); }
+        50% { transform: scale(1.5) rotate(10deg); filter: brightness(2); opacity: 1;}
+        100% { transform: scale(2.5) rotate(-10deg); filter: brightness(3); opacity: 0; }
+      }
+      @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+      .cm-fly-left { animation: flyLeft 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+      .cm-fly-right { animation: flyRight 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+      .sq-fly-in { animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+      @keyframes flyLeft { from { transform: translateX(-100vw); } to { transform: translateX(0); } }
+      @keyframes flyRight { from { transform: translateX(100vw); } to { transform: translateX(0); } }
+    </style>
+  </head>
+  <body>
+    <div id="game-countdown-overlay"><div id="countdown-text" class="countdown-text">5</div></div>
+    
+    <div id="game-praise-overlay">
+      <div id="praise-title">Fabulous!</div>
+      <div id="praise-score">+ 150점!</div>
+    </div>
+
+    <div id="buff-msg-overlay"></div>
+
+    <div id="sq-penalty-overlay">
+       <div id="sq-penalty-text" style="color: #F44336; font-size: 45px; font-weight: bold; margin-bottom: 20px;">틀렸어요... -100점</div>
+       <div id="sq-penalty-answer" style="font-size: 30px; color: #FFC107; margin-bottom: 40px; word-break: keep-all;">정답: </div>
+       <div id="sq-countdown" style="font-size: 100px; font-weight: bold; color: #00BCD4;">3</div>
+    </div>
+
+    <div id="treasure-overlay">
+      <h2 style="color: #FFEB3B; font-size: 35px; margin-bottom: 20px; text-shadow: 0 0 15px rgba(255,235,59,0.5);">🎁 행운의 보물상자 🎁</h2>
+      <p style="color: white; font-size: 20px; margin-bottom: 30px;">하나를 골라주세요!</p>
+      <div style="display: flex; gap: 10px;">
+        <button class="treasure-chest">📦</button>
+        <button class="treasure-chest">📦</button>
+        <button class="treasure-chest">📦</button>
+      </div>
+    </div>
+
+    <div id="top-left-controls" style="display: none; position: fixed; top: 8px; left: 8px; right: 15px; z-index: 350; flex-direction: column; gap: 5px; align-items: flex-start; pointer-events: none;">
+      <div style="display:flex; gap:5px; pointer-events: auto;">
+        <button id="back-to-menu-btn" style="background: #fff; border: 3px solid #00bcd4; border-radius: 12px; padding: 5px 10px; font-size: 14px; color: #00838f; cursor: pointer; box-shadow: 0 3px 0 #00838f; font-family: 'Paperlogy-4Regular', sans-serif;">⬅️ 메뉴</button>
+        <button id="mute-btn" style="background: #fff; border: 3px solid #999; border-radius: 12px; padding: 5px 10px; font-size: 14px; cursor: pointer; box-shadow: 0 3px 0 #999;">🔊</button>
+      </div>
+      <div id="inventory-bar" style="display: flex; flex-direction: row; flex-wrap: wrap; gap: 10px; width: 100%; max-width: 80vw; pointer-events: none; margin-top: 2px;">
+        <div id="pile-double_current" class="inventory-pile"></div>
+        <div id="pile-half_current" class="inventory-pile"></div>
+        <div id="pile-double_future" class="inventory-pile"></div>
+      </div>
+    </div>
+
+    <div id="unknown-modal">
+      <h3>😭 모르는 단어 목록</h3>
+      <ul id="unknown-list"></ul>
+      <button id="close-modal-btn" style="background: #888; color: white; width: 100%; border: none; padding: 10px; border-radius: 10px; cursor: pointer; font-size: 18px;">닫기</button>
+    </div>
+
+    <div id="login-screen" class="screen active">
+      <h1>👾주례여중 게임기 v4.0👾</h1>
+      <p style="text-align: center; font-size: 18px">나만의 닉네임과 이모지를 골라주세요!<br />이모지는 랜덤으로 10개가 나와요</p>
+      <input type="text" id="nickname" placeholder="닉네임을 써라" style="width: 200px; font-size: 20px; padding: 10px;" />
+      <div id="emoji-container"></div>
+      
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+        <button id="login-btn" style="margin: 0;">입장하기</button>
+        <button id="admin-main-open-btn" style="margin: 0; background-color: #9e9e9e; box-shadow: 0 5px 0 #616161; font-size: 16px; padding: 10px 20px;">⚙️ 관리자 설정</button>
+      </div>
+
+      <div id="credits-container">
+        <div class="crawl">
+          <div class="credits-title">Special thanks to..<br />HANA, WOOJU, MY FAMILY, GEMINI<br />그리고 의욕을 준 예쁜 내 학생들</div>
+          <div class="credits-columns">
+            <div class="class-col"><div class="class-title">3학년 1반</div>강리혜<br />곽다희<br />김서영<br />김예은<br />김채율<br />김한비<br />류채언<br />박소민<br />박오빈<br />성솔진<br />안소현<br />여채원<br />이수빈<br />전민지<br />전지우<br />전지현<br />정효주<br />조아영<br />조아현<br />허은혜<br />홍채린</div>
+            <div class="class-col"><div class="class-title">3학년 2반</div>강별<br />김가람<br />김가령<br />김도연<br />김시현<br />김은정<br />김의진<br />김한아<br />문시은<br />박령지<br />박서영<br />박선하<br />서연서<br />양세령<br />예나윤<br />이민지<br />이세림<br />이채민<br />정여나<br />최수아<br />최은영</div>
+            <div class="class-col"><div class="class-title">3학년 3반</div>권예림<br />김태은<br />도유정<br />문영림<br />민정원<br />박세은<br />박소윤<br />박지언<br />서혜빈<br />우연서<br />유나연<br />이예진<br />장하늘<br />조민서<br />조유나<br />최가영<br />최은영<br />하연서<br />한채원<br />한혜진<br />황인영</div>
+          </div>
+        </div>
+      </div>
+    </div> 
+
+    <div id="admin-main-screen" class="screen">
+      <h2 style="margin-bottom: 20px;">⚙️ 관리자 메뉴</h2>
+      <button id="admin-go-student-btn" class="menu-btn" style="background-color: #2196F3; box-shadow: 0 6px 0 #1976D2">👥 학생 DB 수정</button>
+      <button id="admin-go-set-btn" class="menu-btn" style="background-color: #9C27B0; box-shadow: 0 6px 0 #7B1FA2">📚 세트 DB 수정</button>
+      <button id="admin-main-close-btn" class="menu-btn" style="background-color: #9e9e9e; box-shadow: 0 6px 0 #616161; margin-top: 30px;">닫기</button>
+    </div>
+
+    <div id="admin-student-screen" class="screen">
+      <h2 style="margin-bottom: 5px;">👥 학생 DB 수정</h2>
+      <p style="font-size: 14px; margin-bottom: 10px; color: #555;">엑셀에서 '학번'과 '이름' 열을 드래그해서 붙여넣으세요.</p>
+      
+      <textarea id="admin-student-textarea" placeholder="10101(탭)홍길동&#10;10102(탭)김철수" style="width: 90%; max-width: 500px; height: 100px; padding: 10px; font-size: 14px; font-family: 'Paperlogy-4Regular'; border: 2px solid #2196F3; border-radius: 10px; resize: none;"></textarea>
+      <button id="admin-student-upload-btn" style="background-color: #2196F3; box-shadow: 0 6px 0 #1976D2; padding: 10px 20px; font-size: 16px;">일괄 업로드</button>
+      
+      <div id="admin-student-list" class="admin-list-box"></div>
+      
+      <button id="admin-student-back-btn" style="background-color: #9e9e9e; box-shadow: 0 6px 0 #616161; padding: 10px 20px; font-size: 16px; margin-top: 15px;">뒤로 가기</button>
+    </div>
+
+    <div id="admin-set-list-screen" class="screen">
+      <h2 style="margin-bottom: 5px;">📚 세트 DB 수정</h2>
+      <button id="admin-set-create-btn" style="background-color: #FF9800; box-shadow: 0 6px 0 #F57C00; padding: 10px 20px; font-size: 16px; margin-top:10px;">+ 새 세트 만들기</button>
+      
+      <div id="admin-set-list" class="admin-list-box"></div>
+      
+      <button id="admin-set-list-back-btn" style="background-color: #9e9e9e; box-shadow: 0 6px 0 #616161; padding: 10px 20px; font-size: 16px; margin-top: 15px;">뒤로 가기</button>
+    </div>
+
+    <div id="admin-set-edit-screen" class="screen">
+      <h2 style="margin-bottom: 5px;">📝 세트 편집</h2>
+      <input type="text" id="admin-set-title" placeholder="세트 이름 (예: 1과 단어)" style="width: 90%; max-width: 480px; margin-bottom: 10px; font-size: 18px;" />
+      <p style="font-size: 14px; margin-bottom: 5px; color: #555;">엑셀에서 '영어'와 '한글' 열을 드래그해서 붙여넣으세요.</p>
+      
+      <textarea id="admin-set-textarea" placeholder="apple(여기는 탭)사과&#10;banana(여기는 탭)바나나" style="width: 90%; max-width: 500px; height: 200px; padding: 10px; font-size: 14px; font-family: 'Paperlogy-4Regular'; border: 2px solid #FF9800; border-radius: 10px; resize: none;"></textarea>
+      
+      <div style="display: flex; gap: 10px; margin-top: 15px;">
+        <button id="admin-set-save-btn" style="background-color: #4caf50; box-shadow: 0 6px 0 #388e3c; padding: 10px 20px; font-size: 16px;">💾 저장</button>
+        <button id="admin-set-edit-cancel-btn" style="background-color: #f44336; box-shadow: 0 6px 0 #d32f2f; padding: 10px 20px; font-size: 16px;">취소</button>
+      </div>
+    </div>
+
+    <div id="set-select-screen" class="screen">
+      <h2 style="margin-bottom: 20px;">📚 학습할 세트를 고르세요</h2>
+      <div id="set-select-list" style="display:flex; flex-direction:column; gap:15px; width: 90%; max-width: 400px; overflow-y: auto; max-height: 50vh; padding: 10px;"></div>
+      
+      <button id="set-select-back-btn" style="background-color: #9e9e9e; box-shadow: 0 6px 0 #616161; padding: 10px 20px; font-size: 16px; margin-top: 30px;">⬅️ 로그인 화면으로</button>
+    </div>
+
+    <div id="menu-screen" class="screen">
+      <h2 style="text-align: center; margin-bottom:10px;">잘 왔어요! 당신의 닉네임은<br /><span id="user-display" style="color: #ff4081"></span>입니다.</h2>
+      <p style="margin-bottom:10px;">어떤 학습을 시작할까요?</p>
+      <button id="menu-fc-btn" class="menu-btn">🃏 깜빡이 학습</button>
+      <button id="menu-memory-btn" class="menu-btn" style="background-color: #2196F3; box-shadow: 0 6px 0 #1976D2">🔠 메모리 게임</button>
+      <button id="menu-speed-match-btn" class="menu-btn" style="background-color: #FF5722; box-shadow: 0 6px 0 #E64A19">🧩 스피드 짝맞추기</button>
+      <button id="menu-speed-btn" class="menu-btn" style="background-color: #9C27B0; box-shadow: 0 6px 0 #7B1FA2">⚡ 심플 스피드퀴즈</button>
+      <button id="menu-fish-btn" class="menu-btn" style="background-color: #4caf50; box-shadow: 0 6px 0 #388e3c">🎣 이모지 낚시하기</button>
+      <button id="menu-go-back-set-btn" class="menu-btn" style="background-color: #9e9e9e; box-shadow: 0 6px 0 #616161; margin-top: 20px;">⬅️ 다른 세트 고르기</button>
+    </div>
+
+    <div id="fc-option-screen" class="screen">
+      <h2>어떤 순서로 학습할까요?</h2>
+      <button id="fc-order-btn" class="menu-btn">⬇️ 등록된 순서대로</button>
+      <button id="fc-random-btn" class="menu-btn" style="background-color: #9c27b0; box-shadow: 0 6px 0 #7b1fa2">🔀 무작위 랜덤으로</button>
+    </div>
+
+    <div id="time-option-screen" class="screen">
+      <h2>얼마나 플레이할까요?</h2>
+      <button id="time-3m-btn" class="menu-btn">⏱️ 3분 스피드 모드</button>
+      <button id="time-5m-btn" class="menu-btn" style="background-color: #ff9800; box-shadow: 0 6px 0 #f57c00">⏱️ 5분 진득한 모드</button>
+    </div>
+
+    <div id="flashcard-screen" class="screen">
+      <h2 id="fc-score" style="margin-bottom: 0; color: #ff4081">점수: 0</h2>
+      <h3 id="fc-progress" style="color: #00838f">단어: 1 / 10</h3>
+      <div id="card-container">
+        <div id="fc-card" class="flash-card">
+          <div class="card-face card-front">
+            <div class="retry-badge">💡 몰랐던 카드라서 복습하고 있어요</div>
+            <span id="fc-front">English</span>
+          </div>
+          <div class="card-face card-back">
+            <div class="retry-badge">💡 몰랐던 카드라서 복습하고 있어요</div>
+            <span id="fc-back">한글</span>
+          </div>
+        </div>
+      </div>
+      <div style="display: flex; gap: 15px; z-index: 10">
+        <button id="btn-know" style="background: #4caf50">O 알아요</button>
+        <button id="btn-dont-know" style="background: #f44336">X 몰라요</button>
+      </div>
+      <div class="stats-bar" id="fc-stats">🟢 알아요: 0개 | 🔴 몰라요: 0개</div>
+      <button id="fc-list-btn">👀 오답 노트 열기</button>
+    </div>
+
+    <div id="memory-screen" class="screen" style="padding: 0; background: transparent;">
+      <div style="height: 15%; width: 100%; display: flex; flex-direction: column; align-items: flex-end; padding: 15px 20px 0 0; box-sizing: border-box; background: rgba(255,255,255,0.8); border-bottom: 4px dashed #00bcd4; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+         <span id="memory-timer" style="font-size: 26px; font-weight: bold; color: #f44336; margin-bottom: 5px;">🕒 03:00</span>
+         <span id="memory-score" style="font-size: 26px; font-weight: bold; color: #2196F3;">점수: 0</span>
+      </div>
+      <div style="height: 85%; width: 100%; max-width: 600px; display: flex; justify-content: center; gap: 10px; padding: 10px; box-sizing: border-box; overflow: hidden;">
+         <div id="memory-left-col" style="display: flex; flex-direction: column; gap: 8px; width: 48%; height: 100%;"></div>
+         <div id="memory-right-col" style="display: flex; flex-direction: column; gap: 8px; width: 48%; height: 100%;"></div>
+      </div>
+    </div>
+
+    <div id="speed-match-screen" class="screen" style="padding: 0; background: transparent;">
+      <div style="height: 15%; width: 100%; display: flex; flex-direction: column; align-items: flex-end; padding: 15px 20px 0 0; box-sizing: border-box; background: rgba(255,255,255,0.8); border-bottom: 4px dashed #00bcd4; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+         <span id="sm-timer" style="font-size: 26px; font-weight: bold; color: #f44336; margin-bottom: 5px;">🕒 03:00</span>
+         <span id="sm-score" style="font-size: 26px; font-weight: bold; color: #FF5722;">점수: 0</span>
+      </div>
+      <div style="height: 85%; width: 100%; max-width: 600px; display: flex; justify-content: center; gap: 10px; padding: 5px; box-sizing: border-box; overflow: hidden;">
+         <div id="sm-left-col" style="display: flex; flex-direction: column; gap: 5px; width: 48%; height: 100%;"></div>
+         <div id="sm-right-col" style="display: flex; flex-direction: column; gap: 5px; width: 48%; height: 100%;"></div>
+      </div>
+    </div>
+
+    <div id="speed-screen" class="screen" style="padding: 0; background: transparent;">
+      <div style="height: 15%; width: 100%; display: flex; flex-direction: column; align-items: flex-end; padding: 15px 20px 0 0; box-sizing: border-box; background: rgba(255,255,255,0.8); border-bottom: 4px dashed #00bcd4; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+         <span id="speed-timer" style="font-size: 26px; font-weight: bold; color: #f44336; margin-bottom: 5px;">🕒 03:00</span>
+         <span id="speed-score" style="font-size: 26px; font-weight: bold; color: #9C27B0;">점수: 0</span>
+      </div>
+      <div style="height: 85%; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 30px; padding: 20px; box-sizing: border-box;">
+         <div id="speed-word-card" class="sq-word-box">English</div>
+         <div style="display: flex; flex-direction: column; gap: 15px; width: 100%; align-items: center;">
+            <button id="speed-opt-1" class="sq-btn" style="background-color: #FF4081;">Option 1</button>
+            <button id="speed-opt-2" class="sq-btn" style="background-color: #00BCD4; box-shadow: 0 6px 0 #0097A7;">Option 2</button>
+         </div>
+      </div>
+    </div>
+
+    <div id="fishing-screen" class="screen" style="padding: 0; background: transparent">
+      <div style="height: 35%; width: 100%; background: rgba(255, 255, 255, 0.8); border-bottom: 4px dashed #00bcd4; padding: 10px; box-sizing: border-box; display: flex; flex-direction: column; z-index: 10;">
+        <div style="display: flex; flex-direction: column; align-items: flex-end; width: 100%; padding-right: 10px;">
+          <span id="fish-timer" style="font-size: 22px; font-weight: bold; color: #f44336; margin-bottom: 2px;">🕒 03:00</span>
+          <span id="fish-score" style="font-size: 22px; font-weight: bold; color: #4caf50">이모지: 0마리</span>
+        </div>
+        <div id="fish-bucket" style="flex-grow: 1; display: flex; flex-wrap: wrap; gap: 5px; overflow-y: auto; align-content: flex-start; padding-top: 5px; font-size: 30px;"></div>
+      </div>
+      <div id="fish-pond" style="height: 65%; width: 100%; position: relative; overflow: hidden; background: rgba(224, 247, 250, 0.4);"></div>
+    </div>
+
+    <div id="result-screen" class="screen">
+      <h1 id="praise-word" class="bounce">Fabulous!</h1>
+      <h2 id="result-user"></h2>
+      <div class="score-box">
+        <p>획득 점수: <span id="final-score" class="highlight">0</span>점</p>
+        <p id="result-detail" class="small-text"></p>
+      </div>
+      <div id="result-caught-emojis" style="max-height: 100px; overflow-y: auto; font-size: 24px; margin-bottom: 10px; background: rgba(255,255,255,0.7); padding: 10px; border-radius: 10px; width: 85%; display: none; line-height: 1.4; word-break: break-all; border: 2px dashed #00BCD4;"></div>
+      <p class="small-text">화면을 캡처해서 제출해 주세요! 📸</p>
+      <button id="home-btn">처음으로 돌아가기</button>
+    </div>
+
+    <script type="module" src="index.mjs"></script>
+  </body>
+</html>
