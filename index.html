@@ -108,9 +108,13 @@
       /* 스피드퀴즈 페널티 오버레이 */
       #sq-penalty-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9); z-index: 500; flex-direction: column; align-items: center; justify-content: center; color: white; font-family: 'Paperlogy-4Regular', sans-serif; text-align: center; padding: 20px; box-sizing: border-box;}
 
-      /* 보물상자 오버레이 */
+      /* 🌟 보물상자 오버레이 (반응형 폰트 크기 clamp 적용!) */
       #treasure-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); z-index: 500; flex-direction: column; justify-content: center; align-items: center; animation: fadeIn 0.3s ease-out; }
-      .treasure-chest { font-size: 80px; background: none; border: none; cursor: pointer; transition: transform 0.2s; margin: 0 10px; text-shadow: none !important; box-shadow: none !important; outline: none; -webkit-tap-highlight-color: transparent;}
+      .treasure-chest { 
+        font-size: clamp(50px, 18vw, 85px); /* 화면 크기에 맞춰 이모지 크기가 유연하게 변합니다! */
+        background: none; border: none; cursor: pointer; transition: transform 0.2s; 
+        margin: 0 5px; padding: 0; text-shadow: none !important; box-shadow: none !important; outline: none; -webkit-tap-highlight-color: transparent;
+      }
       .treasure-chest:hover { transform: scale(1.1); }
       .treasure-chest:active { transform: scale(0.9); }
       .chest-explode { animation: explodeAnim 0.5s ease-out forwards; pointer-events: none; }
@@ -120,7 +124,7 @@
       .inventory-item { padding: 3px 8px; border-radius: 8px; font-size: 12px; font-weight: bold; color: white; box-shadow: -2px 0 5px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.4); position: relative; }
       .inventory-item + .inventory-item { margin-left: -40px; } 
 
-      /* 🌟 관리자 화면용 심플한 리스트 박스 디자인 */
+      /* 관리자 화면용 심플한 리스트 박스 디자인 */
       .admin-list-box { width: 90%; max-width: 500px; height: 300px; background: white; border: 3px solid #00bcd4; border-radius: 10px; padding: 10px; overflow-y: auto; margin-top: 15px; font-size: 16px; text-align: left;}
       .admin-list-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #eee; }
       .admin-btn-small { font-size: 14px; padding: 5px 10px; margin: 0; border-radius: 8px; box-shadow: none; background-color: #f44336; color: white; }
@@ -171,7 +175,7 @@
     <div id="treasure-overlay">
       <h2 style="color: #FFEB3B; font-size: 35px; margin-bottom: 20px; text-shadow: 0 0 15px rgba(255,235,59,0.5);">🎁 행운의 보물상자 🎁</h2>
       <p style="color: white; font-size: 20px; margin-bottom: 30px;">하나를 골라주세요!</p>
-      <div style="display: flex; gap: 10px;">
+      <div style="display: flex; gap: 10px; justify-content: center; width: 100%;">
         <button class="treasure-chest">📦</button>
         <button class="treasure-chest">📦</button>
         <button class="treasure-chest">📦</button>
@@ -263,7 +267,6 @@
     <div id="set-select-screen" class="screen">
       <h2 style="margin-bottom: 20px;">📚 학습할 세트를 고르세요</h2>
       <div id="set-select-list" style="display:flex; flex-direction:column; gap:15px; width: 90%; max-width: 400px; overflow-y: auto; max-height: 50vh; padding: 10px;"></div>
-      
       <button id="set-select-back-btn" style="background-color: #9e9e9e; box-shadow: 0 6px 0 #616161; padding: 10px 20px; font-size: 16px; margin-top: 30px;">⬅️ 로그인 화면으로</button>
     </div>
 
