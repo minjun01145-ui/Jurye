@@ -91,9 +91,6 @@ let studentList = [];
 let currentEditingSetId = null; 
 let wordList = []; 
 
-// ==========================================
-// 🚨 이 녀석들이 문제였습니다! (게임 공통 변수 완벽 복구!!!) 🚨
-// ==========================================
 let gameTimerInterval; 
 let cdInterval;
 let gameTimeRemaining = 0; 
@@ -559,9 +556,9 @@ function triggerTreasureEvent(callback) {
 }
 
 // ==========================================
-// 🌟 씬 1: 깜빡이 학습
+// 🌟 씬 1: 깜빡이 학습 (이벤트 상자 완전 제거! 순수 학습 모드)
 // ==========================================
-let fcQueue = []; let fcCurrent = null; let fcStartTime = 0; let fcKnown = 0; let fcIsFlipped = false; let fcIsAnimating = false; let fcScore = 0; let cardAppearTime = 0; let currentMultiplier = 1; let isRetryPhase = false;
+let fcQueue = []; let fcCurrent = null; let fcStartTime = 0; let fcKnown = 0; let fcIsFlipped = false; let fcIsAnimating = false; let fcScore = 0; let cardAppearTime = 0; let isRetryPhase = false;
 let hasFlippedToCheck = false; 
 
 const elCard = document.getElementById("fc-card"); const elFront = document.getElementById("fc-front"); const elBack = document.getElementById("fc-back"); const elProgress = document.getElementById("fc-progress"); const elStats = document.getElementById("fc-stats"); const elScore = document.getElementById("fc-score");
@@ -599,10 +596,6 @@ function nextFlashcard(animClass) {
   document.getElementById("btn-dont-know").classList.add("btn-disabled");
 
   fcCurrent = fcQueue[0]; fcIsFlipped = false;
-  let rand = Math.random();
-  if (rand < 0.2) { currentMultiplier = 2; showBuffMsg("이벤트 발동!", "점수 2배!", 233, 30, 99); } 
-  else if (rand < 0.4) { currentMultiplier = 0.5; showBuffMsg("이벤트 발동...", "점수 반토막 😭", 156, 39, 176); } 
-  else { currentMultiplier = 1; }
 
   updateFcUI(); elCard.classList.remove("is-flipped");
   elFront.innerText = fcCurrent.en; elFront.style.fontSize = autoFontSize(fcCurrent.en);
@@ -626,8 +619,11 @@ document.getElementById("btn-know").onclick = () => {
   fcIsAnimating = true; playSound("click");
   const reactTime = Date.now() - cardAppearTime;
   let speedBonus = Math.max(0, 150 - Math.floor(reactTime / 15));
-  let finalEarned = Math.floor((100 + speedBonus) * currentMultiplier);
+  
+  // 🌟 이벤트 배수 삭제, 순수 스피드 + 복습 보너스 로직
+  let finalEarned = 100 + speedBonus;
   if (isRetryPhase) finalEarned += 100;
+  
   fcScore += finalEarned; elScore.innerText = "점수: " + fcScore; elCard.className = "flash-card fly-left";
   setTimeout(() => { fcQueue.shift(); fcKnown++; nextFlashcard("fly-right-in"); }, 400);
 };
