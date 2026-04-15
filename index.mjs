@@ -1,4 +1,4 @@
-// 🔥 1. 파이어베이스 라이브러리 불러오기 (점수 저장용 기능 추가)
+// 🔥 1. 파이어베이스 라이브러리 불러오기
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
 import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
 
@@ -79,7 +79,7 @@ function playSound(type) {
 }
 
 // ==========================================
-// 🌟 파이어베이스 DB 관리 변수
+// 🌟 파이어베이스 DB 및 게임 상태 변수
 // ==========================================
 let wordSets = []; 
 let studentList = []; 
@@ -91,7 +91,6 @@ let unknownWordsHistory = [];
 const allEmojis = ["🎮", "🕹️", "🎲", "🎯", "🐶", "🐱", "🍓", "😎", "🤩", "🚀", "🌟", "🔥", "🦄", "🍀", "🍔", "👽","😀","😂","😍","🥳","👻","🤡","🤗","🤔","🤐","🐭","🐹","🐰","🦊","🐻","🐼","🐨","🐯","🦁","🐮","🐷","🐸","🐵","🐧","🐤","🦆","🦉","🦇","🐺","🐝","🦋","🐢","🐍","🦖","🐙","🦑","🦀","🐠","🐬","🐳","🦈","🐅","🦓","🦍","🐘","🐫","🦒","🦘","🐎","🐏","🐐","🦌","🐕","🐈","🦚","🦜","🦢","🦩","🕊","🦝","🦨","🦥","🐿","🦔","🐉","🍎","🍊","🍋","🍌","🍉","🍇","🫐","🍒","🍑","🍍","🥥","🥝","🍅","🥑","🥦","🥒","🌶","🌽","🥕","🥔","🍠","🥐","🍞","🥨","🧀","🍳","🥞","🥓","🥩","🍗","🌭","🍟","🍕","🥪","🌮","🥗","🍣","🍱","🥟","🍤","🍙","🍚","🍧","🍦","🍰","🎂","🍭","🍬","🍫","🍩","🍪","🍯","🍼","☕️","🧃","🥤","🍺","🍻","🥂","🍷","🥃","🧊","⚽️","🏀","🏈","⚾️","🎾","🏐","🏓","🏸","🥊","🛹","⛸","🎿","🏂","🏋️","🏄","🏊","🚴","🏆","🥇","🏅","🎟","🎪","🎭","🎨","🎬","🎤","🎧","🎹","🥁","🎸","🎳","🎰","🧩","🚗","🚓","🚑","🚒","🚜","🚲","🛵","🏍","✈️","🚁","⛵️","🛳","🗺","🗽","🏰","🎡","🎢","⛺️","🏠","🏢","🏥","🏦","🏫","⛪️","🌅","🌌","⌚️","📱","💻","⌨️","🖥","📷","📸","🎥","📞","☎️","📺","📻","⏱","⏰","⏳","💡","💸","💵","💰","💳","💎","🛠","🔫","💣","🪄"];
 const praises = ["Fabulous!", "Terrific!", "Awesome!", "Incredible!", "Great Job!", "Perfect!"];
 
-// 🌟 사용자 객체 확장: 학번과 반 정보 추가
 let currentUser = { stdId: "", realName: "", classId: "", nickname: "", emoji: "", score: 0, caughtEmojis: "" };
 
 function showScreen(screenId) {
@@ -149,23 +148,19 @@ document.getElementById("auth-btn").onclick = () => {
 
   if(!inputId || !inputName) return alert("학번과 이름을 모두 적어주세요!");
 
-  // 선생님이 업로드한 데이터와 비교!
   const matchedStudent = studentList.find(s => s.stdId === inputId && s.name === inputName);
   
   if (matchedStudent) {
     currentUser.stdId = inputId;
     currentUser.realName = inputName;
-    // 🌟 핵심: 3201 이면 앞의 2글자인 '32'를 잘라내서 반 코드로 저장합니다!
     currentUser.classId = inputId.substring(0, 2); 
-    
-    // 통과하면 2차 로그인(닉네임/이모지 설정) 화면으로!
     showScreen("login-screen");
   } else {
     alert("데이터베이스에 없는 학번이거나 이름이 틀렸습니다! 선생님께 문의하세요.");
   }
 };
 
-// 🌟 2단계: 익명 닉네임과 이모지 선택 후 세트 고르기 화면으로!
+// 🌟 2단계: 익명 닉네임과 이모지 선택 후 세트 고르기
 document.getElementById("login-btn").onclick = () => {
   playSound("click");
   const nick = document.getElementById("nickname").value.trim();
@@ -199,7 +194,7 @@ document.getElementById("set-select-back-btn").onclick = () => { playSound("clic
 document.getElementById("menu-go-back-set-btn").onclick = () => { playSound("click"); showScreen("set-select-screen"); };
 
 // ==========================================
-// 🌟 2. 관리자 메뉴 로직 (이전과 동일)
+// 🌟 2. 관리자 메뉴 로직
 // ==========================================
 document.getElementById("admin-main-open-btn").onclick = () => { playSound("click"); showScreen("admin-main-screen"); };
 document.getElementById("admin-main-close-btn").onclick = () => { playSound("click"); showScreen("auth-screen"); };
@@ -737,7 +732,6 @@ async function goResult() {
   else { emojiBox.style.display = "none"; }
   playSound("success");
 
-  // 🌟 게임이 끝나면 파이어베이스 'scores' 에 자동 저장!
   try {
     await addDoc(collection(db, "scores"), {
       stdId: currentUser.stdId,
@@ -753,17 +747,14 @@ async function goResult() {
 
 document.getElementById("go-ranking-btn").onclick = () => { playSound("click"); showRankings("today"); };
 
-// 🌟 랭킹 탭 전환 이벤트
 document.getElementById("tab-today").onclick = () => { playSound("click"); showRankings("today"); };
 document.getElementById("tab-class").onclick = () => { playSound("click"); showRankings("class"); };
 document.getElementById("tab-all").onclick = () => { playSound("click"); showRankings("all"); };
 document.getElementById("ranking-home-btn").onclick = () => { playSound("click"); document.getElementById("confetti-canvas").style.display = "none"; showScreen("menu-screen"); };
 
-// 🌟 랭킹 불러오기 로직
 async function showRankings(tab) {
   showScreen("ranking-screen");
   
-  // 탭 스타일 변경
   document.querySelectorAll(".rank-tab").forEach(btn => btn.classList.remove("active"));
   document.getElementById(`tab-${tab}`).classList.add("active");
 
@@ -786,7 +777,6 @@ async function showRankings(tab) {
     if (tab === "today") filtered = allScores.filter(s => s.timestamp >= todayStart);
     else if (tab === "class") filtered = allScores.filter(s => s.classId === currentUser.classId);
 
-    // 최고 기록만 남기기 (동일 인물 중복 도배 방지)
     let uniqueTop = {};
     filtered.forEach(s => {
        if(!uniqueTop[s.stdId] || uniqueTop[s.stdId].score < s.score) uniqueTop[s.stdId] = s;
@@ -808,13 +798,11 @@ async function showRankings(tab) {
       });
     }
     
-    // 폭죽 파티 시작!
     fireConfetti();
 
   } catch(e) { listEl.innerHTML = "데이터를 불러오지 못했습니다."; console.error(e); }
 }
 
-// 🌟 자체 제작 가벼운 폭죽(Confetti) 파티클 시스템 🌟
 let confettiParticles = [];
 let confettiCtx = null;
 let confettiAnimId = null;
@@ -831,7 +819,7 @@ function fireConfetti() {
   
   for(let i=0; i<100; i++) {
     confettiParticles.push({
-      x: canvas.width / 2, y: canvas.height / 2 + 100, // 중앙 아래에서 폭발
+      x: canvas.width / 2, y: canvas.height / 2 + 100, 
       r: Math.random() * 6 + 4,
       dx: Math.random() * 20 - 10, dy: Math.random() * -20 - 5,
       color: colors[Math.floor(Math.random() * colors.length)],
@@ -853,7 +841,7 @@ function renderConfetti() {
     p.tiltAngle += p.tiltAngleInc;
     p.y += (Math.cos(p.tiltAngle) + 1 + p.r / 2) / 2;
     p.x += Math.sin(p.tiltAngle) * 2 + p.dx;
-    p.dy += 0.2; // 중력
+    p.dy += 0.2; 
     p.y += p.dy;
 
     if (p.y <= canvas.height) activeCount++;
