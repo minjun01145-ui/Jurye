@@ -2,15 +2,23 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
     <title>주례여중 게임기</title>
     <link rel="stylesheet" href="styles.css" />
 
     <style>
+      /* 모바일 브라우저 툴바 가림 완벽 해결 */
       body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
-      .screen { position: fixed !important; top: 0; left: 0; width: 100vw !important; height: 100dvh !important; overflow: hidden !important; display: none; flex-direction: column; align-items: center; justify-content: center; box-sizing: border-box; }
+      .screen {
+        position: fixed !important; top: 0; left: 0; width: 100vw !important; height: 100dvh !important;
+        overflow: hidden !important; display: none; flex-direction: column; align-items: center; justify-content: center; box-sizing: border-box;
+      }
       .screen.active { display: flex !important; }
 
+      /* 스페셜 땡스 크레딧 */
       #credits-container { position: absolute; bottom: 0; left: 0; width: 100%; height: 25vh; overflow: hidden; z-index: 1; pointer-events: none; perspective: 400px; }
       .crawl { position: relative; top: 100%; animation: crawl-anim 20s linear infinite; text-align: center; }
       .credits-title { font-size: 20px; color: rgba(120, 140, 150, 0.8); margin-bottom: 15px; letter-spacing: 2px; }
@@ -18,11 +26,17 @@
       .class-title { font-size: 15px; font-weight: bold; color: rgba(120, 140, 150, 0.8); margin-bottom: 8px; }
       @keyframes crawl-anim { 0% { top: 100%; transform: rotateX(25deg) translateY(0); } 100% { top: -50px; transform: rotateX(25deg) translateY(-100%); } }
 
-      #unknown-modal { display: none; position: absolute; right: 50%; transform: translateX(50%); top: 10%; width: 320px; max-height: 80vh; background-color: rgba(255, 255, 255, 0.95); border: 3px solid #ff4081; border-radius: 15px; padding: 20px; box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2); z-index: 200; overflow-y: auto; font-family: "Paperlogy-4Regular", sans-serif; }
+      /* 오답 노트 모달 */
+      #unknown-modal {
+        display: none; position: absolute; right: 50%; transform: translateX(50%); top: 10%; width: 320px;
+        max-height: 80vh; background-color: rgba(255, 255, 255, 0.95); border: 3px solid #ff4081; border-radius: 15px; padding: 20px;
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2); z-index: 200; overflow-y: auto; font-family: "Paperlogy-4Regular", sans-serif;
+      }
       #unknown-modal h3 { color: #ff4081; margin-top: 0; text-align: center; }
       #unknown-list { list-style: none; padding: 0; }
       #unknown-list li { background: #ffe4e1; margin-bottom: 8px; padding: 10px; border-radius: 8px; font-size: 16px; color: #333; }
 
+      /* 깜빡이 컴팩트 디자인 */
       #flashcard-screen { justify-content: center; padding: 10px; }
       #fc-score { margin-top: 10px !important; font-size: 26px !important; }
       #fc-progress { font-size: 18px !important; margin: 5px 0 !important; }
@@ -35,11 +49,13 @@
       .retry-badge { display: none; position: absolute; top: 10px; font-size: 14px; color: #999; width: 100%; text-align: center; }
       .flash-card.is-flipped { transform: rotateY(180deg); }
       .flash-card.fly-left { transform: translateX(-150vw) rotate(-20deg); opacity: 0; transition: all 0.4s ease-in; }
+      
       .btn-disabled { background: #999 !important; color: #ddd !important; box-shadow: none !important; transform: none !important; cursor: not-allowed !important; }
       #btn-know, #btn-dont-know { padding: 10px !important; font-size: 18px !important; width: 130px !important; transition: 0.2s; }
       .stats-bar { font-size: 16px !important; padding: 5px 15px !important; margin-top: 5px !important; display: inline-block; background: rgba(255, 255, 255, 0.7); border-radius: 20px; color: #555; }
       #fc-list-btn { position: static !important; margin-top: 10px !important; padding: 10px 20px !important; font-size: 16px !important; background: #bbdefb; color: #333; border: none; border-radius: 15px; box-shadow: 0 4px 0 #90caf9; cursor: pointer; font-family: "Paperlogy-4Regular", sans-serif; }
 
+      /* 메모리 게임용 3D 카드 디자인 */
       .memory-card-wrapper { flex: 1; perspective: 1000px; cursor: pointer; width: 100%; }
       .memory-card { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
       .memory-card.flipped { transform: rotateY(180deg); }
@@ -51,6 +67,7 @@
       .memory-card.matched { opacity: 0; pointer-events: none; transition: opacity 0.5s 0.5s; transform: scale(0); }
       .memory-card-wrapper.disabled { pointer-events: none; opacity: 0.6; }
 
+      /* 스피드 짝맞추기 게임 디자인 */
       .sm-card-wrapper { flex: 1; cursor: pointer; width: 100%; display: flex; overflow: hidden; margin-bottom: 2px;}
       .sm-card { flex: 1; background: white; border: 3px solid #ddd; border-radius: 10px; display: flex; justify-content: center; align-items: center; text-align: center; font-weight: bold; padding: 2px 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: 0.1s; word-break: keep-all; line-height: 1.1; width: 100%; height: 100%;}
       .sm-card.selected { border-color: #FF5722; background: #FFCCBC; transform: scale(1.05); }
@@ -58,14 +75,17 @@
       .sm-card.matched { opacity: 0; pointer-events: none; transition: opacity 0.3s; transform: scale(0); }
       .sm-card-wrapper.disabled { pointer-events: none; opacity: 0.6; }
       
+      /* 스피드 퀴즈용 디자인 */
       .sq-word-box { width: 90%; max-width: 400px; height: 180px; background: white; border: 5px solid #333; border-radius: 20px; display: flex; justify-content: center; align-items: center; font-size: 32px; font-weight: bold; text-align: center; word-break: keep-all; box-shadow: 0 10px 20px rgba(0,0,0,0.1); margin-bottom: 30px;}
       .sq-btn { width: 90%; max-width: 400px; height: 80px; font-size: 20px; margin: 0 0 15px 0 !important; word-break: keep-all; line-height: 1.2;}
 
+      /* 낚시 게임 디자인 */
       .fish-card { position: absolute; background: rgba(255, 255, 255, 0.9); border: 3px solid #00bcd4; border-radius: 20px; padding: 10px 15px; cursor: pointer; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; word-break: keep-all; user-select: none; transition: border-color 0.2s, box-shadow 0.2s; min-width: 80px; max-width: 140px; }
       .fish-card.selected { border-color: #ff4081; background: #ffcdd2; transform: scale(1.1) !important; box-shadow: 0 0 20px rgba(255, 64, 129, 0.6); z-index: 100; }
       .fish-emoji { font-size: 28px; margin-bottom: 5px; }
       .fish-text { font-size: 14px; font-weight: bold; color: #333; line-height: 1.2; }
       
+      /* 공통 애니메이션 & 팝업 */
       .wrong { animation: shake 0.4s; }
       #game-countdown-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.7); z-index: 300; justify-content: center; align-items: center; overflow: hidden; }
       .countdown-text { font-size: 150px; color: #ff4081; font-weight: bold; text-shadow: 0 10px 20px rgba(0, 0, 0, 0.3); animation: swoosh 1s linear infinite; }
@@ -75,19 +95,36 @@
       #praise-title { font-size: 55px; font-weight: bold; color: #FF4081; text-shadow: 2px 2px 10px rgba(0,0,0,0.3); margin:0;}
       #praise-score { font-size: 35px; font-weight: bold; color: #2196F3; text-shadow: 2px 2px 5px rgba(255,255,255,0.8); margin-top:10px;}
 
-      #buff-msg-overlay { display: none; position: absolute; top: 40%; left: 50%; z-index: 600; padding: 20px 40px; border-radius: 20px; color: white; font-size: 35px; font-weight: bold; text-align: center; flex-direction: column; gap: 10px; font-family: 'Paperlogy-4Regular', sans-serif; white-space: pre-line; word-break: keep-all; width: 85%; max-width: 400px; cursor: pointer; pointer-events: auto; }
+      /* 중앙 흐르는 버프 알림 팝업 */
+      #buff-msg-overlay { 
+        display: none; position: absolute; top: 40%; left: 50%; z-index: 600; padding: 20px 40px; 
+        border-radius: 20px; color: white; font-size: 35px; font-weight: bold; text-align: center; 
+        flex-direction: column; gap: 10px; font-family: 'Paperlogy-4Regular', sans-serif; 
+        white-space: pre-line; word-break: keep-all; width: 85%; max-width: 400px;
+        cursor: pointer; pointer-events: auto; 
+      }
       .drift-anim { animation: driftBanner 2.5s ease-in-out forwards; }
+
+      /* 스피드퀴즈 페널티 오버레이 */
       #sq-penalty-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9); z-index: 500; flex-direction: column; align-items: center; justify-content: center; color: white; font-family: 'Paperlogy-4Regular', sans-serif; text-align: center; padding: 20px; box-sizing: border-box;}
 
+      /* 🌟 보물상자 오버레이 (반응형 폰트 크기 clamp 적용!) */
       #treasure-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); z-index: 500; flex-direction: column; justify-content: center; align-items: center; animation: fadeIn 0.3s ease-out; }
-      .treasure-chest { font-size: clamp(50px, 18vw, 85px); background: none; border: none; cursor: pointer; transition: transform 0.2s; margin: 0 5px; padding: 0; text-shadow: none !important; box-shadow: none !important; outline: none; -webkit-tap-highlight-color: transparent;}
+      .treasure-chest { 
+        font-size: clamp(50px, 18vw, 85px); /* 화면 크기에 맞춰 이모지 크기가 유연하게 변합니다! */
+        background: none; border: none; cursor: pointer; transition: transform 0.2s; 
+        margin: 0 5px; padding: 0; text-shadow: none !important; box-shadow: none !important; outline: none; -webkit-tap-highlight-color: transparent;
+      }
       .treasure-chest:hover { transform: scale(1.1); }
       .treasure-chest:active { transform: scale(0.9); }
       .chest-explode { animation: explodeAnim 0.5s ease-out forwards; pointer-events: none; }
 
+      /* 인벤토리 카드 스태킹 */
       .inventory-pile { display: flex; flex-direction: row; align-items: center; }
       .inventory-item { padding: 3px 8px; border-radius: 8px; font-size: 12px; font-weight: bold; color: white; box-shadow: -2px 0 5px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.4); position: relative; }
       .inventory-item + .inventory-item { margin-left: -40px; } 
+
+      /* 관리자 화면용 심플한 리스트 박스 디자인 */
       .admin-list-box { width: 90%; max-width: 500px; height: 300px; background: white; border: 3px solid #00bcd4; border-radius: 10px; padding: 10px; overflow-y: auto; margin-top: 15px; font-size: 16px; text-align: left;}
       .admin-list-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #eee; }
       .admin-btn-small { font-size: 14px; padding: 5px 10px; margin: 0; border-radius: 8px; box-shadow: none; background-color: #f44336; color: white; }
@@ -97,9 +134,21 @@
       @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-10px); } 50% { transform: translateX(10px); } 75% { transform: translateX(-10px); } 100% { transform: translateX(0); } }
       @keyframes swoosh { 0% { transform: translateX(100vw) skewX(-20deg); } 20% { transform: translateX(0) skewX(0); } 80% { transform: translateX(0) skewX(0); } 100% { transform: translateX(-100vw) skewX(20deg); } }
       @keyframes popPraise { 0% { transform: translate(-50%, -50%) scale(0); opacity: 0; } 20% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; } 80% { transform: translate(-50%, -50%) scale(1); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; } }
-      @keyframes driftBanner { 0% { transform: translate(100vw, -50%) skewX(-20deg); opacity: 0; } 12% { transform: translate(-50%, -50%) skewX(0); opacity: 1; } 88% { transform: translate(-50%, -60%) skewX(0); opacity: 1; } 100% { transform: translate(-200vw, -60%) skewX(20deg); opacity: 0; } }
-      @keyframes explodeAnim { 0% { transform: scale(1); filter: brightness(1); } 50% { transform: scale(1.5) rotate(10deg); filter: brightness(2); opacity: 1;} 100% { transform: scale(2.5) rotate(-10deg); filter: brightness(3); opacity: 0; } }
+      
+      @keyframes driftBanner {
+        0% { transform: translate(100vw, -50%) skewX(-20deg); opacity: 0; }
+        12% { transform: translate(-50%, -50%) skewX(0); opacity: 1; }
+        88% { transform: translate(-50%, -60%) skewX(0); opacity: 1; }
+        100% { transform: translate(-200vw, -60%) skewX(20deg); opacity: 0; }
+      }
+      
+      @keyframes explodeAnim {
+        0% { transform: scale(1); filter: brightness(1); }
+        50% { transform: scale(1.5) rotate(10deg); filter: brightness(2); opacity: 1;}
+        100% { transform: scale(2.5) rotate(-10deg); filter: brightness(3); opacity: 0; }
+      }
       @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
       .cm-fly-left { animation: flyLeft 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
       .cm-fly-right { animation: flyRight 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
       .sq-fly-in { animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
@@ -108,13 +157,13 @@
     </style>
   </head>
   <body>
-    <canvas id="confetti-canvas" style="position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:9999; display:none;"></canvas>
-
     <div id="game-countdown-overlay"><div id="countdown-text" class="countdown-text">5</div></div>
+    
     <div id="game-praise-overlay">
       <div id="praise-title">Fabulous!</div>
       <div id="praise-score">+ 150점!</div>
     </div>
+
     <div id="buff-msg-overlay"></div>
 
     <div id="sq-penalty-overlay">
@@ -151,15 +200,15 @@
       <button id="close-modal-btn" style="background: #888; color: white; width: 100%; border: none; padding: 10px; border-radius: 10px; cursor: pointer; font-size: 18px;">닫기</button>
     </div>
 
-    <div id="auth-screen" class="screen active">
-      <h1>👾주례여중 게임기 v5.0👾</h1>
-      <p style="text-align: center; font-size: 18px">본인의 학번과 이름을 정확히 입력하세요.</p>
-      <input type="number" id="auth-id" placeholder="학번 (예: 3201)" style="width: 200px; font-size: 20px; padding: 10px; margin-bottom: 10px;" />
-      <input type="text" id="auth-name" placeholder="이름" style="width: 200px; font-size: 20px; padding: 10px;" />
+    <div id="login-screen" class="screen active">
+      <h1>👾주례여중 게임기 v4.0👾</h1>
+      <p style="text-align: center; font-size: 18px">나만의 닉네임과 이모지를 골라주세요!<br />이모지는 랜덤으로 10개가 나와요</p>
+      <input type="text" id="nickname" placeholder="닉네임을 써라" style="width: 200px; font-size: 20px; padding: 10px;" />
+      <div id="emoji-container"></div>
       
       <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
-        <button id="auth-btn" style="margin: 0; background-color: #2196F3; box-shadow: 0 5px 0 #1976D2;">인증하기</button>
-        <button id="admin-main-open-btn" style="margin: 0; background-color: #9e9e9e; box-shadow: 0 5px 0 #616161; font-size: 16px; padding: 10px 20px;">⚙️ 선생님 관리자</button>
+        <button id="login-btn" style="margin: 0;">입장하기</button>
+        <button id="admin-main-open-btn" style="margin: 0; background-color: #9e9e9e; box-shadow: 0 5px 0 #616161; font-size: 16px; padding: 10px 20px;">⚙️ 관리자 설정</button>
       </div>
 
       <div id="credits-container">
@@ -171,17 +220,6 @@
             <div class="class-col"><div class="class-title">3학년 3반</div>권예림<br />김태은<br />도유정<br />문영림<br />민정원<br />박세은<br />박소윤<br />박지언<br />서혜빈<br />우연서<br />유나연<br />이예진<br />장하늘<br />조민서<br />조유나<br />최가영<br />최은영<br />하연서<br />한채원<br />한혜진<br />황인영</div>
           </div>
         </div>
-      </div>
-    </div>
-
-    <div id="login-screen" class="screen">
-      <h1>익명 프로필 설정</h1>
-      <p style="text-align: center; font-size: 18px">나만의 닉네임과 이모지를 골라주세요!<br />(랭킹에는 본명 대신 이것만 표시됩니다)</p>
-      <input type="text" id="nickname" placeholder="멋진 닉네임 입력!" style="width: 200px; font-size: 20px; padding: 10px;" />
-      <div id="emoji-container"></div>
-      
-      <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
-        <button id="login-btn" style="margin: 0;">게임 시작하기</button>
       </div>
     </div> 
 
@@ -229,6 +267,7 @@
     <div id="set-select-screen" class="screen">
       <h2 style="margin-bottom: 20px;">📚 학습할 세트를 고르세요</h2>
       <div id="set-select-list" style="display:flex; flex-direction:column; gap:15px; width: 90%; max-width: 400px; overflow-y: auto; max-height: 50vh; padding: 10px;"></div>
+      <button id="set-select-back-btn" style="background-color: #9e9e9e; box-shadow: 0 6px 0 #616161; padding: 10px 20px; font-size: 16px; margin-top: 30px;">⬅️ 로그인 화면으로</button>
     </div>
 
     <div id="menu-screen" class="screen">
@@ -332,23 +371,8 @@
         <p id="result-detail" class="small-text"></p>
       </div>
       <div id="result-caught-emojis" style="max-height: 100px; overflow-y: auto; font-size: 24px; margin-bottom: 10px; background: rgba(255,255,255,0.7); padding: 10px; border-radius: 10px; width: 85%; display: none; line-height: 1.4; word-break: break-all; border: 2px dashed #00BCD4;"></div>
-      <button id="go-ranking-btn" style="background-color: #FF9800; box-shadow: 0 6px 0 #F57C00;">🏆 명예의 전당 보기</button>
-      <button id="home-btn" style="background-color: #9e9e9e; box-shadow: 0 6px 0 #616161;">처음으로 돌아가기</button>
-    </div>
-
-    <div id="ranking-screen" class="screen">
-      <h1 id="ranking-msg" class="bounce" style="font-size: 35px; color: #ff4081; text-shadow: 2px 2px 5px rgba(0,0,0,0.1); margin-top:20px;"></h1>
-      <h3 id="ranking-encourage" style="color: #FF9800; margin-bottom: 20px; font-size:24px;"></h3>
-      
-      <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-        <button class="rank-tab active" id="tab-today">오늘의 랭킹</button>
-        <button class="rank-tab" id="tab-class">우리반 랭킹</button>
-        <button class="rank-tab" id="tab-all">전체 랭킹</button>
-      </div>
-
-      <div id="ranking-list" style="background: rgba(255,255,255,0.9); width: 90%; max-width: 450px; height: 45vh; overflow-y: auto; border-radius: 15px; border: 4px solid #00bcd4; padding: 15px; font-size: 20px; color: #333; text-align: left; box-shadow: 0 10px 20px rgba(0,0,0,0.1);"></div>
-      
-      <button id="ranking-home-btn" style="margin-top: 20px; background-color: #4CAF50; box-shadow: 0 6px 0 #388E3C;">메뉴로 돌아가기</button>
+      <p class="small-text">화면을 캡처해서 제출해 주세요! 📸</p>
+      <button id="home-btn">처음으로 돌아가기</button>
     </div>
 
     <script type="module" src="index.mjs"></script>
