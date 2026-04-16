@@ -1,7 +1,6 @@
 @font-face {
   font-family: "Paperlogy-4Regular";
-  src: url("https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-4Regular.woff2")
-    format("woff2");
+  src: url("https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-4Regular.woff2") format("woff2");
   font-weight: 400;
   font-style: normal;
 }
@@ -10,244 +9,75 @@ body {
   margin: 0;
   overflow: hidden;
   font-family: "Paperlogy-4Regular", sans-serif;
-  background-color: #222; /* Kaboom 캔버스 배경과 맞춤 */
+  background-color: #222; 
 }
 
-/* 수정된 화면 전체 설정 */
 .screen {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  overflow-y: auto; /* 🌟 핵심: 화면 밖으로 넘어가면 아래로 스크롤 가능하게! */
+  top: 0; left: 0; width: 100vw; height: 100vh;
+  overflow-y: auto; 
   background-color: #e0f7fa;
-  display: none;
-  flex-direction: column;
-  align-items: center;
-  padding: 50px 20px; /* 위아래 화면 끝에 딱 붙지 않게 여백 추가 */
-  box-sizing: border-box;
-  z-index: 10;
-  text-align: center;
+  display: none; flex-direction: column; align-items: center;
+  padding: 50px 20px; box-sizing: border-box; z-index: 10; text-align: center;
 }
 
-/* active 클래스가 붙으면 화면에 짠 하고 나타남 */
-.screen.active {
-  display: flex;
-}
+.screen.active { display: flex; }
 
-h1 {
-  font-size: 45px;
-  color: #00838f;
-  margin-bottom: 5px;
-}
-h2 {
-  font-size: 30px;
-  color: #006064;
-}
-p {
-  font-size: 20px;
-  color: #006064;
-  margin-bottom: 30px;
-}
-.small-text {
-  font-size: 16px;
-  color: #666;
-  margin-top: 10px;
-}
-.highlight {
-  font-size: 40px;
-  color: #ff4081;
-  font-weight: bold;
-}
+h1 { font-size: 45px; color: #00838f; margin-bottom: 5px; }
+h2 { font-size: 30px; color: #006064; }
+p { font-size: 20px; color: #006064; margin-bottom: 30px; }
+.small-text { font-size: 16px; color: #666; margin-top: 10px; }
+.highlight { font-size: 40px; color: #ff4081; font-weight: bold; }
 
 input {
-  font-family: "Paperlogy-4Regular", sans-serif;
-  font-size: 24px;
-  padding: 15px;
-  margin-bottom: 20px;
-  border: 3px solid #b2ebf2;
-  border-radius: 15px;
-  text-align: center;
-  width: 250px;
-  outline: none;
+  font-family: "Paperlogy-4Regular", sans-serif; font-size: 24px; padding: 15px; margin-bottom: 20px;
+  border: 3px solid #b2ebf2; border-radius: 15px; text-align: center; width: 250px; outline: none;
 }
-input:focus {
-  border-color: #00bcd4;
-}
+input:focus { border-color: #00bcd4; }
 
-/* 이모지 선택기 디자인 */
-#emoji-container {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  width: 300px;
-  gap: 10px;
-  margin-bottom: 30px;
-}
-.emoji-btn {
-  font-size: 30px;
-  background: white;
-  border: 2px solid #ccc;
-  border-radius: 50%;
-  width: 50px;
-  height: 50px;
-  cursor: pointer;
-  transition: 0.2s;
-  padding: 0;
-}
-.emoji-btn.selected {
-  border: 4px solid #ff4081;
-  background-color: #ffcdd2;
-  transform: scale(1.2);
-}
+#emoji-container { display: flex; flex-wrap: wrap; justify-content: center; width: 300px; gap: 10px; margin-bottom: 30px; }
+.emoji-btn { font-size: 30px; background: white; border: 2px solid #ccc; border-radius: 50%; width: 50px; height: 50px; cursor: pointer; transition: 0.2s; padding: 0; }
+.emoji-btn.selected { border: 4px solid #ff4081; background-color: #ffcdd2; transform: scale(1.2); }
 
 button {
-  font-family: "Paperlogy-4Regular", sans-serif;
-  font-size: 26px;
-  padding: 15px 40px;
-  margin: 10px;
-  background-color: #ff4081;
-  color: white;
-  border: none;
-  border-radius: 20px;
-  cursor: pointer;
-  box-shadow: 0 6px 0 #c51162;
-  transition: 0.1s;
+  font-family: "Paperlogy-4Regular", sans-serif; font-size: 26px; padding: 15px 40px; margin: 10px;
+  background-color: #ff4081; color: white; border: none; border-radius: 20px; cursor: pointer; box-shadow: 0 6px 0 #c51162; transition: 0.1s;
 }
-button:active {
-  transform: translateY(6px);
-  box-shadow: none;
-}
-.menu-btn {
-  background-color: #00bcd4;
-  box-shadow: 0 6px 0 #00838f;
-  width: 300px;
-}
+button:active { transform: translateY(6px); box-shadow: none; }
+.menu-btn { background-color: #00bcd4; box-shadow: 0 6px 0 #00838f; width: 300px; }
 
-.score-box {
-  background: white;
-  padding: 20px 40px;
-  border-radius: 20px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  border: 3px dashed #00bcd4;
-  margin: 20px 0;
-}
+.score-box { background: white; padding: 20px 40px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); border: 3px dashed #00bcd4; margin: 20px 0; }
 
-/* 결과창 칭찬 단어 애니메이션 */
-.bounce {
-  animation: bounce 1s infinite alternate;
-  color: #ff4081;
-  font-size: 60px;
+.bounce { animation: bounce 1s infinite alternate; color: #ff4081; font-size: 60px; }
+@keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-15px); } }
+
+/* 🌟 랭킹 화면용 탭 버튼 디자인 */
+.rank-tab {
+  font-size: 16px; padding: 10px 15px; margin: 0; background-color: #ddd; color: #555;
+  box-shadow: 0 4px 0 #bbb; border-radius: 10px 10px 0 0; width: 110px;
 }
-@keyframes bounce {
-  from {
-    transform: translateY(0);
-  }
-  to {
-    transform: translateY(-15px);
-  }
-}
-/* 🌟 스마트폰 화면을 위한 자동 크기 조절 마법 (반응형 웹) */
+.rank-tab.active { background-color: #00bcd4; color: white; box-shadow: 0 4px 0 #00838f; transform: translateY(2px); }
+
+/* 랭킹 리스트 아이템 디자인 */
+.rank-item { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px dashed #ddd; padding: 12px 5px; }
+.rank-item:last-child { border-bottom: none; }
+.rank-medal { font-size: 24px; font-weight: bold; width: 40px; }
+
 @media screen and (max-height: 750px), screen and (max-width: 500px) {
-  /* 화면이 작아지면 글자와 버튼들을 앙증맞게 줄입니다 */
-  h1 {
-    font-size: 30px;
-    margin-top: 20px;
-  }
-  h2 {
-    font-size: 24px;
-  }
-  p {
-    font-size: 16px;
-    margin-bottom: 15px;
-  }
-
-  input {
-    font-size: 18px;
-    padding: 10px;
-    width: 200px;
-    margin-bottom: 10px;
-  }
-
-  #emoji-container {
-    width: 250px;
-    gap: 8px;
-    margin-bottom: 20px;
-  }
-  .emoji-btn {
-    width: 45px;
-    height: 45px;
-    font-size: 24px;
-  }
-
-  button {
-    font-size: 20px;
-    padding: 12px 25px;
-  }
-  .menu-btn {
-    width: 250px;
-  }
-}
-/* =========================================
-   🌟 스타워즈풍 스페셜 땡스 크레딧 🌟
-   ========================================= */
-
-#credits-container {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 35vh; /* 화면 아래쪽 35% 공간만 차지하게 합니다 */
-  overflow: hidden; /* 영역 밖으로 삐져나가는 글씨는 안 보이게 숨김 */
-  z-index: 1; /* 배경과 버튼 사이의 층계에 배치 */
-
-  /* 🌟 개발자 꿀팁: 이 속성이 있어야 글씨가 버튼 앞을 가려도 클릭이 통과됩니다! */
-  pointer-events: none;
-
-  /* 🌟 3D 원근감 부여 (숫자가 작을수록 더 심하게 누워 보입니다) */
-  perspective: 400px;
+  h1 { font-size: 30px; margin-top: 20px; }
+  h2 { font-size: 24px; }
+  p { font-size: 16px; margin-bottom: 15px; }
+  input { font-size: 18px; padding: 10px; width: 200px; margin-bottom: 10px; }
+  #emoji-container { width: 250px; gap: 8px; margin-bottom: 20px; }
+  .emoji-btn { width: 45px; height: 45px; font-size: 24px; }
+  button { font-size: 20px; padding: 12px 25px; }
+  .menu-btn { width: 250px; }
+  .rank-tab { font-size: 14px; padding: 8px 10px; width: 95px; }
 }
 
-.crawl {
-  position: relative;
-  top: 100%; /* 맨 아래 밖에서 대기 */
-  /* 뒤로 눕혀서 위로 올라가게 하는 애니메이션 (25초 동안) */
-  animation: crawl-anim 25s linear infinite;
-  text-align: center;
-}
-
-.credits-title {
-  font-size: 70px;
-  color: rgba(120, 140, 150, 0.6); /* 은은한 회색 반투명 */
-  margin-bottom: 20px;
-  letter-spacing: 2px; /* 글자 간격을 띄워서 영화 느낌 내기 */
-}
-
-.credits-columns {
-  display: flex; /* 3반을 가로로 나란히 배치 */
-  justify-content: center;
-  gap: 90px; /* 반 사이의 간격 */
-  font-size: 30px;
-  line-height: 1.8; /* 이름 위아래 간격 */
-  color: rgba(120, 140, 150, 0.4); /* 이름은 더 흐린 반투명 */
-}
-
-.class-title {
-  font-size: 16px;
-  font-weight: bold;
-  color: rgba(120, 140, 150, 0.6);
-  margin-bottom: 10px;
-}
-
-/* 위로 스르륵 올라가면서 점점 멀어지는 애니메이션 */
-@keyframes crawl-anim {
-  0% {
-    top: 100%;
-    transform: rotateX(25deg) translateY(0);
-  }
-  100% {
-    top: -50px;
-    transform: rotateX(25deg) translateY(-100%);
-  }
-}
+#credits-container { position: absolute; bottom: 0; left: 0; width: 100%; height: 35vh; overflow: hidden; z-index: 1; pointer-events: none; perspective: 400px; }
+.crawl { position: relative; top: 100%; animation: crawl-anim 25s linear infinite; text-align: center; }
+.credits-title { font-size: 70px; color: rgba(120, 140, 150, 0.6); margin-bottom: 20px; letter-spacing: 2px; }
+.credits-columns { display: flex; justify-content: center; gap: 90px; font-size: 30px; line-height: 1.8; color: rgba(120, 140, 150, 0.4); }
+.class-title { font-size: 16px; font-weight: bold; color: rgba(120, 140, 150, 0.6); margin-bottom: 10px; }
+@keyframes crawl-anim { 0% { top: 100%; transform: rotateX(25deg) translateY(0); } 100% { top: -50px; transform: rotateX(25deg) translateY(-100%); } }
