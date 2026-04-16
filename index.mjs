@@ -29,6 +29,7 @@ let gameTimeRemaining = 0;
 let gameScore = 0; 
 let lastMatchTime = 0;
 let currentGameMode = ""; 
+let currentRankingMode = ""; // 🌟 현재 보고 있는 랭킹의 종목을 기억하는 변수!
 let globalScoreMultiplier = 1; 
 let isGamePaused = false; 
 let isFishing = false; 
@@ -286,10 +287,9 @@ bindClick("admin-set-save-btn", async () => {
 });
 
 // ==========================================
-// 🌟 8. 메인 메뉴 및 게임 시작 라우팅
+// 🌟 8. 메인 메뉴 버튼 및 게임 시작 라우팅
 // ==========================================
-let fcIsRandom = false;
-bindClick("menu-fc-btn", () => { playSound("click"); showScreen("fc-option-screen"); });
+bindClick("menu-fc-btn", () => { playSound("click"); currentGameMode = "fc"; showScreen("fc-option-screen"); });
 bindClick("fc-order-btn", () => { playSound("click"); fcIsRandom = false; startFlashcard(); });
 bindClick("fc-random-btn", () => { playSound("click"); fcIsRandom = true; startFlashcard(); });
 
@@ -297,6 +297,14 @@ bindClick("menu-memory-btn", () => { playSound("click"); currentGameMode = "memo
 bindClick("menu-speed-match-btn", () => { playSound("click"); currentGameMode = "speed-match"; showScreen("time-option-screen"); });
 bindClick("menu-speed-btn", () => { playSound("click"); currentGameMode = "speed"; showScreen("time-option-screen"); });
 bindClick("menu-fish-btn", () => { playSound("click"); currentGameMode = "fish"; showScreen("time-option-screen"); });
+
+// 🌟 메뉴에서 트로피 버튼 눌렀을 때 해당 종목 순위표로 바로 이동 🌟
+bindClick("rank-fc-btn", () => { playSound("click"); showRankings("today", "fc"); });
+bindClick("rank-memory-btn", () => { playSound("click"); showRankings("today", "memory"); });
+bindClick("rank-speed-match-btn", () => { playSound("click"); showRankings("today", "speed-match"); });
+bindClick("rank-speed-btn", () => { playSound("click"); showRankings("today", "speed"); });
+bindClick("rank-fish-btn", () => { playSound("click"); showRankings("today", "fish"); });
+
 
 bindClick("time-3m-btn", () => { playSound("click"); routeGameStart(3); });
 bindClick("time-5m-btn", () => { playSound("click"); routeGameStart(5); });
@@ -674,10 +682,9 @@ function moveFishes(currentTime) {
 }
 
 // ==========================================
-// 🌟 9. 결과 및 랭킹 시스템 로직 (버그 수정됨!)
+// 🌟 9. 결과 및 랭킹 (종목 분리 기능 추가)
 // ==========================================
 async function goResult() {
-  // 🌟 버그 수정: 게임 시계를 완전히 부숴버려서 두 번 다시 결과화면으로 납치하지 못하게 합니다!
   clearInterval(gameTimerInterval);
   clearInterval(cdInterval);
   isGamePaused = true; 
@@ -702,16 +709,32 @@ async function goResult() {
   } catch(e) { console.error("점수 저장 실패:", e); }
 }
 
-bindClick("go-ranking-btn", () => { playSound("click"); showRankings("today"); });
-bindClick("tab-today", () => { playSound("click"); showRankings("today"); });
-bindClick("tab-class", () => { playSound("click"); showRankings("class"); });
-bindClick("tab-all", () => { playSound("click"); showRankings("all"); });
+// 🌟 결과화면의 랭킹 버튼 (방금 한 게임의 랭킹을 보여줍니다)
+bindClick("go-ranking-btn", () => { playSound("click"); showRankings("today", currentGameMode); });
+
+// 🌟 랭킹 탭 전환버튼 (현재 기억하고 있는 종목 랭킹을 다시 띄워줍니다)
+bindClick("tab-today", () => { playSound("click"); showRankings("today", currentRankingMode); });
+bindClick("tab-class", () => { playSound("click"); showRankings("class", currentRankingMode); });
+bindClick("tab-all", () => { playSound("click"); showRankings("all", currentRankingMode); });
 bindClick("ranking-home-btn", () => { playSound("click"); document.getElementById("confetti-canvas").style.display = "none"; showScreen("menu-screen"); });
 
-async function showRankings(tab) {
+async function showRankings(tab, mode = currentRankingMode) {
+  currentRankingMode = mode; // 현재 보고 있는 종목을 저장해둡니다!
   showScreen("ranking-screen");
+  
   document.querySelectorAll(".rank-tab").forEach(btn => btn.classList.remove("active"));
   document.getElementById(`tab-${tab}`).classList.add("active");
+
+  const modeNames = {
+    "fc": "🃏 깜빡이 학습",
+    "memory": "🔠 메모리 게임",
+    "speed-match": "🧩 스피드 짝맞추기",
+    "speed": "⚡ 심플 스피드퀴즈",
+    "fish": "🎣 이모지 낚시하기"
+  };
+
+  // 🌟 상단에 "무슨 게임 랭킹인지"를 예쁘게 띄워줍니다!
+  document.getElementById("ranking-mode-title").innerText = `[ ${modeNames[mode] || "전체"} 순위 ]`;
 
   const quotes = ["Wanna try again? 🚀", "You're a star! ⭐", "Keep it up! 🔥", "Fantastic job! 🎉", "Challenge the top! 🏆"];
   document.getElementById("ranking-encourage").innerText = quotes[Math.floor(Math.random() * quotes.length)];
@@ -723,11 +746,14 @@ async function showRankings(tab) {
   try {
     const qSnap = await getDocs(collection(db, "scores"));
     let allScores = []; qSnap.forEach(doc => allScores.push(doc.data()));
+    
+    // 🌟 핵심: 현재 선택된 게임 종목(mode) 기록만 남깁니다!
+    let filtered = allScores.filter(s => s.mode === currentRankingMode);
+
     const now = new Date(); const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
 
-    let filtered = allScores;
-    if (tab === "today") filtered = allScores.filter(s => s.timestamp >= todayStart);
-    else if (tab === "class") filtered = allScores.filter(s => s.classId === currentUser.classId);
+    if (tab === "today") filtered = filtered.filter(s => s.timestamp >= todayStart);
+    else if (tab === "class") filtered = filtered.filter(s => s.classId === currentUser.classId);
 
     let uniqueTop = {};
     filtered.forEach(s => { if(!uniqueTop[s.stdId] || uniqueTop[s.stdId].score < s.score) uniqueTop[s.stdId] = s; });
