@@ -98,17 +98,16 @@ function playSound(type) {
   } catch(e) { console.warn("Sound disabled", e); }
 }
 
-// 🌟 5. UI 유틸리티 및 [절대 멈추지 않는 방탄 버튼 연결 함수] 🌟
+// 🌟 5. UI 유틸리티
 function showScreen(screenId) {
   document.querySelectorAll(".screen").forEach((s) => { s.style.display = "none"; s.classList.remove("active"); });
   if (screenId) { const screen = document.getElementById(screenId); if(screen) { screen.style.display = "flex"; screen.classList.add("active"); } }
 }
 
-// 🛡️ 버튼 연결 시, 에러가 나도 프로그램을 멈추지 않게 보호해주는 특수 쉴드입니다!
 function bindClick(id, callback) {
   const el = document.getElementById(id);
   if (el) el.onclick = callback;
-  else console.warn(`주의: HTML에서 '${id}' 버튼을 찾을 수 없지만, 무시하고 진행합니다.`);
+  else console.warn(`주의: HTML에서 '${id}' 버튼 찾기 실패 (무시됨)`);
 }
 
 const emojiContainer = document.getElementById("emoji-container");
@@ -675,10 +674,17 @@ function moveFishes(currentTime) {
 }
 
 // ==========================================
-// 🌟 9. 결과 및 랭킹 시스템 로직
+// 🌟 9. 결과 및 랭킹 시스템 로직 (버그 수정됨!)
 // ==========================================
 async function goResult() {
-  document.getElementById("top-left-controls").style.display = "none"; showScreen("result-screen");
+  // 🌟 버그 수정: 게임 시계를 완전히 부숴버려서 두 번 다시 결과화면으로 납치하지 못하게 합니다!
+  clearInterval(gameTimerInterval);
+  clearInterval(cdInterval);
+  isGamePaused = true; 
+
+  document.getElementById("top-left-controls").style.display = "none"; 
+  showScreen("result-screen");
+  
   document.getElementById("praise-word").innerText = praises[Math.floor(Math.random() * praises.length)];
   document.getElementById("result-user").innerText = `${currentUser.emoji} ${currentUser.nickname} 학생`;
   document.getElementById("final-score").innerText = currentUser.score;
