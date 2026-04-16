@@ -46,12 +46,21 @@ button {
 button:active { transform: translateY(6px); box-shadow: none; }
 .menu-btn { background-color: #00bcd4; box-shadow: 0 6px 0 #00838f; width: 300px; }
 
+/* 🌟 메뉴 화면의 미니 트로피 랭킹 버튼 디자인 */
+.menu-btn-rank {
+  width: 65px; height: 100%; font-size: 26px; padding: 0; margin: 0;
+  background-color: #FFC107; color: white; border: none; border-radius: 15px;
+  cursor: pointer; box-shadow: 0 6px 0 #FF9800; transition: 0.1s;
+  display: flex; justify-content: center; align-items: center;
+}
+.menu-btn-rank:active { transform: translateY(6px); box-shadow: none; }
+
 .score-box { background: white; padding: 20px 40px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); border: 3px dashed #00bcd4; margin: 20px 0; }
 
 .bounce { animation: bounce 1s infinite alternate; color: #ff4081; font-size: 60px; }
 @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-15px); } }
 
-/* 🌟 랭킹 화면용 탭 버튼 디자인 */
+/* 랭킹 화면용 탭 버튼 디자인 */
 .rank-tab {
   font-size: 16px; padding: 10px 15px; margin: 0; background-color: #ddd; color: #555;
   box-shadow: 0 4px 0 #bbb; border-radius: 10px 10px 0 0; width: 110px;
