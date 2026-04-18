@@ -147,13 +147,13 @@
 
     <div id="auth-screen" class="screen active">
       <h1>👾주례여중 게임기 v5.0👾</h1>
-      <p style="text-align: center; font-size: 18px">본인의 학번과 이름을 정확히 입력하세요.</p>
+      <p style="text-align: center; font-size: 18px">본인의 학번과 이름을 입력하세요.</p>
       <input type="number" id="auth-id" placeholder="학번 (예: 3201)" style="width: 200px; font-size: 20px; padding: 10px; margin-bottom: 10px;" />
       <input type="text" id="auth-name" placeholder="이름" style="width: 200px; font-size: 20px; padding: 10px;" />
       
       <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
         <button id="auth-btn" style="margin: 0; background-color: #2196F3; box-shadow: 0 5px 0 #1976D2;">인증하기</button>
-        <button id="admin-main-open-btn" style="margin: 0; background-color: #9e9e9e; box-shadow: 0 5px 0 #616161; font-size: 16px; padding: 10px 20px;">⚙️ 선생님 관리자</button>
+        <button id="admin-main-open-btn" style="margin: 0; background-color: #9e9e9e; box-shadow: 0 5px 0 #616161; font-size: 16px; padding: 10px 20px;">⚙️관리자</button>
       </div>
 
       <div id="credits-container">
@@ -197,18 +197,18 @@
     <div id="login-screen" class="screen">
       <h1>익명 프로필 설정</h1>
       <p style="text-align: center; font-size: 18px">나만의 닉네임과 이모지를 골라주세요!<br />(랭킹에는 본명 대신 이것만 표시됩니다)</p>
-      <input type="text" id="nickname" placeholder="멋진 닉네임 입력!" style="width: 200px; font-size: 20px; padding: 10px;" />
+      <input type="text" id="nickname" placeholder="나만의 닉네임 입력!" style="width: 200px; font-size: 20px; padding: 10px;" />
       <div id="emoji-container"></div>
       
       <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
-        <button id="login-btn" style="margin: 0;">게임 시작하기</button>
+        <button id="login-btn" style="margin: 0;">게임 시작!</button>
       </div>
     </div> 
 
     <div id="admin-main-screen" class="screen">
-      <h2 style="margin-bottom: 20px;">⚙️ 관리자 메뉴</h2>
-      <button id="admin-go-student-btn" class="menu-btn" style="background-color: #2196F3; box-shadow: 0 6px 0 #1976D2">👥 학생 DB 수정</button>
-      <button id="admin-go-set-btn" class="menu-btn" style="background-color: #9C27B0; box-shadow: 0 6px 0 #7B1FA2">📚 세트 DB 수정</button>
+      <h2 style="margin-bottom: 20px;">⚙️관리자 메뉴</h2>
+      <button id="admin-go-student-btn" class="menu-btn" style="background-color: #2196F3; box-shadow: 0 6px 0 #1976D2">학생 DB 수정</button>
+      <button id="admin-go-set-btn" class="menu-btn" style="background-color: #9C27B0; box-shadow: 0 6px 0 #7B1FA2">세트 DB 수정</button>
       <button id="admin-main-close-btn" class="menu-btn" style="background-color: #9e9e9e; box-shadow: 0 6px 0 #616161; margin-top: 30px;">닫기</button>
     </div>
 
@@ -222,19 +222,19 @@
     </div>
 
     <div id="admin-set-list-screen" class="screen">
-      <h2 style="margin-bottom: 5px;">📚 세트 DB 수정</h2>
+      <h2 style="margin-bottom: 5px;">세트 DB 수정</h2>
       <button id="admin-set-create-btn" style="background-color: #FF9800; box-shadow: 0 6px 0 #F57C00; padding: 10px 20px; font-size: 16px; margin-top:10px;">+ 새 세트 만들기</button>
       <div id="admin-set-list" class="admin-list-box"></div>
       <button id="admin-set-list-back-btn" style="background-color: #9e9e9e; box-shadow: 0 6px 0 #616161; padding: 10px 20px; font-size: 16px; margin-top: 15px;">뒤로 가기</button>
     </div>
 
     <div id="admin-set-edit-screen" class="screen">
-      <h2 style="margin-bottom: 5px;">📝 세트 편집</h2>
-      <input type="text" id="admin-set-title" placeholder="세트 이름 (예: 1과 단어)" style="width: 90%; max-width: 480px; margin-bottom: 10px; font-size: 18px;" />
-      <p style="font-size: 14px; margin-bottom: 5px; color: #555;">엑셀에서 '영어'와 '한글' 열을 드래그해서 붙여넣으세요.</p>
+      <h2 style="margin-bottom: 5px;">세트 편집</h2>
+      <input type="text" id="admin-set-title" placeholder="세트 이름" style="width: 90%; max-width: 480px; margin-bottom: 10px; font-size: 18px;" />
+      <p style="font-size: 14px; margin-bottom: 5px; color: #555;">엑셀에서 드래그해서 붙여넣으세요.</p>
       <textarea id="admin-set-textarea" placeholder="apple(여기는 탭)사과&#10;banana(여기는 탭)바나나" style="width: 90%; max-width: 500px; height: 200px; padding: 10px; font-size: 14px; font-family: 'Paperlogy-4Regular'; border: 2px solid #FF9800; border-radius: 10px; resize: none;"></textarea>
       <div style="display: flex; gap: 10px; margin-top: 15px;">
-        <button id="admin-set-save-btn" style="background-color: #4caf50; box-shadow: 0 6px 0 #388e3c; padding: 10px 20px; font-size: 16px;">💾 저장</button>
+        <button id="admin-set-save-btn" style="background-color: #4caf50; box-shadow: 0 6px 0 #388e3c; padding: 10px 20px; font-size: 16px;">💾저장</button>
         <button id="admin-set-edit-cancel-btn" style="background-color: #f44336; box-shadow: 0 6px 0 #d32f2f; padding: 10px 20px; font-size: 16px;">취소</button>
       </div>
     </div>
@@ -245,31 +245,31 @@
     </div>
 
     <div id="menu-screen" class="screen">
-      <h2 style="text-align: center; margin-bottom:10px;">잘 왔어요! 당신의 닉네임은<br /><span id="user-display" style="color: #ff4081"></span>입니다.</h2>
+      <h2 style="text-align: center; margin-bottom:10px;">당신의 닉네임은<br /><span id="user-display" style="color: #ff4081"></span>입니다.</h2>
       <p style="margin-bottom:10px;">어떤 학습을 시작할까요?</p>
 
       <div style="display: flex; gap: 10px; width: 90%; max-width: 350px; margin-bottom: 12px; align-items: stretch;">
-        <button id="menu-fc-btn" class="menu-btn" style="flex: 1; margin: 0; width: auto;">🃏 깜빡이 학습</button>
+        <button id="menu-fc-btn" class="menu-btn" style="flex: 1; margin: 0; width: auto;">🃏깜빡이 학습</button>
         <button id="rank-fc-btn" class="menu-btn-rank">🏆</button>
       </div>
 
       <div style="display: flex; gap: 10px; width: 90%; max-width: 350px; margin-bottom: 12px; align-items: stretch;">
-        <button id="menu-memory-btn" class="menu-btn" style="flex: 1; margin: 0; width: auto; background-color: #2196F3; box-shadow: 0 6px 0 #1976D2">🔠 메모리 게임</button>
+        <button id="menu-memory-btn" class="menu-btn" style="flex: 1; margin: 0; width: auto; background-color: #2196F3; box-shadow: 0 6px 0 #1976D2">🔠메모리</button>
         <button id="rank-memory-btn" class="menu-btn-rank">🏆</button>
       </div>
 
       <div style="display: flex; gap: 10px; width: 90%; max-width: 350px; margin-bottom: 12px; align-items: stretch;">
-        <button id="menu-speed-match-btn" class="menu-btn" style="flex: 1; margin: 0; width: auto; background-color: #FF5722; box-shadow: 0 6px 0 #E64A19">🧩 스피드 짝맞추기</button>
+        <button id="menu-speed-match-btn" class="menu-btn" style="flex: 1; margin: 0; width: auto; background-color: #FF5722; box-shadow: 0 6px 0 #E64A19">🧩짝맞추기</button>
         <button id="rank-speed-match-btn" class="menu-btn-rank">🏆</button>
       </div>
 
       <div style="display: flex; gap: 10px; width: 90%; max-width: 350px; margin-bottom: 12px; align-items: stretch;">
-        <button id="menu-speed-btn" class="menu-btn" style="flex: 1; margin: 0; width: auto; background-color: #9C27B0; box-shadow: 0 6px 0 #7B1FA2">⚡ 심플 퀴즈</button>
+        <button id="menu-speed-btn" class="menu-btn" style="flex: 1; margin: 0; width: auto; background-color: #9C27B0; box-shadow: 0 6px 0 #7B1FA2">⚡심플퀴즈</button>
         <button id="rank-speed-btn" class="menu-btn-rank">🏆</button>
       </div>
 
       <div style="display: flex; gap: 10px; width: 90%; max-width: 350px; margin-bottom: 12px; align-items: stretch;">
-        <button id="menu-fish-btn" class="menu-btn" style="flex: 1; margin: 0; width: auto; background-color: #4caf50; box-shadow: 0 6px 0 #388e3c">🎣 이모지 낚시</button>
+        <button id="menu-fish-btn" class="menu-btn" style="flex: 1; margin: 0; width: auto; background-color: #4caf50; box-shadow: 0 6px 0 #388e3c">🎣이모지 낚시</button>
         <button id="rank-fish-btn" class="menu-btn-rank">🏆</button>
       </div>
 
@@ -278,14 +278,14 @@
 
     <div id="fc-option-screen" class="screen">
       <h2>어떤 순서로 학습할까요?</h2>
-      <button id="fc-order-btn" class="menu-btn">⬇️ 등록된 순서대로</button>
-      <button id="fc-random-btn" class="menu-btn" style="background-color: #9c27b0; box-shadow: 0 6px 0 #7b1fa2">🔀 무작위 랜덤으로</button>
+      <button id="fc-order-btn" class="menu-btn">⬇️등록된 순서대로</button>
+      <button id="fc-random-btn" class="menu-btn" style="background-color: #9c27b0; box-shadow: 0 6px 0 #7b1fa2">🔀랜덤으로</button>
     </div>
 
     <div id="time-option-screen" class="screen">
       <h2>얼마나 플레이할까요?</h2>
-      <button id="time-3m-btn" class="menu-btn">⏱️ 3분 스피드 모드</button>
-      <button id="time-5m-btn" class="menu-btn" style="background-color: #ff9800; box-shadow: 0 6px 0 #f57c00">⏱️ 5분 진득한 모드</button>
+      <button id="time-3m-btn" class="menu-btn">⏱️3분 스피드 모드</button>
+      <button id="time-5m-btn" class="menu-btn" style="background-color: #ff9800; box-shadow: 0 6px 0 #f57c00">⏱️5분 진득한 모드</button>
     </div>
 
     <div id="flashcard-screen" class="screen">
@@ -293,8 +293,8 @@
       <h3 id="fc-progress" style="color: #00838f">단어: 1 / 10</h3>
       <div id="card-container">
         <div id="fc-card" class="flash-card">
-          <div class="card-face card-front"><div class="retry-badge">💡 복습 모드</div><span id="fc-front">English</span></div>
-          <div class="card-face card-back"><div class="retry-badge">💡 복습 모드</div><span id="fc-back">한글</span></div>
+          <div class="card-face card-front"><div class="retry-badge">💡복습 모드</div><span id="fc-front">English</span></div>
+          <div class="card-face card-back"><div class="retry-badge">💡복습 모드</div><span id="fc-back">한글</span></div>
         </div>
       </div>
       <div style="display: flex; gap: 15px; z-index: 10">
@@ -360,7 +360,7 @@
         <p id="result-detail" class="small-text"></p>
       </div>
       <div id="result-caught-emojis" style="max-height: 100px; overflow-y: auto; font-size: 24px; margin-bottom: 10px; background: rgba(255,255,255,0.7); padding: 10px; border-radius: 10px; width: 85%; display: none; line-height: 1.4; word-break: break-all; border: 2px dashed #00BCD4;"></div>
-      <button id="go-ranking-btn" style="background-color: #FF9800; box-shadow: 0 6px 0 #F57C00;">🏆 명예의 전당 보기</button>
+      <button id="go-ranking-btn" style="background-color: #FF9800; box-shadow: 0 6px 0 #F57C00;">🏆명예의 전당 보기</button>
       <button id="home-btn" style="background-color: #9e9e9e; box-shadow: 0 6px 0 #616161;">처음으로 돌아가기</button>
     </div>
 
