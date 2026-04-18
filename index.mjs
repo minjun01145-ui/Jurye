@@ -1,8 +1,8 @@
-// 🔥 1. 파이어베이스 라이브러리 불러오기
+//1. 파이어베이스 라이브러리 불러오기
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
 import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
 
-// 🔑 2. 파이어베이스 세팅
+//2. 파이어베이스 세팅
 const firebaseConfig = {
   apiKey: "AIzaSyAh3e5ruxctlhv-OwBAQl5WDds0IZooPD0",
   authDomain: "test2222-e2458.firebaseapp.com",
@@ -16,7 +16,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// 🌟 3. 글로벌 상태 변수들
+//3. 글로벌 상태 변수들
 let wordSets = []; 
 let studentList = []; 
 let currentEditingSetId = null; 
@@ -39,7 +39,7 @@ let currentUser = { stdId: "", realName: "", classId: "", nickname: "", emoji: "
 const allEmojis = ["🎮", "🕹️", "🎲", "🎯", "🐶", "🐱", "🍓", "😎", "🤩", "🚀", "🌟", "🔥", "🦄", "🍀", "🍔", "👽","😀","😂","😍","🥳","👻","🤡","🤗","🤔","🤐","🐭","🐹","🐰","🦊","🐻","🐼","🐨","🐯","🦁","🐮","🐷","🐸","🐵","🐧","🐤","🦆","🦉","🦇","🐺","🐝","🦋","🐢","🐍","🦖","🐙","🦑","🦀","🐠","🐬","🐳","🦈","🐅","🦓","🦍","🐘","🐫","🦒","🦘","🐎","🐏","🐐","🦌","🐕","🐈","🦚","🦜","🦢","🦩","🕊","🦝","🦨","🦥","🐿","🦔","🐉","🍎","🍊","🍋","🍌","🍉","🍇","🫐","🍒","🍑","🍍","🥥","🥝","🍅","🥑","🥦","🥒","🌶","🌽","🥕","🥔","🍠","🥐","🍞","🥨","🧀","🍳","🥞","🥓","🥩","🍗","🌭","🍟","🍕","🥪","🌮","🥗","🍣","🍱","🥟","🍤","🍙","🍚","🍧","🍦","🍰","🎂","🍭","🍬","🍫","🍩","🍪","🍯","🍼","☕️","🧃","🥤","🍺","🍻","🥂","🍷","🥃","🧊","⚽️","🏀","🏈","⚾️","🎾","🏐","🏓","🏸","🥊","🛹","⛸","🎿","🏂","🏋️","🏄","🏊","🚴","🏆","🥇","🏅","🎟","🎪","🎭","🎨","🎬","🎤","🎧","🎹","🥁","🎸","🎳","🎰","🧩","🚗","🚓","🚑","🚒","🚜","🚲","🛵","🏍","✈️","🚁","⛵️","🛳","🗺","🗽","🏰","🎡","🎢","⛺️","🏠","🏢","🏥","🏦","🏫","⛪️","🌅","🌌","⌚️","📱","💻","⌨️","🖥","📷","📸","🎥","📞","☎️","📺","📻","⏱","⏰","⏳","💡","💸","💵","💰","💳","💎","🛠","🔫","💣","🪄"];
 const praises = ["Fabulous!", "Terrific!", "Awesome!", "Incredible!", "Great Job!", "Perfect!"];
 
-// 🌟 4. 배경색 및 오디오 설정
+//4. 배경색 및 오디오 설정
 const pastelColors = [{ hex: "#FFE4E1" }, { hex: "#FFF0E6" }, { hex: "#FFFACD" }, { hex: "#E8F8F5" }, { hex: "#E1F5FE" }, { hex: "#F3E5F5" }, { hex: "#FBE9E7" }, { hex: "#E0F2F1" }, { hex: "#FCF3CF" }, { hex: "#E8EAF6" }];
 const pickedColor = pastelColors[Math.floor(Math.random() * pastelColors.length)];
 document.body.style.backgroundColor = pickedColor.hex;
@@ -99,7 +99,7 @@ function playSound(type) {
   } catch(e) { console.warn("Sound disabled", e); }
 }
 
-// 🌟 5. UI 유틸리티
+//5. UI 유틸리티
 function showScreen(screenId) {
   document.querySelectorAll(".screen").forEach((s) => { s.style.display = "none"; s.classList.remove("active"); });
   if (screenId) { const screen = document.getElementById(screenId); if(screen) { screen.style.display = "flex"; screen.classList.add("active"); } }
@@ -144,7 +144,7 @@ bindClick("back-to-menu-btn", () => { playSound("click"); document.getElementByI
 bindClick("home-btn", () => { playSound("click"); showScreen("menu-screen"); });
 
 // ==========================================
-// 🌟 6. 로그인 (인증) 및 DB 로드
+//6. 로그인, DB 로드
 // ==========================================
 async function loadAllFromDB() {
   try {
@@ -174,7 +174,7 @@ bindClick("login-btn", () => {
   if (!nick || !currentUser.emoji) return alert("닉네임과 이모지를 모두 골라주세요!");
   currentUser.nickname = nick;
   document.getElementById("user-display").innerText = `${currentUser.emoji} ${currentUser.nickname}`;
-  if (wordSets.length === 0) return alert("현재 등록된 학습 세트가 없습니다! ⚙️관리자 설정에서 세트를 만들어주세요.");
+  if (wordSets.length === 0) return alert("현재 등록된 학습 세트가 없습니다! 관리자 설정에서 세트를 만들어주세요.");
   renderSetSelectList(); showScreen("set-select-screen");
 });
 
@@ -196,7 +196,7 @@ bindClick("set-select-back-btn", () => { playSound("click"); showScreen("auth-sc
 bindClick("menu-go-back-set-btn", () => { playSound("click"); showScreen("set-select-screen"); });
 
 // ==========================================
-// 🌟 7. 관리자 로직
+// 7. 관리자 로직
 // ==========================================
 bindClick("admin-main-open-btn", () => { playSound("click"); showScreen("admin-main-screen"); });
 bindClick("admin-main-close-btn", () => { playSound("click"); showScreen("auth-screen"); });
@@ -287,7 +287,7 @@ bindClick("admin-set-save-btn", async () => {
 });
 
 // ==========================================
-// 🌟 8. 메인 메뉴 버튼 및 게임 시작 라우팅
+//8. 메인 메뉴 버튼 및 게임 시작 라우팅
 // ==========================================
 bindClick("menu-fc-btn", () => { playSound("click"); currentGameMode = "fc"; showScreen("fc-option-screen"); });
 bindClick("fc-order-btn", () => { playSound("click"); fcIsRandom = false; startFlashcard(); });
@@ -382,7 +382,7 @@ function triggerTreasureEvent(callback) {
 }
 
 // ==========================================
-// 🌟 씬 1: 깜빡이 학습 (단단한 안전 코드 적용!)
+// 씬 1: 깜빡이 학습
 // ==========================================
 let fcQueue = []; let fcCurrent = null; let fcStartTime = 0; let fcKnown = 0; let fcIsFlipped = false; let fcIsAnimating = false; let fcScore = 0; let cardAppearTime = 0; let isRetryPhase = false; let hasFlippedToCheck = false; 
 
@@ -478,7 +478,7 @@ bindClick("btn-dont-know", () => {
 });
 
 // ==========================================
-// 🌟 씬 2: 메모리 게임 
+//씬 2: 메모리 게임 
 // ==========================================
 let memoryRound = 1; let memoryPairsFound = 0; let memoryFlipped = []; 
 function updateMemoryUI() {
@@ -540,7 +540,7 @@ function checkMemoryMatch() {
 function checkMemoryRoundEnd() { if (memoryPairsFound === 4) { memoryRound++; setTimeout(loadMemoryRound, 500); } }
 
 // ==========================================
-// 🌟 씬 3: 스피드 짝맞추기 (버그 수정 & 글자 크기 상향)
+//씬 3: 스피드 짝맞추기
 // ==========================================
 let smRound = 1; let smPairsFound = 0; let smSelected = []; 
 function updateSpeedMatchUI() {
@@ -566,19 +566,19 @@ function createSmCard(item) {
   const wrapper = document.createElement("div"); wrapper.className = `sm-card-wrapper`;
   const card = document.createElement("div"); card.className = `sm-card`; card.innerText = item.text;
   
-  // 🌟 글씨 크기를 전반적으로 대폭 상향했습니다!
+  //글씨 크기를 전반적으로 대폭 상향했습니다!
   card.style.fontSize = item.text.length > 30 ? "14px" : (item.text.length > 15 ? "18px" : "24px"); 
   wrapper.appendChild(card);
   
   wrapper.onclick = () => {
-    // 🌟 광클 버그 원천 차단: 게임 멈춤 상태면 무조건 클릭 무시!
+    //광클 버그 원천 차단: 게임 멈춤 상태면 무조건 클릭 무시!
     if (isGamePaused || card.classList.contains("selected") || card.classList.contains("matched")) return;
     
     if (smSelected.length === 1 && smSelected[0].side === item.side) { smSelected[0].el.classList.remove("selected"); smSelected = []; }
     playSound("click"); card.classList.add("selected"); smSelected.push({ id: item.id, side: item.side, el: card, wrapper });
     updateSmSideAvailability();
     
-    // 🌟 카드가 2장 골라지면 '즉시' 다른 카드 클릭을 잠급니다. (광클 버그 방지)
+    //카드가 2장 골라지면 '즉시' 다른 카드 클릭을 잠급니다. (광클 버그 방지)
     if (smSelected.length === 2) {
       isGamePaused = true; 
       checkSmMatch();
@@ -599,14 +599,14 @@ function checkSmMatch() {
     playSound("success"); let earnedScore = calcSpeedBonus(); gameScore += earnedScore; updateSpeedMatchUI(); showGamePraise(earnedScore);
     c1.el.classList.add("matched"); c2.el.classList.add("matched"); smPairsFound++; smSelected = []; updateSmSideAvailability();
     
-    // 🌟 정답 처리 후 애니메이션이 끝나면 잠금을 풉니다.
+    //정답 처리 후 애니메이션이 끝나면 잠금을 풉니다.
     if (Math.random() < 0.3) triggerTreasureEvent(() => { checkSmRoundEnd(); isGamePaused = false; }); 
     else { checkSmRoundEnd(); isGamePaused = false; }
   } else { 
     playSound("wrong"); let penalty = calcSpeedBonus(); gameScore -= penalty; updateSpeedMatchUI(); showBuffMsg("오답!", `-${penalty}점 ㅠㅠ`, 244, 67, 54);
     c1.el.classList.add("wrong"); c2.el.classList.add("wrong");
     
-    // 🌟 오답 흔들기 애니메이션(0.4초)이 끝나면 잠금을 풉니다!
+    //오답 흔들기 애니메이션(0.4초)이 끝나면 잠금을 풉니다!
     setTimeout(() => { 
       c1.el.classList.remove("selected", "wrong"); c2.el.classList.remove("selected", "wrong"); 
       smSelected = []; updateSmSideAvailability(); 
@@ -617,7 +617,7 @@ function checkSmMatch() {
 function checkSmRoundEnd() { if (smPairsFound === 4) { smRound++; setTimeout(loadSpeedMatchRound, 500); } }
 
 // ==========================================
-// 🌟 씬 4: 심플 스피드 퀴즈 
+//씬 4: 심플 스피드 퀴즈 
 // ==========================================
 let sqCurrentWord = null;
 function updateSpeedUI() {
@@ -657,7 +657,7 @@ function loadNextSpeedQuiz() {
 }
 
 // ==========================================
-// 🌟 씬 5: 이모지 낚시하기 게임
+//씬 5: 이모지 낚시하기 게임
 // ==========================================
 let fishCards = []; let fishSelected = []; let fishEmojisCaught = 0; let lastFrameTime = 0; let caughtEmojisList = [];
 const fishPond = document.getElementById("fish-pond");
@@ -736,7 +736,7 @@ function moveFishes(currentTime) {
 }
 
 // ==========================================
-// 🌟 9. 결과 및 랭킹 (종목 분리 기능 추가)
+//9. 결과 및 랭킹 (종목 분리 기능 추가)
 // ==========================================
 async function goResult() {
   clearInterval(gameTimerInterval);
