@@ -29,7 +29,7 @@ let gameTimeRemaining = 0;
 let gameScore = 0; 
 let lastMatchTime = 0;
 let currentGameMode = ""; 
-let currentRankingMode = ""; // 🌟 현재 보고 있는 랭킹의 종목을 기억하는 변수!
+let currentRankingMode = ""; 
 let globalScoreMultiplier = 1; 
 let isGamePaused = false; 
 let isFishing = false; 
@@ -298,13 +298,11 @@ bindClick("menu-speed-match-btn", () => { playSound("click"); currentGameMode = 
 bindClick("menu-speed-btn", () => { playSound("click"); currentGameMode = "speed"; showScreen("time-option-screen"); });
 bindClick("menu-fish-btn", () => { playSound("click"); currentGameMode = "fish"; showScreen("time-option-screen"); });
 
-// 🌟 메뉴에서 트로피 버튼 눌렀을 때 해당 종목 순위표로 바로 이동 🌟
 bindClick("rank-fc-btn", () => { playSound("click"); showRankings("today", "fc"); });
 bindClick("rank-memory-btn", () => { playSound("click"); showRankings("today", "memory"); });
 bindClick("rank-speed-match-btn", () => { playSound("click"); showRankings("today", "speed-match"); });
 bindClick("rank-speed-btn", () => { playSound("click"); showRankings("today", "speed"); });
 bindClick("rank-fish-btn", () => { playSound("click"); showRankings("today", "fish"); });
-
 
 bindClick("time-3m-btn", () => { playSound("click"); routeGameStart(3); });
 bindClick("time-5m-btn", () => { playSound("click"); routeGameStart(5); });
@@ -384,21 +382,27 @@ function triggerTreasureEvent(callback) {
 }
 
 // ==========================================
-// 🌟 씬 1: 깜빡이 학습 
+// 🌟 씬 1: 깜빡이 학습 (단단한 안전 코드 적용!)
 // ==========================================
 let fcQueue = []; let fcCurrent = null; let fcStartTime = 0; let fcKnown = 0; let fcIsFlipped = false; let fcIsAnimating = false; let fcScore = 0; let cardAppearTime = 0; let isRetryPhase = false; let hasFlippedToCheck = false; 
 
 function startFlashcard() {
+  if (!wordList || wordList.length === 0) { alert("단어장이 비어 있습니다!"); return; }
   fcQueue = fcIsRandom ? [...wordList].sort(() => 0.5 - Math.random()) : [...wordList];
   fcStartTime = Date.now(); fcKnown = 0; fcScore = 0; unknownWordsHistory = []; isRetryPhase = false; currentUser.caughtEmojis = "";
-  document.getElementById("fc-score").innerText = "점수: 0"; document.getElementById("top-left-controls").style.display = "flex"; showScreen("flashcard-screen"); nextFlashcard("fly-right-in");
+  
+  let scoreEl = document.getElementById("fc-score"); if(scoreEl) scoreEl.innerText = "점수: 0";
+  let topCtrls = document.getElementById("top-left-controls"); if(topCtrls) topCtrls.style.display = "flex";
+  
+  showScreen("flashcard-screen"); nextFlashcard("fly-right-in");
 }
 
 function autoFontSize(text) { return text.length > 40 ? "18px" : (text.length > 20 ? "24px" : "32px"); }
 
 function updateFcUI() {
   let total = isRetryPhase ? unknownWordsHistory.length : wordList.length; let currentIdx = total - fcQueue.length + 1; if (currentIdx > total) currentIdx = total;
-  document.getElementById("fc-progress").innerText = isRetryPhase ? `복습 모드: ${currentIdx} / ${total}` : `단어: ${currentIdx} / ${total}`; document.getElementById("fc-stats").innerText = `🟢 알아요: ${fcKnown}개 | 🔴 몰라요: ${unknownWordsHistory.length}개`;
+  let progEl = document.getElementById("fc-progress"); if(progEl) progEl.innerText = isRetryPhase ? `복습 모드: ${currentIdx} / ${total}` : `단어: ${currentIdx} / ${total}`;
+  let statsEl = document.getElementById("fc-stats"); if(statsEl) statsEl.innerText = `🟢 알아요: ${fcKnown}개 | 🔴 몰라요: ${unknownWordsHistory.length}개`;
   document.querySelectorAll(".retry-badge").forEach((el) => (el.style.display = isRetryPhase ? "block" : "none"));
 }
 
@@ -408,20 +412,41 @@ function nextFlashcard(animClass) {
       alert("지금부터는 몰라요를 눌렀던 카드들이에요! 이번에 맞추면 추가 점수 보너스!");
       isRetryPhase = true; fcQueue = fcIsRandom ? [...unknownWordsHistory].sort(() => 0.5 - Math.random()) : [...unknownWordsHistory];
       nextFlashcard("pop-in"); return;
-    } else { currentUser.score = fcScore; document.getElementById("result-detail").innerText = `최종 깜빡이 점수입니다!`; goResult(); return; }
+    } else { 
+      currentUser.score = fcScore; 
+      let resDetail = document.getElementById("result-detail"); if(resDetail) resDetail.innerText = `최종 깜빡이 점수입니다!`; 
+      goResult(); return; 
+    }
   }
-  hasFlippedToCheck = false; document.getElementById("btn-know").classList.add("btn-disabled"); document.getElementById("btn-dont-know").classList.add("btn-disabled");
+  
+  hasFlippedToCheck = false; 
+  let btnKnow = document.getElementById("btn-know"); if(btnKnow) btnKnow.classList.add("btn-disabled");
+  let btnDont = document.getElementById("btn-dont-know"); if(btnDont) btnDont.classList.add("btn-disabled");
+  
   fcCurrent = fcQueue[0]; fcIsFlipped = false;
-  updateFcUI(); document.getElementById("fc-card").classList.remove("is-flipped");
-  document.getElementById("fc-front").innerText = fcCurrent.en; document.getElementById("fc-front").style.fontSize = autoFontSize(fcCurrent.en); document.getElementById("fc-back").innerText = fcCurrent.ko; document.getElementById("fc-back").style.fontSize = autoFontSize(fcCurrent.ko);
-  document.getElementById("fc-card").className = `flash-card ${animClass}`; fcIsAnimating = true; cardAppearTime = Date.now();
-  setTimeout(() => { fcIsAnimating = false; document.getElementById("fc-card").className = "flash-card"; }, 400);
+  updateFcUI(); 
+  
+  let fcCard = document.getElementById("fc-card"); 
+  if(fcCard) { fcCard.classList.remove("is-flipped"); fcCard.className = `flash-card ${animClass}`; }
+  
+  let fcFront = document.getElementById("fc-front"); 
+  if(fcFront) { fcFront.innerText = fcCurrent.en; fcFront.style.fontSize = autoFontSize(fcCurrent.en); }
+  
+  let fcBack = document.getElementById("fc-back"); 
+  if(fcBack) { fcBack.innerText = fcCurrent.ko; fcBack.style.fontSize = autoFontSize(fcCurrent.ko); }
+  
+  fcIsAnimating = true; cardAppearTime = Date.now();
+  setTimeout(() => { fcIsAnimating = false; if(fcCard) fcCard.className = "flash-card"; }, 400);
 }
 
 bindClick("fc-card", () => {
   if (fcIsAnimating) return; playSound("click"); fcIsFlipped = !fcIsFlipped;
-  if (fcIsFlipped) { document.getElementById("fc-card").classList.add("is-flipped"); hasFlippedToCheck = true; document.getElementById("btn-know").classList.remove("btn-disabled"); document.getElementById("btn-dont-know").classList.remove("btn-disabled"); } 
-  else { document.getElementById("fc-card").classList.remove("is-flipped"); }
+  let fcCard = document.getElementById("fc-card");
+  if (fcIsFlipped) { 
+    if(fcCard) fcCard.classList.add("is-flipped"); hasFlippedToCheck = true; 
+    let bk = document.getElementById("btn-know"); if(bk) bk.classList.remove("btn-disabled"); 
+    let bdk = document.getElementById("btn-dont-know"); if(bdk) bdk.classList.remove("btn-disabled"); 
+  } else { if(fcCard) fcCard.classList.remove("is-flipped"); }
 });
 
 bindClick("btn-know", () => {
@@ -429,7 +454,9 @@ bindClick("btn-know", () => {
   fcIsAnimating = true; playSound("click");
   const reactTime = Date.now() - cardAppearTime; let speedBonus = Math.max(0, 150 - Math.floor(reactTime / 15));
   let finalEarned = 100 + speedBonus; if (isRetryPhase) finalEarned += 100;
-  fcScore += finalEarned; document.getElementById("fc-score").innerText = "점수: " + fcScore; document.getElementById("fc-card").className = "flash-card fly-left";
+  fcScore += finalEarned; 
+  let sEl = document.getElementById("fc-score"); if(sEl) sEl.innerText = "점수: " + fcScore; 
+  let cEl = document.getElementById("fc-card"); if(cEl) cEl.className = "flash-card fly-left";
   setTimeout(() => { fcQueue.shift(); fcKnown++; nextFlashcard("fly-right-in"); }, 400);
 });
 
@@ -437,10 +464,17 @@ bindClick("btn-dont-know", () => {
   if (!hasFlippedToCheck || fcIsAnimating) return; 
   fcIsAnimating = true; playSound("wrong");
   if (!isRetryPhase) { const alreadySaved = unknownWordsHistory.find((w) => w.en === fcCurrent.en); if (!alreadySaved) unknownWordsHistory.push(fcCurrent); }
-  const cardRect = document.getElementById("fc-card").getBoundingClientRect(); const btnRect = document.getElementById("btn-dont-know").getBoundingClientRect();
-  const moveX = btnRect.left + btnRect.width / 2 - (cardRect.left + cardRect.width / 2); const moveY = btnRect.top + btnRect.height / 2 - (cardRect.top + cardRect.height / 2);
-  document.getElementById("fc-card").style.transition = "all 0.4s cubic-bezier(0.6, -0.28, 0.735, 0.045)"; document.getElementById("fc-card").style.transform = `translate(${moveX}px, ${moveY}px) scale(0) rotate(180deg)`; document.getElementById("fc-card").style.opacity = "0";
-  setTimeout(() => { document.getElementById("fc-card").style.transition = "transform 0.4s cubic-bezier(0.4, 0.0, 0.2, 1)"; document.getElementById("fc-card").style.transform = ""; document.getElementById("fc-card").style.opacity = "1"; fcQueue.push(fcQueue.shift()); nextFlashcard("pop-in"); }, 400);
+  
+  let cardEl = document.getElementById("fc-card");
+  let btnEl = document.getElementById("btn-dont-know");
+  if(cardEl && btnEl) {
+    const cardRect = cardEl.getBoundingClientRect(); const btnRect = btnEl.getBoundingClientRect();
+    const moveX = btnRect.left + btnRect.width / 2 - (cardRect.left + cardRect.width / 2); const moveY = btnRect.top + btnRect.height / 2 - (cardRect.top + cardRect.height / 2);
+    cardEl.style.transition = "all 0.4s cubic-bezier(0.6, -0.28, 0.735, 0.045)"; cardEl.style.transform = `translate(${moveX}px, ${moveY}px) scale(0) rotate(180deg)`; cardEl.style.opacity = "0";
+    setTimeout(() => { cardEl.style.transition = "transform 0.4s cubic-bezier(0.4, 0.0, 0.2, 1)"; cardEl.style.transform = ""; cardEl.style.opacity = "1"; fcQueue.push(fcQueue.shift()); nextFlashcard("pop-in"); }, 400);
+  } else {
+    fcQueue.push(fcQueue.shift()); nextFlashcard("pop-in");
+  }
 });
 
 // ==========================================
@@ -506,7 +540,7 @@ function checkMemoryMatch() {
 function checkMemoryRoundEnd() { if (memoryPairsFound === 4) { memoryRound++; setTimeout(loadMemoryRound, 500); } }
 
 // ==========================================
-// 🌟 씬 3: 스피드 짝맞추기 
+// 🌟 씬 3: 스피드 짝맞추기 (버그 수정 & 글자 크기 상향)
 // ==========================================
 let smRound = 1; let smPairsFound = 0; let smSelected = []; 
 function updateSpeedMatchUI() {
@@ -531,13 +565,24 @@ function loadSpeedMatchRound() {
 function createSmCard(item) {
   const wrapper = document.createElement("div"); wrapper.className = `sm-card-wrapper`;
   const card = document.createElement("div"); card.className = `sm-card`; card.innerText = item.text;
-  card.style.fontSize = item.text.length > 25 ? "11px" : (item.text.length > 15 ? "13px" : "15px"); wrapper.appendChild(card);
+  
+  // 🌟 글씨 크기를 전반적으로 대폭 상향했습니다!
+  card.style.fontSize = item.text.length > 30 ? "14px" : (item.text.length > 15 ? "18px" : "24px"); 
+  wrapper.appendChild(card);
+  
   wrapper.onclick = () => {
+    // 🌟 광클 버그 원천 차단: 게임 멈춤 상태면 무조건 클릭 무시!
     if (isGamePaused || card.classList.contains("selected") || card.classList.contains("matched")) return;
+    
     if (smSelected.length === 1 && smSelected[0].side === item.side) { smSelected[0].el.classList.remove("selected"); smSelected = []; }
     playSound("click"); card.classList.add("selected"); smSelected.push({ id: item.id, side: item.side, el: card, wrapper });
     updateSmSideAvailability();
-    if (smSelected.length === 2) checkSmMatch();
+    
+    // 🌟 카드가 2장 골라지면 '즉시' 다른 카드 클릭을 잠급니다. (광클 버그 방지)
+    if (smSelected.length === 2) {
+      isGamePaused = true; 
+      checkSmMatch();
+    }
   }; return wrapper;
 }
 function updateSmSideAvailability() {
@@ -553,11 +598,20 @@ function checkSmMatch() {
   if (c1.id === c2.id) { 
     playSound("success"); let earnedScore = calcSpeedBonus(); gameScore += earnedScore; updateSpeedMatchUI(); showGamePraise(earnedScore);
     c1.el.classList.add("matched"); c2.el.classList.add("matched"); smPairsFound++; smSelected = []; updateSmSideAvailability();
-    if (Math.random() < 0.3) triggerTreasureEvent(() => { checkSmRoundEnd(); }); else checkSmRoundEnd();
+    
+    // 🌟 정답 처리 후 애니메이션이 끝나면 잠금을 풉니다.
+    if (Math.random() < 0.3) triggerTreasureEvent(() => { checkSmRoundEnd(); isGamePaused = false; }); 
+    else { checkSmRoundEnd(); isGamePaused = false; }
   } else { 
     playSound("wrong"); let penalty = calcSpeedBonus(); gameScore -= penalty; updateSpeedMatchUI(); showBuffMsg("오답!", `-${penalty}점 ㅠㅠ`, 244, 67, 54);
     c1.el.classList.add("wrong"); c2.el.classList.add("wrong");
-    setTimeout(() => { c1.el.classList.remove("selected", "wrong"); c2.el.classList.remove("selected", "wrong"); smSelected = []; updateSmSideAvailability(); }, 400); 
+    
+    // 🌟 오답 흔들기 애니메이션(0.4초)이 끝나면 잠금을 풉니다!
+    setTimeout(() => { 
+      c1.el.classList.remove("selected", "wrong"); c2.el.classList.remove("selected", "wrong"); 
+      smSelected = []; updateSmSideAvailability(); 
+      isGamePaused = false; // 잠금 해제!
+    }, 400); 
   }
 }
 function checkSmRoundEnd() { if (smPairsFound === 4) { smRound++; setTimeout(loadSpeedMatchRound, 500); } }
@@ -709,17 +763,15 @@ async function goResult() {
   } catch(e) { console.error("점수 저장 실패:", e); }
 }
 
-// 🌟 결과화면의 랭킹 버튼 (방금 한 게임의 랭킹을 보여줍니다)
 bindClick("go-ranking-btn", () => { playSound("click"); showRankings("today", currentGameMode); });
 
-// 🌟 랭킹 탭 전환버튼 (현재 기억하고 있는 종목 랭킹을 다시 띄워줍니다)
 bindClick("tab-today", () => { playSound("click"); showRankings("today", currentRankingMode); });
 bindClick("tab-class", () => { playSound("click"); showRankings("class", currentRankingMode); });
 bindClick("tab-all", () => { playSound("click"); showRankings("all", currentRankingMode); });
 bindClick("ranking-home-btn", () => { playSound("click"); document.getElementById("confetti-canvas").style.display = "none"; showScreen("menu-screen"); });
 
 async function showRankings(tab, mode = currentRankingMode) {
-  currentRankingMode = mode; // 현재 보고 있는 종목을 저장해둡니다!
+  currentRankingMode = mode; 
   showScreen("ranking-screen");
   
   document.querySelectorAll(".rank-tab").forEach(btn => btn.classList.remove("active"));
@@ -733,7 +785,6 @@ async function showRankings(tab, mode = currentRankingMode) {
     "fish": "🎣 이모지 낚시하기"
   };
 
-  // 🌟 상단에 "무슨 게임 랭킹인지"를 예쁘게 띄워줍니다!
   document.getElementById("ranking-mode-title").innerText = `[ ${modeNames[mode] || "전체"} 순위 ]`;
 
   const quotes = ["Wanna try again? 🚀", "You're a star! ⭐", "Keep it up! 🔥", "Fantastic job! 🎉", "Challenge the top! 🏆"];
@@ -747,7 +798,6 @@ async function showRankings(tab, mode = currentRankingMode) {
     const qSnap = await getDocs(collection(db, "scores"));
     let allScores = []; qSnap.forEach(doc => allScores.push(doc.data()));
     
-    // 🌟 핵심: 현재 선택된 게임 종목(mode) 기록만 남깁니다!
     let filtered = allScores.filter(s => s.mode === currentRankingMode);
 
     const now = new Date(); const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
