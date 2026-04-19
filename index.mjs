@@ -768,7 +768,7 @@ async function goResult() {
   try {
     await addDoc(collection(db, "scores"), {
       stdId: currentUser.stdId, nickname: currentUser.nickname, emoji: currentUser.emoji, classId: currentUser.classId,
-      score: currentUser.score, mode: currentGameMode, timestamp: Date.now()
+      score: currentUser.score, mode: currentGameMode, timestamp: Date.now(), // <--- 🚨 쉼표 추가 완료!
       setId: currentSetId,       // 풀었던 세트 번호 함께 저장
       setTitle: currentSetTitle  // 풀었던 세트 이름 함께 저장
     });
@@ -791,7 +791,7 @@ async function showRankings(tab, mode = currentRankingMode) {
 
   const modeNames = {
     "fc": "🃏 깜빡이 학습",
-    "memory": "🔠 메모리 게임",
+    "memory": "🔠 메모 게임",
     "speed-match": "🧩 스피드 짝맞추기",
     "speed": "⚡ 심플 스피드퀴즈",
     "fish": "🎣 이모지 낚시하기"
@@ -810,7 +810,7 @@ async function showRankings(tab, mode = currentRankingMode) {
     const qSnap = await getDocs(collection(db, "scores"));
     let allScores = []; qSnap.forEach(doc => allScores.push(doc.data()));
     
-    //재 모드이면서, 동시에 현재 선택된 세트(setId)의 점수만 걸러내기
+    //현재 모드이면서, 동시에 현재 선택된 세트(setId)의 점수만 걸러내기
     let filtered = allScores.filter(s => s.mode === currentRankingMode && s.setId === currentSetId);
 
     const now = new Date(); const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
