@@ -33,6 +33,9 @@ let currentRankingMode = "";
 let globalScoreMultiplier = 1; 
 let isGamePaused = false; 
 let isFishing = false; 
+let fcIsRandom = false;  //깜빡이 랜덤 여부 변수
+let currentSetId = null; // 현재 선택된 단어장 세트 ID
+let currentSetTitle = ""; // 현재 선택된 단어장 세트 이름
 
 let currentUser = { stdId: "", realName: "", classId: "", nickname: "", emoji: "", score: 0, caughtEmojis: "" };
 
@@ -186,7 +189,12 @@ function renderSetSelectList() {
     btn.onclick = () => {
       playSound("click");
       if(set.words.length < 4) return alert("이 세트에는 단어가 4개 미만이라 게임을 할 수 없어요!");
-      wordList = set.words; showScreen("menu-screen"); 
+      wordList = set.words;
+
+      currentSetId = set.id;       //세트 고유 번호 기억하기
+      currentSetTitle = set.title; //세트 이름 기억하기
+      
+      showScreen("menu-screen"); 
     };
     container.appendChild(btn);
   });
@@ -292,11 +300,13 @@ bindClick("admin-set-save-btn", async () => {
 bindClick("menu-fc-btn", () => { playSound("click"); currentGameMode = "fc"; showScreen("fc-option-screen"); });
 bindClick("fc-order-btn", () => { playSound("click"); fcIsRandom = false; startFlashcard(); });
 bindClick("fc-random-btn", () => { playSound("click"); fcIsRandom = true; startFlashcard(); });
+bindClick("fc-option-back-btn", () => { playSound("click"); showScreen("menu-screen"); }); //깜빡이 뒤로가기 버튼
 
 bindClick("menu-memory-btn", () => { playSound("click"); currentGameMode = "memory"; showScreen("time-option-screen"); });
 bindClick("menu-speed-match-btn", () => { playSound("click"); currentGameMode = "speed-match"; showScreen("time-option-screen"); });
 bindClick("menu-speed-btn", () => { playSound("click"); currentGameMode = "speed"; showScreen("time-option-screen"); });
 bindClick("menu-fish-btn", () => { playSound("click"); currentGameMode = "fish"; showScreen("time-option-screen"); });
+bindClick("time-option-back-btn", () => { playSound("click"); showScreen("menu-screen"); }); //시간선택 뒤로가기 버튼
 
 bindClick("rank-fc-btn", () => { playSound("click"); showRankings("today", "fc"); });
 bindClick("rank-memory-btn", () => { playSound("click"); showRankings("today", "memory"); });
@@ -759,6 +769,8 @@ async function goResult() {
     await addDoc(collection(db, "scores"), {
       stdId: currentUser.stdId, nickname: currentUser.nickname, emoji: currentUser.emoji, classId: currentUser.classId,
       score: currentUser.score, mode: currentGameMode, timestamp: Date.now()
+      setId: currentSetId,       // 풀었던 세트 번호 함께 저장
+      setTitle: currentSetTitle  // 풀었던 세트 이름 함께 저장
     });
   } catch(e) { console.error("점수 저장 실패:", e); }
 }
@@ -784,8 +796,8 @@ async function showRankings(tab, mode = currentRankingMode) {
     "speed": "⚡ 심플 스피드퀴즈",
     "fish": "🎣 이모지 낚시하기"
   };
-
-  document.getElementById("ranking-mode-title").innerText = `[ ${modeNames[mode] || "전체"} 순위 ]`;
+//(수정) 랭킹 제목에 현재 단어장 이름이 나오도록 변경
+  document.getElementById("ranking-mode-title").innerText = `[ ${currentSetTitle} ]\n${modeNames[mode] || "전체"} 순위`;
 
   const quotes = ["Wanna try again? 🚀", "You're a star! ⭐", "Keep it up! 🔥", "Fantastic job! 🎉", "Challenge the top! 🏆"];
   document.getElementById("ranking-encourage").innerText = quotes[Math.floor(Math.random() * quotes.length)];
@@ -798,7 +810,8 @@ async function showRankings(tab, mode = currentRankingMode) {
     const qSnap = await getDocs(collection(db, "scores"));
     let allScores = []; qSnap.forEach(doc => allScores.push(doc.data()));
     
-    let filtered = allScores.filter(s => s.mode === currentRankingMode);
+    //재 모드이면서, 동시에 현재 선택된 세트(setId)의 점수만 걸러내기
+    let filtered = allScores.filter(s => s.mode === currentRankingMode && s.setId === currentSetId);
 
     const now = new Date(); const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
 
