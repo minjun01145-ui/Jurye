@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="styles.css" />
 
     <style>
-      /* 인라인 스타일 유지 구역 */
       body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
       .screen { position: fixed !important; top: 0; left: 0; width: 100vw !important; height: 100dvh !important; overflow: hidden !important; display: none; flex-direction: column; align-items: center; justify-content: center; box-sizing: border-box; }
       .screen.active { display: flex !important; }
@@ -44,6 +43,13 @@
       .memory-card-right .memory-card-back { background: #F8BBD0; border-color: #E91E63; } 
       .memory-card.matched { opacity: 0; pointer-events: none; transition: opacity 0.5s 0.5s; transform: scale(0); }
       .memory-card-wrapper.disabled { pointer-events: none; opacity: 0.6; }
+
+      .sm-card-wrapper { flex: 1; cursor: pointer; width: 100%; display: flex; overflow: hidden; margin-bottom: 2px;}
+      .sm-card { flex: 1; background: white; border: 3px solid #ddd; border-radius: 10px; display: flex; justify-content: center; align-items: center; text-align: center; font-weight: bold; padding: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: 0.1s; line-height: 1.15; width: 100%; height: 100%; word-break: break-word; overflow: hidden;}
+      .sm-card.selected { border-color: #FF5722; background: #FFCCBC; transform: scale(1.05); }
+      .sm-card.wrong { animation: shake 0.4s; background: #FFCDD2; border-color: #F44336; }
+      .sm-card.matched { opacity: 0; pointer-events: none; transition: opacity 0.3s; transform: scale(0); }
+      .sm-card-wrapper.disabled { pointer-events: none; opacity: 0.6; }
       
       .sq-word-box { width: 90%; max-width: 400px; height: 180px; background: white; border: 5px solid #333; border-radius: 20px; display: flex; justify-content: center; align-items: center; font-size: 32px; font-weight: bold; text-align: center; word-break: keep-all; box-shadow: 0 10px 20px rgba(0,0,0,0.1); margin-bottom: 30px;}
       .sq-btn { width: 90%; max-width: 400px; height: 80px; font-size: 20px; margin: 0 0 15px 0 !important; word-break: keep-all; line-height: 1.2;}
@@ -139,7 +145,7 @@
     </div>
 
     <div id="auth-screen" class="screen active">
-      <h1>👾주례여중 게임기 v6.0👾</h1>
+      <h1>👾주례여중 게임기 v6.5👾</h1>
       <p style="text-align: center; font-size: 18px">본인의 학번과 이름을 입력하세요.</p>
       <input type="number" id="auth-id" placeholder="학번 (예: 3201)" style="width: 200px; font-size: 20px; padding: 10px; margin-bottom: 10px;" />
       <input type="text" id="auth-name" placeholder="이름" style="width: 200px; font-size: 20px; padding: 10px;" />
@@ -176,8 +182,16 @@
       <h2 style="margin-bottom: 20px;">⚙️관리자 메뉴</h2>
       <button id="admin-go-student-btn" class="menu-btn" style="background-color: #2196F3; box-shadow: 0 6px 0 #1976D2">학생 DB 수정</button>
       <button id="admin-go-set-btn" class="menu-btn" style="background-color: #9C27B0; box-shadow: 0 6px 0 #7B1FA2">세트 DB 수정</button>
+      <button id="admin-go-feedback-btn" class="menu-btn" style="background-color: #FF9800; box-shadow: 0 6px 0 #F57C00;">💡 학생 의견 보기</button>
       <button id="admin-main-close-btn" class="menu-btn" style="background-color: #9e9e9e; box-shadow: 0 6px 0 #616161; margin-top: 30px;">닫기</button>
     </div>
+
+    <div id="admin-feedback-screen" class="screen">
+      <h2 style="margin-bottom: 5px;">💡 학생 의견 목록</h2>
+      <div id="admin-feedback-list" class="admin-list-box" style="height: 400px; font-size: 14px;"></div>
+      <button id="admin-feedback-back-btn" style="background-color: #9e9e9e; box-shadow: 0 6px 0 #616161; padding: 10px 20px; font-size: 16px; margin-top: 15px;">뒤로 가기</button>
+    </div>
+
     <div id="admin-student-screen" class="screen">
       <h2 style="margin-bottom: 5px;">👥 학생 DB 수정</h2>
       <p style="font-size: 14px; margin-bottom: 10px; color: #555;">엑셀에서 '학번'과 '이름' 열을 드래그해서 붙여넣으세요.</p>
@@ -186,12 +200,14 @@
       <div id="admin-student-list" class="admin-list-box"></div>
       <button id="admin-student-back-btn" style="background-color: #9e9e9e; box-shadow: 0 6px 0 #616161; padding: 10px 20px; font-size: 16px; margin-top: 15px;">뒤로 가기</button>
     </div>
+
     <div id="admin-set-list-screen" class="screen">
       <h2 style="margin-bottom: 5px;">세트 DB 수정</h2>
       <button id="admin-set-create-btn" style="background-color: #FF9800; box-shadow: 0 6px 0 #F57C00; padding: 10px 20px; font-size: 16px; margin-top:10px;">+ 새 세트 만들기</button>
       <div id="admin-set-list" class="admin-list-box"></div>
       <button id="admin-set-list-back-btn" style="background-color: #9e9e9e; box-shadow: 0 6px 0 #616161; padding: 10px 20px; font-size: 16px; margin-top: 15px;">뒤로 가기</button>
     </div>
+
     <div id="admin-set-edit-screen" class="screen">
       <h2 style="margin-bottom: 5px;">세트 편집</h2>
       <input type="text" id="admin-set-title" placeholder="세트 이름" style="width: 90%; max-width: 480px; margin-bottom: 10px; font-size: 18px;" />
@@ -206,6 +222,7 @@
     <div id="set-select-screen" class="screen">
       <h2 style="margin-bottom: 20px;">📚 학습할 세트를 고르세요</h2>
       <div id="set-select-list" style="display:flex; flex-direction:column; gap:15px; width: 90%; max-width: 400px; overflow-y: auto; max-height: 50vh; padding: 10px;"></div>
+      <button id="set-select-back-btn" class="menu-btn" style="background-color: #9e9e9e; box-shadow: 0 6px 0 #616161; margin-top: 20px;">⬅️ 뒤로 가기</button>
     </div>
 
     <div id="menu-screen" class="screen">
@@ -246,15 +263,11 @@
 
     <div id="list-screen" class="screen">
       <h2 id="list-title" style="margin-bottom: 10px; font-size: 26px;">학습 목록</h2>
-      
       <div style="display: flex; gap: 10px; margin-bottom: 15px; width: 95%; max-width: 500px;">
         <button id="toggle-word-btn" style="flex: 1; margin: 0; background-color: #9c27b0; box-shadow: 0 5px 0 #7b1fa2; font-size: 16px; padding: 10px;">영어 가리기</button>
         <button id="toggle-mean-btn" style="flex: 1; margin: 0; background-color: #ff9800; box-shadow: 0 5px 0 #f57c00; font-size: 16px; padding: 10px;">뜻 가리기</button>
       </div>
-
-      <div id="word-list-container" style="width: 95%; max-width: 500px; height: 55vh; background: white; border: 3px solid #8BC34A; border-radius: 15px; overflow-y: auto; padding: 10px; box-sizing: border-box; box-shadow: inset 0 4px 10px rgba(0,0,0,0.05);">
-        </div>
-
+      <div id="word-list-container" style="width: 95%; max-width: 500px; height: 55vh; background: white; border: 3px solid #8BC34A; border-radius: 15px; overflow-y: auto; padding: 10px; box-sizing: border-box; box-shadow: inset 0 4px 10px rgba(0,0,0,0.05);"></div>
       <button id="list-back-btn" class="menu-btn" style="background-color: #9e9e9e; box-shadow: 0 6px 0 #616161; margin-top: 20px;">⬅️ 메뉴로 돌아가기</button>
     </div>
 
@@ -344,8 +357,21 @@
         <p id="result-detail" class="small-text"></p>
       </div>
       <div id="result-caught-emojis" style="max-height: 100px; overflow-y: auto; font-size: 24px; margin-bottom: 10px; background: rgba(255,255,255,0.7); padding: 10px; border-radius: 10px; width: 85%; display: none; line-height: 1.4; word-break: break-all; border: 2px dashed #00BCD4;"></div>
-      <button id="go-ranking-btn" style="background-color: #FF9800; box-shadow: 0 6px 0 #F57C00;">🏆명예의 전당 보기</button>
-      <button id="home-btn" style="background-color: #9e9e9e; box-shadow: 0 6px 0 #616161;">처음으로 돌아가기</button>
+      
+      <button id="go-feedback-btn" style="background-color: #9C27B0; box-shadow: 0 6px 0 #7B1FA2; margin-top: 5px; width: 250px;">💡 의견 남기기</button>
+      
+      <button id="go-ranking-btn" style="background-color: #FF9800; box-shadow: 0 6px 0 #F57C00; margin-top: 5px; width: 250px;">🏆 명예의 전당</button>
+      <button id="home-btn" style="background-color: #9e9e9e; box-shadow: 0 6px 0 #616161; margin-top: 5px; width: 250px;">돌아가기</button>
+    </div>
+
+    <div id="feedback-screen" class="screen">
+      <h2>💡 소중한 의견을 들려주세요</h2>
+      <p style="font-size: 16px; color: #555; margin-bottom: 10px;">남겨주신 의견은 민준쌤이 보고 참고할게요!</p>
+      <textarea id="feedback-text" placeholder="게임이 어땠는지, 추가됐으면 하는 점 등을 자유롭게 적어주세요!" style="width: 90%; max-width: 400px; height: 150px; padding: 15px; font-size: 16px; font-family: 'Paperlogy-4Regular'; border: 3px solid #9C27B0; border-radius: 10px; resize: none; margin-bottom: 15px;"></textarea>
+      <div style="display: flex; gap: 10px;">
+         <button id="submit-feedback-btn" style="background-color: #4CAF50; box-shadow: 0 6px 0 #388E3C; font-size: 18px; padding: 10px 20px;">보내기</button>
+         <button id="cancel-feedback-btn" style="background-color: #f44336; box-shadow: 0 6px 0 #d32f2f; font-size: 18px; padding: 10px 20px;">취소</button>
+      </div>
     </div>
 
     <div id="ranking-screen" class="screen">
