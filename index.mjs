@@ -33,9 +33,14 @@ let currentRankingMode = "";
 let globalScoreMultiplier = 1; 
 let isGamePaused = false; 
 let isFishing = false; 
-let fcIsRandom = false;  //깜빡이 랜덤 여부 변수
-let currentSetId = null; // 현재 선택된 단어장 세트 ID
-let currentSetTitle = ""; // 현재 선택된 단어장 세트 이름
+let fcIsRandom = false;  
+let currentSetId = null; 
+let currentSetTitle = ""; 
+
+// 🌟 신규: 학습 목록 토글 상태 및 별표 메모리
+let isWordHidden = false;
+let isMeanHidden = false;
+let starData = {};
 
 let currentUser = { stdId: "", realName: "", classId: "", nickname: "", emoji: "", score: 0, caughtEmojis: "" };
 
@@ -295,18 +300,128 @@ bindClick("admin-set-save-btn", async () => {
 });
 
 // ==========================================
-//8. 메인 메뉴 버튼 및 게임 시작 라우팅
+// 🌟 8. 메인 메뉴 버튼 및 게임 시작 라우팅 (학습 목록 보기 추가)
 // ==========================================
+
+bindClick("menu-list-btn", () => { 
+  playSound("click"); 
+  // 화면을 켤 때마다 토글 버튼 상태를 깔끔하게 초기화합니다!
+  isWordHidden = false; isMeanHidden = false;
+  document.getElementById("toggle-word-btn").innerText = "영어 가리기";
+  document.getElementById("toggle-mean-btn").innerText = "뜻 가리기";
+  renderWordList(); 
+  showScreen("list-screen"); 
+});
+bindClick("list-back-btn", () => { playSound("click"); showScreen("menu-screen"); });
+
+// 영어 가리기 버튼 토글 로직
+bindClick("toggle-word-btn", () => {
+  playSound("click");
+  isWordHidden = !isWordHidden;
+  document.getElementById("toggle-word-btn").innerText = isWordHidden ? "영어 보이기" : "영어 가리기";
+  document.querySelectorAll(".word-text-col span").forEach(el => {
+    if(isWordHidden) el.classList.add("hidden-text"); else el.classList.remove("hidden-text");
+  });
+});
+
+// 뜻 가리기 버튼 토글 로직
+bindClick("toggle-mean-btn", () => {
+  playSound("click");
+  isMeanHidden = !isMeanHidden;
+  document.getElementById("toggle-mean-btn").innerText = isMeanHidden ? "뜻 보이기" : "뜻 가리기";
+  document.querySelectorAll(".mean-text-col span").forEach(el => {
+    if(isMeanHidden) el.classList.add("hidden-text"); else el.classList.remove("hidden-text");
+  });
+});
+
+// 🔥 불타오르는 별표 개수에 따라 다른 CSS 클래스를 뱉어내는 마법의 함수!
+function getStarClass(count) {
+  if (count === 0) return "fire-0";
+  if (count === 1) return "fire-1";
+  if (count === 2) return "fire-2";
+  if (count <= 4) return "fire-3";
+  if (count <= 7) return "fire-4";
+  return "fire-max"; // 8번 이상 누르면 폭주 상태
+}
+
+// 🌟 학습 목록을 화면에 그려주는 핵심 함수
+function renderWordList() {
+  document.getElementById("list-title").innerText = `[ ${currentSetTitle} ] 목록`;
+  const container = document.getElementById("word-list-container");
+  container.innerHTML = "";
+  
+  // 브라우저의 기억상자(localStorage)에서 이 학생이 이전에 누른 별표 데이터를 가져옵니다.
+  const storageKey = `stars_${currentUser.stdId}_${currentSetId}`;
+  try {
+    const stored = localStorage.getItem(storageKey);
+    if (stored) starData = JSON.parse(stored);
+    else starData = {}; // 저장된 게 없으면 빈 상자
+  } catch(e) {}
+
+  wordList.forEach((word, idx) => {
+    const wId = `word_${idx}`;
+    if(starData[wId] === undefined) starData[wId] = 0; // 이 단어에 처음 접근하면 0번으로 세팅
+
+    const itemDiv = document.createElement("div");
+    itemDiv.className = "word-list-item";
+
+    const wordCol = document.createElement("div");
+    wordCol.className = "word-text-col";
+    const wSpan = document.createElement("span");
+    wSpan.innerText = word.en;
+    if(isWordHidden) wSpan.classList.add("hidden-text");
+    wordCol.appendChild(wSpan);
+
+    const meanCol = document.createElement("div");
+    meanCol.className = "mean-text-col";
+    const mSpan = document.createElement("span");
+    mSpan.innerText = word.ko;
+    if(isMeanHidden) mSpan.classList.add("hidden-text");
+    meanCol.appendChild(mSpan);
+
+    const starCol = document.createElement("div");
+    starCol.className = "star-col";
+    const starBtn = document.createElement("button");
+    starBtn.className = `star-btn ${getStarClass(starData[wId])}`;
+    starBtn.innerText = "⭐";
+    
+    const countSpan = document.createElement("span");
+    countSpan.className = "star-count";
+    countSpan.innerText = starData[wId] > 0 ? starData[wId] : "";
+
+    // 별표를 누르면 불타오르기 시작합니다!
+    starBtn.onclick = () => {
+      playSound("click");
+      starData[wId]++;
+      starBtn.className = `star-btn ${getStarClass(starData[wId])}`; // 별표 모습 업데이트
+      countSpan.innerText = starData[wId]; // 숫자 업데이트
+      
+      // 누를 때마다 브라우저에 영구 저장 (새로고침해도 살아남음!)
+      try { localStorage.setItem(storageKey, JSON.stringify(starData)); } catch(e){}
+    };
+
+    starCol.appendChild(starBtn);
+    starCol.appendChild(countSpan);
+
+    itemDiv.appendChild(wordCol);
+    itemDiv.appendChild(meanCol);
+    itemDiv.appendChild(starCol);
+
+    container.appendChild(itemDiv);
+  });
+}
+
+// 기존 메뉴 버튼들 유지
 bindClick("menu-fc-btn", () => { playSound("click"); currentGameMode = "fc"; showScreen("fc-option-screen"); });
 bindClick("fc-order-btn", () => { playSound("click"); fcIsRandom = false; startFlashcard(); });
 bindClick("fc-random-btn", () => { playSound("click"); fcIsRandom = true; startFlashcard(); });
-bindClick("fc-option-back-btn", () => { playSound("click"); showScreen("menu-screen"); }); //깜빡이 뒤로가기 버튼
+bindClick("fc-option-back-btn", () => { playSound("click"); showScreen("menu-screen"); }); 
 
 bindClick("menu-memory-btn", () => { playSound("click"); currentGameMode = "memory"; showScreen("time-option-screen"); });
 bindClick("menu-speed-match-btn", () => { playSound("click"); currentGameMode = "speed-match"; showScreen("time-option-screen"); });
 bindClick("menu-speed-btn", () => { playSound("click"); currentGameMode = "speed"; showScreen("time-option-screen"); });
 bindClick("menu-fish-btn", () => { playSound("click"); currentGameMode = "fish"; showScreen("time-option-screen"); });
-bindClick("time-option-back-btn", () => { playSound("click"); showScreen("menu-screen"); }); //시간선택 뒤로가기 버튼
+bindClick("time-option-back-btn", () => { playSound("click"); showScreen("menu-screen"); }); 
 
 bindClick("rank-fc-btn", () => { playSound("click"); showRankings("today", "fc"); });
 bindClick("rank-memory-btn", () => { playSound("click"); showRankings("today", "memory"); });
@@ -576,19 +691,16 @@ function createSmCard(item) {
   const wrapper = document.createElement("div"); wrapper.className = `sm-card-wrapper`;
   const card = document.createElement("div"); card.className = `sm-card`; card.innerText = item.text;
   
-  //글씨 크기를 전반적으로 대폭 상향했습니다!
   card.style.fontSize = item.text.length > 30 ? "14px" : (item.text.length > 15 ? "18px" : "24px"); 
   wrapper.appendChild(card);
   
   wrapper.onclick = () => {
-    //광클 버그 원천 차단: 게임 멈춤 상태면 무조건 클릭 무시!
     if (isGamePaused || card.classList.contains("selected") || card.classList.contains("matched")) return;
     
     if (smSelected.length === 1 && smSelected[0].side === item.side) { smSelected[0].el.classList.remove("selected"); smSelected = []; }
     playSound("click"); card.classList.add("selected"); smSelected.push({ id: item.id, side: item.side, el: card, wrapper });
     updateSmSideAvailability();
     
-    //카드가 2장 골라지면 '즉시' 다른 카드 클릭을 잠급니다. (광클 버그 방지)
     if (smSelected.length === 2) {
       isGamePaused = true; 
       checkSmMatch();
@@ -609,18 +721,16 @@ function checkSmMatch() {
     playSound("success"); let earnedScore = calcSpeedBonus(); gameScore += earnedScore; updateSpeedMatchUI(); showGamePraise(earnedScore);
     c1.el.classList.add("matched"); c2.el.classList.add("matched"); smPairsFound++; smSelected = []; updateSmSideAvailability();
     
-    //정답 처리 후 애니메이션이 끝나면 잠금을 풉니다.
     if (Math.random() < 0.3) triggerTreasureEvent(() => { checkSmRoundEnd(); isGamePaused = false; }); 
     else { checkSmRoundEnd(); isGamePaused = false; }
   } else { 
     playSound("wrong"); let penalty = calcSpeedBonus(); gameScore -= penalty; updateSpeedMatchUI(); showBuffMsg("오답!", `-${penalty}점 ㅠㅠ`, 244, 67, 54);
     c1.el.classList.add("wrong"); c2.el.classList.add("wrong");
     
-    //오답 흔들기 애니메이션(0.4초)이 끝나면 잠금을 풉니다!
     setTimeout(() => { 
       c1.el.classList.remove("selected", "wrong"); c2.el.classList.remove("selected", "wrong"); 
       smSelected = []; updateSmSideAvailability(); 
-      isGamePaused = false; // 잠금 해제!
+      isGamePaused = false; 
     }, 400); 
   }
 }
@@ -746,7 +856,7 @@ function moveFishes(currentTime) {
 }
 
 // ==========================================
-//9. 결과 및 랭킹 (종목 분리 기능 추가)
+//9. 결과 및 랭킹 
 // ==========================================
 async function goResult() {
   clearInterval(gameTimerInterval);
@@ -768,9 +878,9 @@ async function goResult() {
   try {
     await addDoc(collection(db, "scores"), {
       stdId: currentUser.stdId, nickname: currentUser.nickname, emoji: currentUser.emoji, classId: currentUser.classId,
-      score: currentUser.score, mode: currentGameMode, timestamp: Date.now(), // <--- 🚨 쉼표 추가 완료!
-      setId: currentSetId,       // 풀었던 세트 번호 함께 저장
-      setTitle: currentSetTitle  // 풀었던 세트 이름 함께 저장
+      score: currentUser.score, mode: currentGameMode, timestamp: Date.now(),
+      setId: currentSetId,       
+      setTitle: currentSetTitle  
     });
   } catch(e) { console.error("점수 저장 실패:", e); }
 }
@@ -796,7 +906,7 @@ async function showRankings(tab, mode = currentRankingMode) {
     "speed": "⚡ 심플 스피드퀴즈",
     "fish": "🎣 이모지 낚시하기"
   };
-//(수정) 랭킹 제목에 현재 단어장 이름이 나오도록 변경
+
   document.getElementById("ranking-mode-title").innerText = `[ ${currentSetTitle} ]\n${modeNames[mode] || "전체"} 순위`;
 
   const quotes = ["Wanna try again? 🚀", "You're a star! ⭐", "Keep it up! 🔥", "Fantastic job! 🎉", "Challenge the top! 🏆"];
@@ -810,7 +920,6 @@ async function showRankings(tab, mode = currentRankingMode) {
     const qSnap = await getDocs(collection(db, "scores"));
     let allScores = []; qSnap.forEach(doc => allScores.push(doc.data()));
     
-    //현재 모드이면서, 동시에 현재 선택된 세트(setId)의 점수만 걸러내기
     let filtered = allScores.filter(s => s.mode === currentRankingMode && s.setId === currentSetId);
 
     const now = new Date(); const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
