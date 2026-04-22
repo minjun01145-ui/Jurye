@@ -45,7 +45,6 @@ button {
 }
 button:active { transform: translateY(6px); box-shadow: none; }
 
-/* 🌟 업데이트: PC에서 버튼 글씨가 줄바꿈되는 현상 강제 방지! */
 .menu-btn { 
   background-color: #00bcd4; box-shadow: 0 6px 0 #00838f; width: 300px; 
   white-space: nowrap; 
@@ -74,17 +73,41 @@ button:active { transform: translateY(6px); box-shadow: none; }
 .rank-item:last-child { border-bottom: none; }
 .rank-medal { font-size: 24px; font-weight: bold; width: 40px; }
 
-/* 🌟 스피드 짝맞추기 카드 스타일 업데이트 (문장이 길어도 삐져나가지 않음) */
+/* 🌟 스피드 짝맞추기 카드 스타일 */
 .sm-card-wrapper { flex: 1; cursor: pointer; width: 100%; display: flex; overflow: hidden; margin-bottom: 2px;}
 .sm-card { 
   flex: 1; background: white; border: 3px solid #ddd; border-radius: 10px; display: flex; justify-content: center; align-items: center; text-align: center; font-weight: bold; padding: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: 0.1s; line-height: 1.15; width: 100%; height: 100%;
-  word-break: break-word; /* 🌟 핵심: 문장이 길면 예쁘게 안에서 줄바꿈됨 */
-  overflow: hidden;
+  word-break: break-word; overflow: hidden;
 }
 .sm-card.selected { border-color: #FF5722; background: #FFCCBC; transform: scale(1.05); }
 .sm-card.wrong { animation: shake 0.4s; background: #FFCDD2; border-color: #F44336; }
 .sm-card.matched { opacity: 0; pointer-events: none; transition: opacity 0.3s; transform: scale(0); }
 .sm-card-wrapper.disabled { pointer-events: none; opacity: 0.6; }
+
+/* 🌟 학습 목록 보기 리스트 스타일 */
+.word-list-item { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px dashed #eee; padding: 12px 5px; gap: 10px; }
+.word-list-item:last-child { border-bottom: none; }
+.word-text-col { flex: 1; text-align: left; font-size: 18px; color: #333; font-weight: bold; word-break: keep-all; }
+.mean-text-col { flex: 1; text-align: left; font-size: 16px; color: #555; word-break: keep-all; }
+.star-col { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 40px; }
+.star-count { font-size: 14px; font-weight: bold; color: #999; margin-top: 2px; }
+
+/* 🌟 가리기 버튼을 눌렀을 때 텍스트를 감추는 마법 클래스 */
+.hidden-text { background-color: #ccc !important; color: transparent !important; border-radius: 5px; user-select: none; }
+
+/* 🌟 대망의 불타는 별표 이펙트 단계별 CSS */
+.star-btn { font-size: 28px; background: none; border: none; padding: 0; cursor: pointer; outline: none; transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); -webkit-tap-highlight-color: transparent; }
+.fire-0 { filter: grayscale(100%); opacity: 0.4; transform: scale(0.9); }
+.fire-1 { filter: grayscale(0%); color: #FFEB3B; text-shadow: 0 0 5px rgba(255,235,59,0.5); transform: scale(1.05); }
+.fire-2 { color: #FFC107; text-shadow: 0 0 10px #FF9800; transform: scale(1.15); }
+.fire-3 { color: #FF9800; text-shadow: 0 -3px 10px #F44336, 0 -8px 15px #FFEB3B; transform: scale(1.25); animation: flame-shake 0.8s infinite alternate; }
+.fire-4 { color: #F44336; text-shadow: 0 -5px 15px #FF0000, 0 -12px 20px #FF9800, 0 -18px 25px #FFEB3B; transform: scale(1.35); animation: flame-shake 0.4s infinite alternate; }
+.fire-max { color: #fff; text-shadow: 0 0 8px #fff, 0 -8px 20px #FF0000, 0 -18px 30px #FF9800, 0 -28px 40px #FFEB3B; transform: scale(1.5); animation: flame-shake 0.2s infinite alternate; }
+
+@keyframes flame-shake { 
+  0% { transform: scale(1.3) rotate(-3deg); } 
+  100% { transform: scale(1.4) rotate(3deg); } 
+}
 
 @media screen and (max-height: 750px), screen and (max-width: 500px) {
   h1 { font-size: 30px; margin-top: 20px; }
@@ -96,6 +119,8 @@ button:active { transform: translateY(6px); box-shadow: none; }
   button { font-size: 20px; padding: 12px 25px; }
   .menu-btn { width: 250px; }
   .rank-tab { font-size: 14px; padding: 8px 10px; width: 95px; }
+  .word-text-col { font-size: 15px; }
+  .mean-text-col { font-size: 13px; }
 }
 
 #credits-container { position: absolute; bottom: 0; left: 0; width: 100%; height: 35vh; overflow: hidden; z-index: 1; pointer-events: none; perspective: 400px; }
