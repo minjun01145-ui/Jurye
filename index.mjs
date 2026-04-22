@@ -37,7 +37,6 @@ let fcIsRandom = false;
 let currentSetId = null; 
 let currentSetTitle = ""; 
 
-// 🌟 신규: 학습 목록 토글 상태 및 별표 메모리
 let isWordHidden = false;
 let isMeanHidden = false;
 let starData = {};
@@ -186,32 +185,67 @@ bindClick("login-btn", () => {
   renderSetSelectList(); showScreen("set-select-screen");
 });
 
+// 🌟 신규: 세트 선택 버튼에 무작위 파스텔 컬러 적용!
+const setBtnColors = [
+  { bg: "#FFCDD2", shadow: "#E57373", color: "#333" },
+  { bg: "#F8BBD0", shadow: "#F06292", color: "#333" },
+  { bg: "#E1BEE7", shadow: "#BA68C8", color: "#333" },
+  { bg: "#D1C4E9", shadow: "#9575CD", color: "#333" },
+  { bg: "#C5CAE9", shadow: "#7E57C2", color: "#333" },
+  { bg: "#BBDEFB", shadow: "#64B5F6", color: "#333" },
+  { bg: "#B3E5FC", shadow: "#4FC3F7", color: "#333" },
+  { bg: "#B2EBF2", shadow: "#4DD0E1", color: "#333" },
+  { bg: "#B2DFDB", shadow: "#4DB6AC", color: "#333" },
+  { bg: "#C8E6C9", shadow: "#81C784", color: "#333" },
+  { bg: "#DCEDC8", shadow: "#AED581", color: "#333" },
+  { bg: "#FFF9C4", shadow: "#FBC02D", color: "#333" },
+  { bg: "#FFECB3", shadow: "#FFCA28", color: "#333" },
+  { bg: "#FFE0B2", shadow: "#FFB300", color: "#333" },
+  { bg: "#FFCCBC", shadow: "#FF8A65", color: "#333" }
+];
+
 function renderSetSelectList() {
   const container = document.getElementById("set-select-list"); container.innerHTML = "";
   wordSets.forEach(set => {
-    const btn = document.createElement("button"); btn.style.width = "100%"; btn.style.margin = "0"; btn.style.backgroundColor = "#4caf50"; btn.style.boxShadow = "0 5px 0 #388e3c";
+    const btn = document.createElement("button"); 
+    btn.style.width = "100%"; btn.style.margin = "0"; 
+    
+    // 버튼 색깔 예쁜 걸로 랜덤 뽑기!
+    let randColor = setBtnColors[Math.floor(Math.random() * setBtnColors.length)];
+    btn.style.backgroundColor = randColor.bg; 
+    btn.style.boxShadow = `0 5px 0 ${randColor.shadow}`;
+    btn.style.color = randColor.color;
+    
     btn.innerHTML = `${set.title} <br><span style="font-size:16px;">(단어 ${set.words.length}개)</span>`;
     btn.onclick = () => {
       playSound("click");
       if(set.words.length < 4) return alert("이 세트에는 단어가 4개 미만이라 게임을 할 수 없어요!");
       wordList = set.words;
-
-      currentSetId = set.id;       //세트 고유 번호 기억하기
-      currentSetTitle = set.title; //세트 이름 기억하기
-      
+      currentSetId = set.id;       
+      currentSetTitle = set.title; 
       showScreen("menu-screen"); 
     };
     container.appendChild(btn);
   });
 }
 
+// 🌟 추가: 세트 선택 화면에서 뒤로가기 버튼
 bindClick("set-select-back-btn", () => { playSound("click"); showScreen("auth-screen"); });
 bindClick("menu-go-back-set-btn", () => { playSound("click"); showScreen("set-select-screen"); });
 
 // ==========================================
-// 7. 관리자 로직
+// 7. 관리자 로직 (비밀번호 및 학생 의견 확인 추가)
 // ==========================================
-bindClick("admin-main-open-btn", () => { playSound("click"); showScreen("admin-main-screen"); });
+bindClick("admin-main-open-btn", () => { 
+  playSound("click"); 
+  const pwd = prompt("관리자 비밀번호 4자리를 입력하세요.", "");
+  if (pwd === "1234") {
+    showScreen("admin-main-screen");
+  } else if (pwd !== null) {
+    alert("비밀번호가 틀렸습니다!");
+  }
+});
+
 bindClick("admin-main-close-btn", () => { playSound("click"); showScreen("auth-screen"); });
 bindClick("admin-go-student-btn", () => { playSound("click"); renderAdminStudentList(); showScreen("admin-student-screen"); });
 bindClick("admin-go-set-btn", () => { playSound("click"); renderAdminSetList(); showScreen("admin-set-list-screen"); });
@@ -299,13 +333,49 @@ bindClick("admin-set-save-btn", async () => {
   } catch (error) { alert("저장 실패."); }
 });
 
+// 🌟 관리자: 피드백(의견) 보기 로직
+bindClick("admin-go-feedback-btn", () => { 
+  playSound("click"); 
+  renderAdminFeedbackList(); 
+  showScreen("admin-feedback-screen"); 
+});
+bindClick("admin-feedback-back-btn", () => { playSound("click"); showScreen("admin-main-screen"); });
+
+async function renderAdminFeedbackList() {
+  const listEl = document.getElementById("admin-feedback-list");
+  listEl.innerHTML = "<p style='text-align:center; margin-top:20px;'>학생들의 의견을 불러오는 중...</p>";
+  try {
+    const qSnap = await getDocs(collection(db, "feedback"));
+    let fList = [];
+    qSnap.forEach(doc => fList.push({ id: doc.id, ...doc.data() }));
+    fList.sort((a,b) => b.timestamp - a.timestamp); // 최신순 정렬
+    
+    listEl.innerHTML = "";
+    if(fList.length === 0) {
+      listEl.innerHTML = "<p style='text-align:center; margin-top:50px;'>아직 등록된 의견이 없습니다.</p>";
+      return;
+    }
+    fList.forEach(f => {
+      const date = new Date(f.timestamp).toLocaleString();
+      listEl.innerHTML += `
+        <div style="border-bottom: 2px dashed #ddd; padding: 10px 5px; margin-bottom: 10px;">
+          <div style="font-size:12px; color:#888; margin-bottom:5px;">${date}</div>
+          <div style="font-weight:bold; margin-bottom:5px;">${f.emoji} ${f.nickname} <span style="font-size:12px; font-weight:normal; color:#666;">(${f.stdId})</span></div>
+          <div style="font-size:16px; color:#333; line-height:1.4;">${f.text}</div>
+        </div>
+      `;
+    });
+  } catch(e) {
+    listEl.innerHTML = "<p>에러가 발생했습니다.</p>";
+  }
+}
+
 // ==========================================
-// 🌟 8. 메인 메뉴 버튼 및 게임 시작 라우팅 (학습 목록 보기 추가)
+// 🌟 8. 메인 메뉴 버튼 및 게임 시작 라우팅
 // ==========================================
 
 bindClick("menu-list-btn", () => { 
   playSound("click"); 
-  // 화면을 켤 때마다 토글 버튼 상태를 깔끔하게 초기화합니다!
   isWordHidden = false; isMeanHidden = false;
   document.getElementById("toggle-word-btn").innerText = "영어 가리기";
   document.getElementById("toggle-mean-btn").innerText = "뜻 가리기";
@@ -314,7 +384,6 @@ bindClick("menu-list-btn", () => {
 });
 bindClick("list-back-btn", () => { playSound("click"); showScreen("menu-screen"); });
 
-// 영어 가리기 버튼 토글 로직
 bindClick("toggle-word-btn", () => {
   playSound("click");
   isWordHidden = !isWordHidden;
@@ -324,7 +393,6 @@ bindClick("toggle-word-btn", () => {
   });
 });
 
-// 뜻 가리기 버튼 토글 로직
 bindClick("toggle-mean-btn", () => {
   playSound("click");
   isMeanHidden = !isMeanHidden;
@@ -334,33 +402,30 @@ bindClick("toggle-mean-btn", () => {
   });
 });
 
-// 🔥 불타오르는 별표 개수에 따라 다른 CSS 클래스를 뱉어내는 마법의 함수!
 function getStarClass(count) {
   if (count === 0) return "fire-0";
   if (count === 1) return "fire-1";
   if (count === 2) return "fire-2";
   if (count <= 4) return "fire-3";
   if (count <= 7) return "fire-4";
-  return "fire-max"; // 8번 이상 누르면 폭주 상태
+  return "fire-max"; 
 }
 
-// 🌟 학습 목록을 화면에 그려주는 핵심 함수
 function renderWordList() {
   document.getElementById("list-title").innerText = `[ ${currentSetTitle} ] 목록`;
   const container = document.getElementById("word-list-container");
   container.innerHTML = "";
   
-  // 브라우저의 기억상자(localStorage)에서 이 학생이 이전에 누른 별표 데이터를 가져옵니다.
   const storageKey = `stars_${currentUser.stdId}_${currentSetId}`;
   try {
     const stored = localStorage.getItem(storageKey);
     if (stored) starData = JSON.parse(stored);
-    else starData = {}; // 저장된 게 없으면 빈 상자
+    else starData = {}; 
   } catch(e) {}
 
   wordList.forEach((word, idx) => {
     const wId = `word_${idx}`;
-    if(starData[wId] === undefined) starData[wId] = 0; // 이 단어에 처음 접근하면 0번으로 세팅
+    if(starData[wId] === undefined) starData[wId] = 0; 
 
     const itemDiv = document.createElement("div");
     itemDiv.className = "word-list-item";
@@ -389,29 +454,23 @@ function renderWordList() {
     countSpan.className = "star-count";
     countSpan.innerText = starData[wId] > 0 ? starData[wId] : "";
 
-    // 별표를 누르면 불타오르기 시작합니다!
     starBtn.onclick = () => {
       playSound("click");
       starData[wId]++;
-      starBtn.className = `star-btn ${getStarClass(starData[wId])}`; // 별표 모습 업데이트
-      countSpan.innerText = starData[wId]; // 숫자 업데이트
-      
-      // 누를 때마다 브라우저에 영구 저장 (새로고침해도 살아남음!)
+      starBtn.className = `star-btn ${getStarClass(starData[wId])}`; 
+      countSpan.innerText = starData[wId]; 
       try { localStorage.setItem(storageKey, JSON.stringify(starData)); } catch(e){}
     };
 
     starCol.appendChild(starBtn);
     starCol.appendChild(countSpan);
-
     itemDiv.appendChild(wordCol);
     itemDiv.appendChild(meanCol);
     itemDiv.appendChild(starCol);
-
     container.appendChild(itemDiv);
   });
 }
 
-// 기존 메뉴 버튼들 유지
 bindClick("menu-fc-btn", () => { playSound("click"); currentGameMode = "fc"; showScreen("fc-option-screen"); });
 bindClick("fc-order-btn", () => { playSound("click"); fcIsRandom = false; startFlashcard(); });
 bindClick("fc-random-btn", () => { playSound("click"); fcIsRandom = true; startFlashcard(); });
@@ -831,141 +890,4 @@ function createFishEl(text, lang, targetId) {
       let [f1, f2] = fishSelected;
       if (f1.lang !== f2.lang && f1.targetId === f2.targetId) {
         playSound("success"); showGamePraise(0, praises[Math.floor(Math.random() * praises.length)], "#4CAF50"); fishEmojisCaught += 2; updateFishUI(); caughtEmojisList.push(f1.emoji, f2.emoji);
-        const rect1 = f1.el.getBoundingClientRect(); const rect2 = f2.el.getBoundingClientRect(); animateFlyToBucket(f1.emoji, rect1.left + rect1.width / 2, rect1.top + rect1.height / 2); animateFlyToBucket(f2.emoji, rect2.left + rect2.width / 2, rect2.top + rect2.height / 2);
-        f1.el.remove(); f2.el.remove(); fishCards = fishCards.filter((c) => c !== f1 && c !== f2);
-        if (Math.random() < 0.5) { triggerTreasureEvent(() => { refillFishes(); fishSelected = []; }); } else { refillFishes(); fishSelected = []; }
-      } else {
-        playSound("wrong"); showGamePraise(0, "Try again..", "#F44336"); f1.el.classList.add("wrong"); f2.el.classList.add("wrong");
-        setTimeout(() => { f1.el.classList.remove("selected", "wrong"); f2.el.classList.remove("selected", "wrong"); fishSelected = []; }, 400);
-      }
-    }
-  };
-}
-function moveFishes(currentTime) {
-  if (!isFishing) return;
-  let dt = (currentTime - lastFrameTime) / 1000; if (dt > 0.1 || !dt) dt = 0.016; lastFrameTime = currentTime;
-  if(!isGamePaused) { 
-    const pondW = fishPond.clientWidth; const pondH = fishPond.clientHeight;
-    fishCards.forEach((f) => {
-      const w = f.el.offsetWidth || 100; const h = f.el.offsetHeight || 100;
-      f.x += f.vx * dt; f.y += f.vy * dt;
-      if (f.x <= 0) { f.x = 0; f.vx *= -1; } if (f.x + w >= pondW) { f.x = pondW - w; f.vx *= -1; } if (f.y <= 0) { f.y = 0; f.vy *= -1; } if (f.y + h >= pondH) { f.y = pondH - h; f.vy *= -1; }
-      let scale = f.el.classList.contains("selected") ? "scale(1.1)" : "scale(1)"; f.el.style.transform = `translate3d(${f.x}px, ${f.y}px, 0) ${scale}`;
-    });
-  } requestAnimationFrame(moveFishes);
-}
-
-// ==========================================
-//9. 결과 및 랭킹 
-// ==========================================
-async function goResult() {
-  clearInterval(gameTimerInterval);
-  clearInterval(cdInterval);
-  isGamePaused = true; 
-
-  document.getElementById("top-left-controls").style.display = "none"; 
-  showScreen("result-screen");
-  
-  document.getElementById("praise-word").innerText = praises[Math.floor(Math.random() * praises.length)];
-  document.getElementById("result-user").innerText = `${currentUser.emoji} ${currentUser.nickname} 학생`;
-  document.getElementById("final-score").innerText = currentUser.score;
-
-  const emojiBox = document.getElementById("result-caught-emojis");
-  if (currentGameMode === "fish" && currentUser.caughtEmojis) { emojiBox.style.display = "block"; emojiBox.innerText = "🎣 낚은 이모지:\n" + currentUser.caughtEmojis; } 
-  else { emojiBox.style.display = "none"; }
-  playSound("success");
-
-  try {
-    await addDoc(collection(db, "scores"), {
-      stdId: currentUser.stdId, nickname: currentUser.nickname, emoji: currentUser.emoji, classId: currentUser.classId,
-      score: currentUser.score, mode: currentGameMode, timestamp: Date.now(),
-      setId: currentSetId,       
-      setTitle: currentSetTitle  
-    });
-  } catch(e) { console.error("점수 저장 실패:", e); }
-}
-
-bindClick("go-ranking-btn", () => { playSound("click"); showRankings("today", currentGameMode); });
-
-bindClick("tab-today", () => { playSound("click"); showRankings("today", currentRankingMode); });
-bindClick("tab-class", () => { playSound("click"); showRankings("class", currentRankingMode); });
-bindClick("tab-all", () => { playSound("click"); showRankings("all", currentRankingMode); });
-bindClick("ranking-home-btn", () => { playSound("click"); document.getElementById("confetti-canvas").style.display = "none"; showScreen("menu-screen"); });
-
-async function showRankings(tab, mode = currentRankingMode) {
-  currentRankingMode = mode; 
-  showScreen("ranking-screen");
-  
-  document.querySelectorAll(".rank-tab").forEach(btn => btn.classList.remove("active"));
-  document.getElementById(`tab-${tab}`).classList.add("active");
-
-  const modeNames = {
-    "fc": "🃏 깜빡이 학습",
-    "memory": "🔠 메모 게임",
-    "speed-match": "🧩 스피드 짝맞추기",
-    "speed": "⚡ 심플 스피드퀴즈",
-    "fish": "🎣 이모지 낚시하기"
-  };
-
-  document.getElementById("ranking-mode-title").innerText = `[ ${currentSetTitle} ]\n${modeNames[mode] || "전체"} 순위`;
-
-  const quotes = ["Wanna try again? 🚀", "You're a star! ⭐", "Keep it up! 🔥", "Fantastic job! 🎉", "Challenge the top! 🏆"];
-  document.getElementById("ranking-encourage").innerText = quotes[Math.floor(Math.random() * quotes.length)];
-  document.getElementById("ranking-msg").innerText = `축하해요!! ${currentUser.emoji}${currentUser.nickname}님은 ${currentUser.score}점입니다!`;
-
-  const listEl = document.getElementById("ranking-list");
-  listEl.innerHTML = "<div style='text-align:center; padding: 20px;'>순위를 불러오는 중...🔍</div>";
-
-  try {
-    const qSnap = await getDocs(collection(db, "scores"));
-    let allScores = []; qSnap.forEach(doc => allScores.push(doc.data()));
-    
-    let filtered = allScores.filter(s => s.mode === currentRankingMode && s.setId === currentSetId);
-
-    const now = new Date(); const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-
-    if (tab === "today") filtered = filtered.filter(s => s.timestamp >= todayStart);
-    else if (tab === "class") filtered = filtered.filter(s => s.classId === currentUser.classId);
-
-    let uniqueTop = {};
-    filtered.forEach(s => { if(!uniqueTop[s.stdId] || uniqueTop[s.stdId].score < s.score) uniqueTop[s.stdId] = s; });
-    let sorted = Object.values(uniqueTop).sort((a, b) => b.score - a.score);
-
-    listEl.innerHTML = "";
-    if (sorted.length === 0) { listEl.innerHTML = "<div style='text-align:center; padding:20px;'>아직 등록된 기록이 없어요!</div>"; } 
-    else {
-      sorted.forEach((s, idx) => {
-        let medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx+1}위`;
-        listEl.innerHTML += `<div class="rank-item"><div><span class="rank-medal">${medal}</span> ${s.emoji} ${s.nickname}</div><div style="color:#ff4081; font-weight:bold;">${s.score}점</div></div>`;
-      });
-    }
-    fireConfetti();
-  } catch(e) { listEl.innerHTML = "데이터를 불러오지 못했습니다."; console.error(e); }
-}
-
-let confettiParticles = []; let confettiCtx = null; let confettiAnimId = null;
-function fireConfetti() {
-  const canvas = document.getElementById("confetti-canvas"); canvas.style.display = "block"; canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-  confettiCtx = canvas.getContext("2d"); confettiParticles = [];
-  const colors = ["#ff4081", "#00bcd4", "#4caf50", "#ffeb3b", "#ff9800", "#9c27b0"];
-  for(let i=0; i<100; i++) {
-    confettiParticles.push({
-      x: canvas.width / 2, y: canvas.height / 2 + 100, r: Math.random() * 6 + 4,
-      dx: Math.random() * 20 - 10, dy: Math.random() * -20 - 5, color: colors[Math.floor(Math.random() * colors.length)],
-      tilt: Math.random() * 10, tiltAngleInc: (Math.random() * 0.07) + 0.05, tiltAngle: 0
-    });
-  }
-  if (confettiAnimId) cancelAnimationFrame(confettiAnimId); renderConfetti();
-}
-function renderConfetti() {
-  if (!confettiCtx) return;
-  const canvas = document.getElementById("confetti-canvas"); confettiCtx.clearRect(0, 0, canvas.width, canvas.height);
-  let activeCount = 0;
-  confettiParticles.forEach(p => {
-    p.tiltAngle += p.tiltAngleInc; p.y += (Math.cos(p.tiltAngle) + 1 + p.r / 2) / 2; p.x += Math.sin(p.tiltAngle) * 2 + p.dx; p.dy += 0.2; p.y += p.dy;
-    if (p.y <= canvas.height) activeCount++;
-    confettiCtx.beginPath(); confettiCtx.lineWidth = p.r; confettiCtx.strokeStyle = p.color;
-    confettiCtx.moveTo(p.x + p.tilt + p.r, p.y); confettiCtx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r); confettiCtx.stroke();
-  });
-  if (activeCount > 0) confettiAnimId = requestAnimationFrame(renderConfetti); else canvas.style.display = "none";
-}
+        const rect1 = f1.el.getBoundingClientRect(); const rect2 = f2.el.getBoundingClientRect(); animateFlyToBucket(f1.emoji, rect1.left + rect1.width / 2, rect1.top + rect1.height / 2); animateFlyToBucket(f2.emoji, rect2.left + rect2.width / 2, rect2.top
