@@ -890,4 +890,168 @@ function createFishEl(text, lang, targetId) {
       let [f1, f2] = fishSelected;
       if (f1.lang !== f2.lang && f1.targetId === f2.targetId) {
         playSound("success"); showGamePraise(0, praises[Math.floor(Math.random() * praises.length)], "#4CAF50"); fishEmojisCaught += 2; updateFishUI(); caughtEmojisList.push(f1.emoji, f2.emoji);
-        const rect1 = f1.el.getBoundingClientRect(); const rect2 = f2.el.getBoundingClientRect(); animateFlyToBucket(f1.emoji, rect1.left + rect1.width / 2, rect1.top + rect1.height / 2); animateFlyToBucket(f2.emoji, rect2.left + rect2.width / 2, rect2.top
+        const rect1 = f1.el.getBoundingClientRect(); const rect2 = f2.el.getBoundingClientRect(); animateFlyToBucket(f1.emoji, rect1.left + rect1.width / 2, rect1.top + rect1.height / 2); animateFlyToBucket(f2.emoji, rect2.left + rect2.width / 2, rect2.top + rect2.height / 2);
+        f1.el.remove(); f2.el.remove(); fishCards = fishCards.filter((c) => c !== f1 && c !== f2);
+        if (Math.random() < 0.5) { triggerTreasureEvent(() => { refillFishes(); fishSelected = []; }); } else { refillFishes(); fishSelected = []; }
+      } else {
+        playSound("wrong"); showGamePraise(0, "Try again..", "#F44336"); f1.el.classList.add("wrong"); f2.el.classList.add("wrong");
+        setTimeout(() => { f1.el.classList.remove("selected", "wrong"); f2.el.classList.remove("selected", "wrong"); fishSelected = []; }, 400);
+      }
+    }
+  };
+}
+function moveFishes(currentTime) {
+  if (!isFishing) return;
+  let dt = (currentTime - lastFrameTime) / 1000; if (dt > 0.1 || !dt) dt = 0.016; lastFrameTime = currentTime;
+  if(!isGamePaused) { 
+    const pondW = fishPond.clientWidth; const pondH = fishPond.clientHeight;
+    fishCards.forEach((f) => {
+      const w = f.el.offsetWidth || 100; const h = f.el.offsetHeight || 100;
+      f.x += f.vx * dt; f.y += f.vy * dt;
+      if (f.x <= 0) { f.x = 0; f.vx *= -1; } if (f.x + w >= pondW) { f.x = pondW - w; f.vx *= -1; } if (f.y <= 0) { f.y = 0; f.vy *= -1; } if (f.y + h >= pondH) { f.y = pondH - h; f.vy *= -1; }
+      let scale = f.el.classList.contains("selected") ? "scale(1.1)" : "scale(1)"; f.el.style.transform = `translate3d(${f.x}px, ${f.y}px, 0) ${scale}`;
+    });
+  } requestAnimationFrame(moveFishes);
+}
+
+// ==========================================
+//9. 결과, 피드백 전송 및 랭킹
+// ==========================================
+async function goResult() {
+  clearInterval(gameTimerInterval);
+  clearInterval(cdInterval);
+  isGamePaused = true; 
+
+  document.getElementById("top-left-controls").style.display = "none"; 
+  showScreen("result-screen");
+  
+  document.getElementById("praise-word").innerText = praises[Math.floor(Math.random() * praises.length)];
+  document.getElementById("result-user").innerText = `${currentUser.emoji} ${currentUser.nickname} 학생`;
+  document.getElementById("final-score").innerText = currentUser.score;
+
+  const emojiBox = document.getElementById("result-caught-emojis");
+  if (currentGameMode === "fish" && currentUser.caughtEmojis) { emojiBox.style.display = "block"; emojiBox.innerText = "🎣 낚은 이모지:\n" + currentUser.caughtEmojis; } 
+  else { emojiBox.style.display = "none"; }
+  playSound("success");
+
+  try {
+    await addDoc(collection(db, "scores"), {
+      stdId: currentUser.stdId, nickname: currentUser.nickname, emoji: currentUser.emoji, classId: currentUser.classId,
+      score: currentUser.score, mode: currentGameMode, timestamp: Date.now(),
+      setId: currentSetId,       
+      setTitle: currentSetTitle  
+    });
+  } catch(e) { console.error("점수 저장 실패:", e); }
+}
+
+// 🌟 신규: 학생 피드백 전송 로직
+bindClick("go-feedback-btn", () => {
+  playSound("click");
+  document.getElementById("feedback-text").value = "";
+  showScreen("feedback-screen");
+});
+bindClick("cancel-feedback-btn", () => { playSound("click"); showScreen("result-screen"); });
+
+bindClick("submit-feedback-btn", async () => {
+  playSound("click");
+  const text = document.getElementById("feedback-text").value.trim();
+  if(!text) return alert("의견을 적어주세요!");
+  try {
+    await addDoc(collection(db, "feedback"), {
+      stdId: currentUser.stdId,
+      nickname: currentUser.nickname,
+      emoji: currentUser.emoji,
+      text: text,
+      timestamp: Date.now()
+    });
+    alert("소중한 의견 감사합니다!");
+    showScreen("result-screen");
+  } catch(e) {
+    alert("전송에 실패했습니다.");
+  }
+});
+
+bindClick("go-ranking-btn", () => { playSound("click"); showRankings("today", currentGameMode); });
+
+bindClick("tab-today", () => { playSound("click"); showRankings("today", currentRankingMode); });
+bindClick("tab-class", () => { playSound("click"); showRankings("class", currentRankingMode); });
+bindClick("tab-all", () => { playSound("click"); showRankings("all", currentRankingMode); });
+bindClick("ranking-home-btn", () => { playSound("click"); document.getElementById("confetti-canvas").style.display = "none"; showScreen("menu-screen"); });
+
+async function showRankings(tab, mode = currentRankingMode) {
+  currentRankingMode = mode; 
+  showScreen("ranking-screen");
+  
+  document.querySelectorAll(".rank-tab").forEach(btn => btn.classList.remove("active"));
+  document.getElementById(`tab-${tab}`).classList.add("active");
+
+  const modeNames = {
+    "fc": "🃏 깜빡이 학습",
+    "memory": "🔠 메모 게임",
+    "speed-match": "🧩 스피드 짝맞추기",
+    "speed": "⚡ 심플 스피드퀴즈",
+    "fish": "🎣 이모지 낚시하기"
+  };
+
+  document.getElementById("ranking-mode-title").innerText = `[ ${currentSetTitle} ]\n${modeNames[mode] || "전체"} 순위`;
+
+  const quotes = ["Wanna try again? 🚀", "You're a star! ⭐", "Keep it up! 🔥", "Fantastic job! 🎉", "Challenge the top! 🏆"];
+  document.getElementById("ranking-encourage").innerText = quotes[Math.floor(Math.random() * quotes.length)];
+  document.getElementById("ranking-msg").innerText = `축하해요!! ${currentUser.emoji}${currentUser.nickname}님은 ${currentUser.score}점입니다!`;
+
+  const listEl = document.getElementById("ranking-list");
+  listEl.innerHTML = "<div style='text-align:center; padding: 20px;'>순위를 불러오는 중...🔍</div>";
+
+  try {
+    const qSnap = await getDocs(collection(db, "scores"));
+    let allScores = []; qSnap.forEach(doc => allScores.push(doc.data()));
+    
+    let filtered = allScores.filter(s => s.mode === currentRankingMode && s.setId === currentSetId);
+
+    const now = new Date(); const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+
+    if (tab === "today") filtered = filtered.filter(s => s.timestamp >= todayStart);
+    else if (tab === "class") filtered = filtered.filter(s => s.classId === currentUser.classId);
+
+    let uniqueTop = {};
+    filtered.forEach(s => { if(!uniqueTop[s.stdId] || uniqueTop[s.stdId].score < s.score) uniqueTop[s.stdId] = s; });
+    let sorted = Object.values(uniqueTop).sort((a, b) => b.score - a.score);
+
+    listEl.innerHTML = "";
+    if (sorted.length === 0) { listEl.innerHTML = "<div style='text-align:center; padding:20px;'>아직 등록된 기록이 없어요!</div>"; } 
+    else {
+      sorted.forEach((s, idx) => {
+        let medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx+1}위`;
+        listEl.innerHTML += `<div class="rank-item"><div><span class="rank-medal">${medal}</span> ${s.emoji} ${s.nickname}</div><div style="color:#ff4081; font-weight:bold;">${s.score}점</div></div>`;
+      });
+    }
+    fireConfetti();
+  } catch(e) { listEl.innerHTML = "데이터를 불러오지 못했습니다."; console.error(e); }
+}
+
+let confettiParticles = []; let confettiCtx = null; let confettiAnimId = null;
+function fireConfetti() {
+  const canvas = document.getElementById("confetti-canvas"); canvas.style.display = "block"; canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+  confettiCtx = canvas.getContext("2d"); confettiParticles = [];
+  const colors = ["#ff4081", "#00bcd4", "#4caf50", "#ffeb3b", "#ff9800", "#9c27b0"];
+  for(let i=0; i<100; i++) {
+    confettiParticles.push({
+      x: canvas.width / 2, y: canvas.height / 2 + 100, r: Math.random() * 6 + 4,
+      dx: Math.random() * 20 - 10, dy: Math.random() * -20 - 5, color: colors[Math.floor(Math.random() * colors.length)],
+      tilt: Math.random() * 10, tiltAngleInc: (Math.random() * 0.07) + 0.05, tiltAngle: 0
+    });
+  }
+  if (confettiAnimId) cancelAnimationFrame(confettiAnimId); renderConfetti();
+}
+function renderConfetti() {
+  if (!confettiCtx) return;
+  const canvas = document.getElementById("confetti-canvas"); confettiCtx.clearRect(0, 0, canvas.width, canvas.height);
+  let activeCount = 0;
+  confettiParticles.forEach(p => {
+    p.tiltAngle += p.tiltAngleInc; p.y += (Math.cos(p.tiltAngle) + 1 + p.r / 2) / 2; p.x += Math.sin(p.tiltAngle) * 2 + p.dx; p.dy += 0.2; p.y += p.dy;
+    if (p.y <= canvas.height) activeCount++;
+    confettiCtx.beginPath(); confettiCtx.lineWidth = p.r; confettiCtx.strokeStyle = p.color;
+    confettiCtx.moveTo(p.x + p.tilt + p.r, p.y); confettiCtx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r); confettiCtx.stroke();
+  });
+  if (activeCount > 0) confettiAnimId = requestAnimationFrame(renderConfetti); else canvas.style.display = "none";
+}
