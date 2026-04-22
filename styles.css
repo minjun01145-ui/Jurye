@@ -73,7 +73,7 @@ button:active { transform: translateY(6px); box-shadow: none; }
 .rank-item:last-child { border-bottom: none; }
 .rank-medal { font-size: 24px; font-weight: bold; width: 40px; }
 
-/* 🌟 스피드 짝맞추기 카드 스타일 */
+/* 스피드 짝맞추기 카드 스타일 */
 .sm-card-wrapper { flex: 1; cursor: pointer; width: 100%; display: flex; overflow: hidden; margin-bottom: 2px;}
 .sm-card { 
   flex: 1; background: white; border: 3px solid #ddd; border-radius: 10px; display: flex; justify-content: center; align-items: center; text-align: center; font-weight: bold; padding: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: 0.1s; line-height: 1.15; width: 100%; height: 100%;
@@ -84,7 +84,7 @@ button:active { transform: translateY(6px); box-shadow: none; }
 .sm-card.matched { opacity: 0; pointer-events: none; transition: opacity 0.3s; transform: scale(0); }
 .sm-card-wrapper.disabled { pointer-events: none; opacity: 0.6; }
 
-/* 🌟 학습 목록 보기 리스트 스타일 */
+/* 학습 목록 보기 리스트 스타일 */
 .word-list-item { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px dashed #eee; padding: 12px 5px; gap: 10px; }
 .word-list-item:last-child { border-bottom: none; }
 .word-text-col { flex: 1; text-align: left; font-size: 18px; color: #333; font-weight: bold; word-break: keep-all; }
@@ -92,10 +92,10 @@ button:active { transform: translateY(6px); box-shadow: none; }
 .star-col { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 40px; }
 .star-count { font-size: 14px; font-weight: bold; color: #999; margin-top: 2px; }
 
-/* 🌟 가리기 버튼을 눌렀을 때 텍스트를 감추는 마법 클래스 */
+/* 가리기 버튼을 눌렀을 때 텍스트를 감추는 클래스 */
 .hidden-text { background-color: #ccc !important; color: transparent !important; border-radius: 5px; user-select: none; }
 
-/* 🌟 대망의 불타는 별표 이펙트 단계별 CSS */
+/* 불타는 별표 이펙트 단계별 CSS */
 .star-btn { font-size: 28px; background: none; border: none; padding: 0; cursor: pointer; outline: none; transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); -webkit-tap-highlight-color: transparent; }
 .fire-0 { filter: grayscale(100%); opacity: 0.4; transform: scale(0.9); }
 .fire-1 { filter: grayscale(0%); color: #FFEB3B; text-shadow: 0 0 5px rgba(255,235,59,0.5); transform: scale(1.05); }
@@ -109,6 +109,23 @@ button:active { transform: translateY(6px); box-shadow: none; }
   100% { transform: scale(1.4) rotate(3deg); } 
 }
 
+/* =========================================
+   🌟 스타워즈풍 스페셜 땡스 크레딧 🌟
+   ========================================= */
+#credits-container { position: absolute; bottom: 0; left: 0; width: 100%; height: 35vh; overflow: hidden; z-index: 1; pointer-events: none; perspective: 400px; }
+.crawl { position: relative; top: 100%; animation: crawl-anim 25s linear infinite; text-align: center; }
+.credits-title { font-size: 70px; color: rgba(120, 140, 150, 0.6); margin-bottom: 20px; letter-spacing: 2px; }
+.credits-columns { display: flex; justify-content: center; gap: 90px; font-size: 30px; line-height: 1.8; color: rgba(120, 140, 150, 0.4); }
+
+/* 🌟 핵심: 절대 이름이 세로로 깨지지 않게 줄바꿈 방지! */
+.class-col { white-space: nowrap; } 
+
+.class-title { font-size: 16px; font-weight: bold; color: rgba(120, 140, 150, 0.6); margin-bottom: 10px; }
+@keyframes crawl-anim { 0% { top: 100%; transform: rotateX(25deg) translateY(0); } 100% { top: -50px; transform: rotateX(25deg) translateY(-100%); } }
+
+/* =========================================
+   📱 스마트폰 모바일 화면용 최적화 (반응형)
+   ========================================= */
 @media screen and (max-height: 750px), screen and (max-width: 500px) {
   h1 { font-size: 30px; margin-top: 20px; }
   h2 { font-size: 24px; }
@@ -121,11 +138,9 @@ button:active { transform: translateY(6px); box-shadow: none; }
   .rank-tab { font-size: 14px; padding: 8px 10px; width: 95px; }
   .word-text-col { font-size: 15px; }
   .mean-text-col { font-size: 13px; }
-}
 
-#credits-container { position: absolute; bottom: 0; left: 0; width: 100%; height: 35vh; overflow: hidden; z-index: 1; pointer-events: none; perspective: 400px; }
-.crawl { position: relative; top: 100%; animation: crawl-anim 25s linear infinite; text-align: center; }
-.credits-title { font-size: 70px; color: rgba(120, 140, 150, 0.6); margin-bottom: 20px; letter-spacing: 2px; }
-.credits-columns { display: flex; justify-content: center; gap: 90px; font-size: 30px; line-height: 1.8; color: rgba(120, 140, 150, 0.4); }
-.class-title { font-size: 16px; font-weight: bold; color: rgba(120, 140, 150, 0.6); margin-bottom: 10px; }
-@keyframes crawl-anim { 0% { top: 100%; transform: rotateX(25deg) translateY(0); } 100% { top: -50px; transform: rotateX(25deg) translateY(-100%); } }
+  /* 🌟 모바일에서 크레딧 글씨 크기와 간격을 대폭 줄여서 한 화면에 예쁘게 나오도록 수정! */
+  .credits-title { font-size: 24px; margin-bottom: 15px; }
+  .credits-columns { gap: 15px; font-size: 12px; line-height: 1.6; }
+  .class-title { font-size: 13px; }
+}
