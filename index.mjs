@@ -1,8 +1,8 @@
-//1. 파이어베이스 라이브러리 불러오기
+// 1. 파이어베이스 라이브러리 불러오기
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
 import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
 
-//2. 파이어베이스 세팅
+// 2. 파이어베이스 세팅
 const firebaseConfig = {
   apiKey: "AIzaSyAh3e5ruxctlhv-OwBAQl5WDds0IZooPD0",
   authDomain: "test2222-e2458.firebaseapp.com",
@@ -16,7 +16,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-//3. 글로벌 상태 변수들
+// 3. 글로벌 상태 변수들 (중복 선언 일체 제거!)
 let wordSets = []; 
 let studentList = []; 
 let currentEditingSetId = null; 
@@ -46,14 +46,15 @@ let currentUser = { stdId: "", realName: "", classId: "", nickname: "", emoji: "
 const allEmojis = ["🎮", "🕹️", "🎲", "🎯", "🐶", "🐱", "🍓", "😎", "🤩", "🚀", "🌟", "🔥", "🦄", "🍀", "🍔", "👽","😀","😂","😍","🥳","👻","🤡","🤗","🤔","🤐","🐭","🐹","🐰","🦊","🐻","🐼","🐨","🐯","🦁","🐮","🐷","🐸","🐵","🐧","🐤","🦆","🦉","🦇","🐺","🐝","🦋","🐢","🐍","🦖","🐙","🦑","🦀","🐠","🐬","🐳","🦈","🐅","🦓","🦍","🐘","🐫","🦒","🦘","🐎","🐏","🐐","🦌","🐕","🐈","🦚","🦜","🦢","🦩","🕊","🦝","🦨","🦥","🐿","🦔","🐉","🍎","🍊","🍋","🍌","🍉","🍇","🫐","🍒","🍑","🍍","🥥","🥝","🍅","🥑","🥦","🥒","🌶","🌽","🥕","🥔","🍠","🥐","🍞","🥨","🧀","🍳","🥞","🥓","🥩","🍗","🌭","🍟","🍕","🥪","🌮","🥗","🍣","🍱","🥟","🍤","🍙","🍚","🍧","🍦","🍰","🎂","🍭","🍬","🍫","🍩","🍪","🍯","🍼","☕️","🧃","🥤","🍺","🍻","🥂","🍷","🥃","🧊","⚽️","🏀","🏈","⚾️","🎾","🏐","🏓","🏸","🥊","🛹","⛸","🎿","🏂","🏋️","🏄","🏊","🚴","🏆","🥇","🏅","🎟","🎪","🎭","🎨","🎬","🎤","🎧","🎹","🥁","🎸","🎳","🎰","🧩","🚗","🚓","🚑","🚒","🚜","🚲","🛵","🏍","✈️","🚁","⛵️","🛳","🗺","🗽","🏰","🎡","🎢","⛺️","🏠","🏢","🏥","🏦","🏫","⛪️","🌅","🌌","⌚️","📱","💻","⌨️","🖥","📷","📸","🎥","📞","☎️","📺","📻","⏱","⏰","⏳","💡","💸","💵","💰","💳","💎","🛠","🔫","💣","🪄"];
 const praises = ["Fabulous!", "Terrific!", "Awesome!", "Incredible!", "Great Job!", "Perfect!"];
 
-//4. 배경색 및 오디오 설정
-const pastelColors = [{ hex: "#FFE4E1" }, { hex: "#FFF0E6" }, { hex: "#FFFACD" }, { hex: "#E8F8F5" }, { hex: "#E1F5FE" }, { hex: "#F3E5F5" }, { hex: "#FBE9E7" }, { hex: "#E0F2F1" }, { hex: "#FCF3CF" }, { hex: "#E8EAF6" }];
-const pickedColor = pastelColors[Math.floor(Math.random() * pastelColors.length)];
-document.body.style.backgroundColor = pickedColor.hex;
-document.querySelectorAll(".screen").forEach((s) => {
-  if (s.id !== "fishing-screen" && s.id !== "memory-screen" && s.id !== "speed-screen" && s.id !== "speed-match-screen" && s.id !== "exam1-screen" && s.id !== "exam2-screen") s.style.backgroundColor = pickedColor.hex;
-});
+// 시험대비, 플래시카드 등 게임별 전용 변수들
+let examQueue = []; let examCurrentIndex = 0; let examWords = []; let examSlots = [];
+let fcQueue = []; let fcCurrent = null; let fcStartTime = 0; let fcKnown = 0; let fcIsFlipped = false; let fcIsAnimating = false; let fcScore = 0; let cardAppearTime = 0; let isRetryPhase = false; let hasFlippedToCheck = false; 
+let memoryRound = 1; let memoryPairsFound = 0; let memoryFlipped = []; 
+let smRound = 1; let smPairsFound = 0; let smSelected = []; 
+let sqCurrentWord = null;
+let fishCards = []; let fishSelected = []; let fishEmojisCaught = 0; let lastFrameTime = 0; let caughtEmojisList = [];
 
+// 4. 오디오 설정
 const bgm = new Audio("./bgm.mp3");
 bgm.loop = true; bgm.volume = 0.1;
 let isBgmPlaying = false; 
@@ -106,7 +107,7 @@ function playSound(type) {
   } catch(e) { console.warn("Sound disabled", e); }
 }
 
-//5. UI 유틸리티
+// 5. UI 유틸리티
 function showScreen(screenId) {
   document.querySelectorAll(".screen").forEach((s) => { s.style.display = "none"; s.classList.remove("active"); });
   if (screenId) { const screen = document.getElementById(screenId); if(screen) { screen.style.display = "flex"; screen.classList.add("active"); } }
@@ -115,7 +116,6 @@ function showScreen(screenId) {
 function bindClick(id, callback) {
   const el = document.getElementById(id);
   if (el) el.onclick = callback;
-  else console.warn(`주의: HTML에서 '${id}' 버튼 찾기 실패 (무시됨)`);
 }
 
 const emojiContainer = document.getElementById("emoji-container");
@@ -150,9 +150,7 @@ bindClick("close-modal-btn", () => { document.getElementById("unknown-modal").st
 bindClick("back-to-menu-btn", () => { playSound("click"); document.getElementById("top-left-controls").style.display = "none"; document.getElementById("unknown-modal").style.display = "none"; resetGameStates(); showScreen("menu-screen"); });
 bindClick("home-btn", () => { playSound("click"); showScreen("menu-screen"); });
 
-// ==========================================
-//6. 로그인, DB 로드
-// ==========================================
+// 6. 파이어베이스 연동 및 로그인/관리자 로직
 async function loadAllFromDB() {
   try {
     const setSnap = await getDoc(doc(db, "gameData", "wordSets")); if (setSnap.exists()) wordSets = setSnap.data().sets || [];
@@ -202,16 +200,12 @@ function renderSetSelectList() {
     const btn = document.createElement("button"); 
     btn.style.width = "100%"; btn.style.margin = "0"; 
     let randColor = setBtnColors[Math.floor(Math.random() * setBtnColors.length)];
-    btn.style.backgroundColor = randColor.bg; 
-    btn.style.boxShadow = `0 5px 0 ${randColor.shadow}`;
-    btn.style.color = randColor.color;
+    btn.style.backgroundColor = randColor.bg; btn.style.boxShadow = `0 5px 0 ${randColor.shadow}`; btn.style.color = randColor.color;
     btn.innerHTML = `${set.title} <br><span style="font-size:16px;">(단어 ${set.words.length}개)</span>`;
     btn.onclick = () => {
       playSound("click");
       if(set.words.length < 4) return alert("이 세트에는 단어가 4개 미만이라 게임을 할 수 없어요!");
-      wordList = set.words;
-      currentSetId = set.id;       
-      currentSetTitle = set.title; 
+      wordList = set.words; currentSetId = set.id; currentSetTitle = set.title; 
       showScreen("menu-screen"); 
     };
     container.appendChild(btn);
@@ -221,19 +215,20 @@ function renderSetSelectList() {
 bindClick("set-select-back-to-auth-btn", () => { playSound("click"); showScreen("auth-screen"); });
 bindClick("menu-go-back-set-btn", () => { playSound("click"); showScreen("set-select-screen"); });
 
-// ==========================================
-// 7. 관리자 로직
-// ==========================================
 bindClick("admin-main-open-btn", () => { 
-  playSound("click"); 
-  const pwd = prompt("관리자 비밀번호 4자리를 입력하세요.", "");
-  if (pwd === "1234") showScreen("admin-main-screen");
-  else if (pwd !== null) alert("비밀번호가 틀렸습니다!");
+  playSound("click"); const pwd = prompt("관리자 비밀번호 4자리를 입력하세요.", "");
+  if (pwd === "1234") showScreen("admin-main-screen"); else if (pwd !== null) alert("비밀번호가 틀렸습니다!");
 });
 
 bindClick("admin-main-close-btn", () => { playSound("click"); showScreen("auth-screen"); });
 bindClick("admin-go-student-btn", () => { playSound("click"); renderAdminStudentList(); showScreen("admin-student-screen"); });
 bindClick("admin-go-set-btn", () => { playSound("click"); renderAdminSetList(); showScreen("admin-set-list-screen"); });
+bindClick("admin-student-back-btn", () => { playSound("click"); showScreen("admin-main-screen"); });
+bindClick("admin-set-list-back-btn", () => { playSound("click"); showScreen("admin-main-screen"); });
+bindClick("admin-set-edit-cancel-btn", () => { playSound("click"); showScreen("admin-set-list-screen"); });
+bindClick("admin-set-create-btn", () => { playSound("click"); currentEditingSetId = null; document.getElementById("admin-set-title").value = ""; document.getElementById("admin-set-textarea").value = ""; showScreen("admin-set-edit-screen"); });
+bindClick("admin-go-feedback-btn", () => { playSound("click"); renderAdminFeedbackList(); showScreen("admin-feedback-screen"); });
+bindClick("admin-feedback-back-btn", () => { playSound("click"); showScreen("admin-main-screen"); });
 
 function renderAdminStudentList() {
   const listEl = document.getElementById("admin-student-list"); listEl.innerHTML = "";
@@ -270,8 +265,6 @@ bindClick("admin-student-upload-btn", async () => {
   } catch (error) { alert("저장에 실패했습니다."); }
 });
 
-bindClick("admin-student-back-btn", () => { playSound("click"); showScreen("admin-main-screen"); });
-
 function renderAdminSetList() {
   const listEl = document.getElementById("admin-set-list"); listEl.innerHTML = "";
   if(wordSets.length === 0) return listEl.innerHTML = "<p style='text-align:center; margin-top:50px;'>등록된 세트가 없습니다.</p>";
@@ -294,10 +287,6 @@ function renderAdminSetList() {
   });
 }
 
-bindClick("admin-set-list-back-btn", () => { playSound("click"); showScreen("admin-main-screen"); });
-bindClick("admin-set-edit-cancel-btn", () => { playSound("click"); showScreen("admin-set-list-screen"); });
-bindClick("admin-set-create-btn", () => { playSound("click"); currentEditingSetId = null; document.getElementById("admin-set-title").value = ""; document.getElementById("admin-set-textarea").value = ""; showScreen("admin-set-edit-screen"); });
-
 bindClick("admin-set-save-btn", async () => {
   playSound("click"); const title = document.getElementById("admin-set-title").value.trim();
   if(!title) return alert("세트 이름을 적어주세요!");
@@ -307,10 +296,8 @@ bindClick("admin-set-save-btn", async () => {
     if (parts.length >= 2 && parts[0].trim() !== "" && parts[1].trim() !== "") newWords.push({ en: parts[0].trim(), ko: parts[1].trim() });
   }
   if (newWords.length === 0) return alert("입력된 단어가 없거나 양식이 틀렸습니다!");
-
-  if (currentEditingSetId) {
-    const target = wordSets.find(s => s.id === currentEditingSetId); if(target) { target.title = title; target.words = newWords; }
-  } else { wordSets.push({ id: Date.now().toString(), title: title, words: newWords }); }
+  if (currentEditingSetId) { const target = wordSets.find(s => s.id === currentEditingSetId); if(target) { target.title = title; target.words = newWords; } } 
+  else { wordSets.push({ id: Date.now().toString(), title: title, words: newWords }); }
 
   try {
     await setDoc(doc(db, "gameData", "wordSets"), { sets: wordSets }); 
@@ -318,16 +305,12 @@ bindClick("admin-set-save-btn", async () => {
   } catch (error) { alert("저장 실패."); }
 });
 
-bindClick("admin-go-feedback-btn", () => { playSound("click"); renderAdminFeedbackList(); showScreen("admin-feedback-screen"); });
-bindClick("admin-feedback-back-btn", () => { playSound("click"); showScreen("admin-main-screen"); });
-
 async function renderAdminFeedbackList() {
   const listEl = document.getElementById("admin-feedback-list");
   listEl.innerHTML = "<p style='text-align:center; margin-top:20px;'>학생들의 의견을 불러오는 중...</p>";
   try {
-    const qSnap = await getDocs(collection(db, "feedback"));
-    let fList = []; qSnap.forEach(doc => fList.push({ id: doc.id, ...doc.data() }));
-    fList.sort((a,b) => b.timestamp - a.timestamp); 
+    const qSnap = await getDocs(collection(db, "feedback")); let fList = [];
+    qSnap.forEach(doc => fList.push({ id: doc.id, ...doc.data() })); fList.sort((a,b) => b.timestamp - a.timestamp); 
     
     listEl.innerHTML = "";
     if(fList.length === 0) { listEl.innerHTML = "<p style='text-align:center; margin-top:50px;'>아직 등록된 의견이 없습니다.</p>"; return; }
@@ -344,10 +327,7 @@ async function renderAdminFeedbackList() {
   } catch(e) { listEl.innerHTML = "<p>에러가 발생했습니다.</p>"; }
 }
 
-// ==========================================
-// 🌟 8. 메인 메뉴 버튼 및 게임 라우팅 (시험대비 모드 추가)
-// ==========================================
-
+// 7. 메인 메뉴 버튼 라우팅 (학습 목록, 시험, 각종 게임 모드)
 bindClick("menu-list-btn", () => { 
   playSound("click"); isWordHidden = false; isMeanHidden = false;
   document.getElementById("toggle-word-btn").innerText = "영어 가리기"; document.getElementById("toggle-mean-btn").innerText = "뜻 가리기";
@@ -397,12 +377,8 @@ function renderWordList() {
 
 bindClick("menu-exam-btn", () => { playSound("click"); showScreen("exam-option-screen"); });
 bindClick("exam-option-back-btn", () => { playSound("click"); showScreen("menu-screen"); });
-
 bindClick("exam1-btn", () => { playSound("click"); currentGameMode = "exam1"; startExamCountdown(startExam1Logic); });
 bindClick("exam2-btn", () => { playSound("click"); currentGameMode = "exam2"; startExamCountdown(startExam2Logic); });
-
-bindClick("rank-exam1-btn", () => { playSound("click"); showRankings("today", "exam1"); });
-bindClick("rank-exam2-btn", () => { playSound("click"); showRankings("today", "exam2"); });
 
 bindClick("menu-fc-btn", () => { playSound("click"); currentGameMode = "fc"; showScreen("fc-option-screen"); });
 bindClick("fc-order-btn", () => { playSound("click"); fcIsRandom = false; startFlashcard(); });
@@ -415,15 +391,10 @@ bindClick("menu-speed-btn", () => { playSound("click"); currentGameMode = "speed
 bindClick("menu-fish-btn", () => { playSound("click"); currentGameMode = "fish"; showScreen("time-option-screen"); });
 bindClick("time-option-back-btn", () => { playSound("click"); showScreen("menu-screen"); }); 
 
-bindClick("rank-fc-btn", () => { playSound("click"); showRankings("today", "fc"); });
-bindClick("rank-memory-btn", () => { playSound("click"); showRankings("today", "memory"); });
-bindClick("rank-speed-match-btn", () => { playSound("click"); showRankings("today", "speed-match"); });
-bindClick("rank-speed-btn", () => { playSound("click"); showRankings("today", "speed"); });
-bindClick("rank-fish-btn", () => { playSound("click"); showRankings("today", "fish"); });
-
 bindClick("time-3m-btn", () => { playSound("click"); routeGameStart(3); });
 bindClick("time-5m-btn", () => { playSound("click"); routeGameStart(5); });
 
+// 8. 게임 공통 유틸리티 (카운트다운, 이펙트 등)
 function routeGameStart(minutes) {
   if(currentGameMode === "memory") startCountdown(minutes, "memory-screen", startMemoryLogic);
   else if(currentGameMode === "speed-match") startCountdown(minutes, "speed-match-screen", startSpeedMatchLogic);
@@ -444,7 +415,6 @@ function startCountdown(minutes, screenId, logicCallback) {
   }, 1000);
 }
 
-// 🌟 신규: 시험대비 모드용 (타이머 없는) 3초 카운트다운 함수
 function startExamCountdown(logicCallback) {
   showScreen(currentGameMode === "exam1" ? "exam1-screen" : "exam2-screen");
   document.getElementById("top-left-controls").style.display = "flex";
@@ -468,172 +438,157 @@ function showGamePraise(earnedScore, customMsg, customColor) {
   overlay.classList.remove("praise-anim-pop"); void overlay.offsetWidth; overlay.classList.add("praise-anim-pop");
 }
 
+let buffTimeout;
+function showBuffMsg(text, subText, r, g, b) {
+  const overlay = document.getElementById("buff-msg-overlay");
+  overlay.innerHTML = `<div>${text}</div><div style="font-size:24px; font-weight:normal; margin-top:5px;">${subText}</div>`;
+  overlay.style.background = `rgba(${r}, ${g}, ${b}, 0.85)`; overlay.style.display = "flex";
+  overlay.classList.remove("drift-anim"); void overlay.offsetWidth; overlay.classList.add("drift-anim");
+  overlay.onclick = () => { overlay.style.display = "none"; clearTimeout(buffTimeout); };
+  clearTimeout(buffTimeout); buffTimeout = setTimeout(() => { overlay.style.display = "none"; }, 2500); 
+}
+
 function calcSpeedBonus() {
   const timeDiff = Date.now() - lastMatchTime; let bonus = 50 - Math.floor(timeDiff / 100);
   if (bonus < 0) bonus = 0; if (bonus > 50) bonus = 50; lastMatchTime = Date.now(); return (100 + bonus) * globalScoreMultiplier; 
 }
 
-// ==========================================
-// 🌟 신규: 시험대비 1단계 (문장 순서 맞추기)
-// ==========================================
-let examQueue = [];
-let examCurrentIndex = 0;
-let examWords = [];
-let examSlots = [];
+function addInventoryItem(type) {
+  let color, text;
+  if(type === 'double_current') { color = '#2196F3'; text = '🔵 x2'; } else if(type === 'half_current') { color = '#F44336'; text = '🔴 ÷2'; } else if(type === 'double_future') { color = '#FFC107'; text = '🟡 버프'; }
+  let el = document.createElement("div"); el.className = "inventory-item"; el.style.background = color; el.innerText = text; document.getElementById("pile-" + type).appendChild(el);
+}
 
+function triggerTreasureEvent(callback) {
+  isGamePaused = true; playSound("treasure");
+  const overlay = document.getElementById("treasure-overlay"); overlay.style.display = "flex";
+  const chests = document.querySelectorAll(".treasure-chest");
+  chests.forEach(chest => {
+    chest.onclick = null;
+    chest.onclick = () => {
+      playSound("click"); chest.classList.add("chest-explode");
+      setTimeout(() => {
+        overlay.style.display = "none"; chest.classList.remove("chest-explode");
+        let effectType = Math.floor(Math.random() * 3);
+        if (effectType === 0) { gameScore *= 2; addInventoryItem("double_current"); showBuffMsg("버프 획득!", "현재 점수 2배!", 33, 150, 243); } 
+        else if (effectType === 1) { gameScore = Math.floor(gameScore / 2); addInventoryItem("half_current"); showBuffMsg("앗, 함정!", "현재 점수 반토막...", 244, 67, 54); } 
+        else if (effectType === 2) { globalScoreMultiplier *= 2; addInventoryItem("double_future"); showBuffMsg("슈퍼 버프 획득!", "앞으로 얻는 모든 점수 2배!", 255, 193, 7); }
+        
+        if(currentGameMode === "memory") updateMemoryUI(); else if(currentGameMode === "speed-match") updateSpeedMatchUI(); else if(currentGameMode === "speed") updateSpeedUI();
+        isGamePaused = false; callback();
+      }, 400); 
+    };
+  });
+}
+
+// ==========================================
+// 9. 게임 로직: 시험대비 1단계 (문장 순서 맞추기)
+// ==========================================
 function startExam1Logic() {
-  examQueue = [...wordList].sort(() => 0.5 - Math.random());
-  examCurrentIndex = 0;
-  document.getElementById("exam1-score").innerText = `점수: 0`;
-  loadExam1Question();
+  examQueue = [...wordList].sort(() => 0.5 - Math.random()); examCurrentIndex = 0;
+  document.getElementById("exam1-score").innerText = `점수: 0`; loadExam1Question();
 }
 
 function loadExam1Question() {
   if(examCurrentIndex >= examQueue.length) {
-    currentUser.score = gameScore;
-    document.getElementById("result-detail").innerText = `문장 조립을 모두 완료했습니다!`;
-    goResult(); return;
+    currentUser.score = gameScore; document.getElementById("result-detail").innerText = `문장 조립을 모두 완료했습니다!`; goResult(); return;
   }
   let q = examQueue[examCurrentIndex];
   document.getElementById("exam1-progress").innerText = `${examCurrentIndex + 1} / ${examQueue.length}`;
   document.getElementById("exam1-ko").innerText = q.ko;
-  
-  // 영어를 단어 단위로 쪼개고 무작위로 섞음 (빈칸 무시)
   let words = q.en.split(' ').filter(w => w.trim() !== '');
   examWords = words.map((w, i) => ({ id: i, text: w })).sort(() => 0.5 - Math.random());
-  examSlots = [];
-  renderExam1Cards();
+  examSlots = []; renderExam1Cards();
 }
 
 function renderExam1Cards() {
-  const pool = document.getElementById("exam1-pool");
-  const slots = document.getElementById("exam1-slots");
-  const submitBtn = document.getElementById("exam1-submit-btn");
-  
+  const pool = document.getElementById("exam1-pool"); const slots = document.getElementById("exam1-slots"); const submitBtn = document.getElementById("exam1-submit-btn");
   pool.innerHTML = ''; slots.innerHTML = '';
   
-  // 아래쪽 풀(대기열) 단어들 그리기
   examWords.forEach(item => {
-    let btn = document.createElement("button");
-    btn.className = "exam-card"; btn.innerText = item.text;
+    let btn = document.createElement("button"); btn.className = "exam-card"; btn.innerText = item.text;
     btn.onclick = () => {
       if(isGamePaused) return; playSound("click");
-      examSlots.push(item); examWords = examWords.filter(w => w.id !== item.id);
-      renderExam1Cards();
-    };
-    pool.appendChild(btn);
+      examSlots.push(item); examWords = examWords.filter(w => w.id !== item.id); renderExam1Cards();
+    }; pool.appendChild(btn);
   });
 
-  // 위쪽 슬롯(정답칸) 단어들 그리기
   examSlots.forEach(item => {
-    let btn = document.createElement("button");
-    btn.className = "exam-card"; btn.innerText = item.text;
+    let btn = document.createElement("button"); btn.className = "exam-card"; btn.innerText = item.text;
     btn.style.backgroundColor = "#E8EAF6"; btn.style.borderColor = "#3F51B5";
     btn.onclick = () => {
       if(isGamePaused) return; playSound("click");
-      examWords.push(item); examSlots = examSlots.filter(w => w.id !== item.id);
-      renderExam1Cards();
-    };
-    slots.appendChild(btn);
+      examWords.push(item); examSlots = examSlots.filter(w => w.id !== item.id); renderExam1Cards();
+    }; slots.appendChild(btn);
   });
 
-  // 모든 단어를 다 위로 올렸을 때만 '정답 확인' 버튼 표시
-  if (examWords.length === 0 && examSlots.length > 0) submitBtn.style.display = "block";
-  else submitBtn.style.display = "none";
+  if (examWords.length === 0 && examSlots.length > 0) submitBtn.style.display = "block"; else submitBtn.style.display = "none";
 }
 
 bindClick("exam1-submit-btn", () => {
-  if(isGamePaused) return;
-  isGamePaused = true;
+  if(isGamePaused) return; isGamePaused = true;
   let answer = examSlots.map(item => item.text).join(' ');
-  // 정답 비교를 위해 원본의 다중 공백을 1개로 통일시켜서 비교
   let target = examQueue[examCurrentIndex].en.split(' ').filter(w => w.trim()!== '').join(' ');
   
   if (answer === target) {
-    playSound("success"); let earned = 100; gameScore += earned;
-    document.getElementById("exam1-score").innerText = `점수: ${gameScore}`;
+    playSound("success"); let earned = 100; gameScore += earned; document.getElementById("exam1-score").innerText = `점수: ${gameScore}`;
     showGamePraise(earned, "정답입니다!", "#4CAF50");
     setTimeout(() => { examCurrentIndex++; isGamePaused = false; loadExam1Question(); }, 1200);
   } else {
-    playSound("wrong"); gameScore = Math.max(0, gameScore - 50); // 오답 감점
-    document.getElementById("exam1-score").innerText = `점수: ${gameScore}`;
+    playSound("wrong"); gameScore = Math.max(0, gameScore - 50); document.getElementById("exam1-score").innerText = `점수: ${gameScore}`;
     showGamePraise(0, "순서가 틀렸어요!<br>다시 해보세요.", "#F44336");
-    
-    // 틀리면 단어들을 다시 아래쪽(풀)으로 모두 돌려보냄
-    setTimeout(() => {
-      examWords = [...examWords, ...examSlots]; examSlots = [];
-      renderExam1Cards(); isGamePaused = false;
-    }, 1200);
+    setTimeout(() => { examWords = [...examWords, ...examSlots]; examSlots = []; renderExam1Cards(); isGamePaused = false; }, 1200);
   }
 });
 
 // ==========================================
-// 🌟 신규: 시험대비 2단계 (문장 직접 쓰기)
+// 10. 게임 로직: 시험대비 2단계 (문장 직접 쓰기)
 // ==========================================
 function startExam2Logic() {
-  examQueue = [...wordList].sort(() => 0.5 - Math.random());
-  examCurrentIndex = 0;
-  document.getElementById("exam2-score").innerText = `점수: 0`;
-  loadExam2Question();
+  examQueue = [...wordList].sort(() => 0.5 - Math.random()); examCurrentIndex = 0;
+  document.getElementById("exam2-score").innerText = `점수: 0`; loadExam2Question();
 }
 
 function loadExam2Question() {
   if(examCurrentIndex >= examQueue.length) {
-    currentUser.score = gameScore;
-    document.getElementById("result-detail").innerText = `문장 직접쓰기를 모두 완료했습니다!`;
-    goResult(); return;
+    currentUser.score = gameScore; document.getElementById("result-detail").innerText = `문장 직접쓰기를 모두 완료했습니다!`; goResult(); return;
   }
   let q = examQueue[examCurrentIndex];
   document.getElementById("exam2-progress").innerText = `${examCurrentIndex + 1} / ${examQueue.length}`;
   document.getElementById("exam2-ko").innerText = q.ko;
-  document.getElementById("exam2-input").value = '';
-  document.getElementById("exam2-input").classList.remove("wrong");
-  // 모바일 편의를 위해 자동으로 키보드 포커스
+  document.getElementById("exam2-input").value = ''; document.getElementById("exam2-input").classList.remove("wrong");
   setTimeout(()=> document.getElementById("exam2-input").focus(), 100);
 }
 
 bindClick("exam2-submit-btn", () => {
-  if(isGamePaused) return;
-  isGamePaused = true;
-  let inputVal = document.getElementById("exam2-input").value;
-  let target = examQueue[examCurrentIndex].en;
-  
-  // 🌟 핵심: 대소문자 무시, 공백 무시, 모든 특수기호(마침표, 어포스트로피 등) 제거 후 순수 알파벳/숫자만 비교
-  let normInput = inputVal.toLowerCase().replace(/[^a-z0-9]/gi, '');
-  let normTarget = target.toLowerCase().replace(/[^a-z0-9]/gi, '');
+  if(isGamePaused) return; isGamePaused = true;
+  let inputVal = document.getElementById("exam2-input").value; let target = examQueue[examCurrentIndex].en;
+  let normInput = inputVal.toLowerCase().replace(/[^a-z0-9]/gi, ''); let normTarget = target.toLowerCase().replace(/[^a-z0-9]/gi, '');
   
   if (normInput === normTarget && normTarget.length > 0) {
-    playSound("success"); let earned = 100; gameScore += earned;
-    document.getElementById("exam2-score").innerText = `점수: ${gameScore}`;
+    playSound("success"); let earned = 100; gameScore += earned; document.getElementById("exam2-score").innerText = `점수: ${gameScore}`;
     showGamePraise(earned, "정답입니다!", "#4CAF50");
     setTimeout(() => { examCurrentIndex++; isGamePaused = false; loadExam2Question(); }, 1200);
   } else {
-    playSound("wrong"); gameScore = Math.max(0, gameScore - 50);
-    document.getElementById("exam2-score").innerText = `점수: ${gameScore}`;
-    
-    // 틀렸을 때 인풋 박스 흔들기 효과
-    const inputEl = document.getElementById("exam2-input");
-    inputEl.classList.add("wrong");
+    playSound("wrong"); gameScore = Math.max(0, gameScore - 50); document.getElementById("exam2-score").innerText = `점수: ${gameScore}`;
+    const inputEl = document.getElementById("exam2-input"); inputEl.classList.add("wrong");
     showGamePraise(0, "틀렸어요!<br>스펠링을 확인해보세요.", "#F44336");
-    
-    setTimeout(() => {
-      inputEl.classList.remove("wrong"); isGamePaused = false; inputEl.focus();
-    }, 1200);
+    setTimeout(() => { inputEl.classList.remove("wrong"); isGamePaused = false; inputEl.focus(); }, 1200);
   }
 });
 
-// 엔터(Enter) 키를 누르면 바로 제출되게 연결
 document.getElementById("exam2-input").addEventListener("keypress", function(event) {
   if (event.key === "Enter") { event.preventDefault(); document.getElementById("exam2-submit-btn").click(); }
 });
 
 // ==========================================
-// 씬 1: 깜빡이 학습
+// 11. 게임 로직: 깜빡이 학습
 // ==========================================
 function startFlashcard() {
   if (!wordList || wordList.length === 0) { alert("단어장이 비어 있습니다!"); return; }
   fcQueue = fcIsRandom ? [...wordList].sort(() => 0.5 - Math.random()) : [...wordList];
   fcStartTime = Date.now(); fcKnown = 0; fcScore = 0; unknownWordsHistory = []; isRetryPhase = false; currentUser.caughtEmojis = "";
+  
   let scoreEl = document.getElementById("fc-score"); if(scoreEl) scoreEl.innerText = "점수: 0";
   let topCtrls = document.getElementById("top-left-controls"); if(topCtrls) topCtrls.style.display = "flex";
   showScreen("flashcard-screen"); nextFlashcard("fly-right-in");
@@ -655,9 +610,7 @@ function nextFlashcard(animClass) {
       isRetryPhase = true; fcQueue = fcIsRandom ? [...unknownWordsHistory].sort(() => 0.5 - Math.random()) : [...unknownWordsHistory];
       nextFlashcard("pop-in"); return;
     } else { 
-      currentUser.score = fcScore; 
-      let resDetail = document.getElementById("result-detail"); if(resDetail) resDetail.innerText = `최종 깜빡이 점수입니다!`; 
-      goResult(); return; 
+      currentUser.score = fcScore; let resDetail = document.getElementById("result-detail"); if(resDetail) resDetail.innerText = `최종 깜빡이 점수입니다!`; goResult(); return; 
     }
   }
   
@@ -665,17 +618,11 @@ function nextFlashcard(animClass) {
   let btnKnow = document.getElementById("btn-know"); if(btnKnow) btnKnow.classList.add("btn-disabled");
   let btnDont = document.getElementById("btn-dont-know"); if(btnDont) btnDont.classList.add("btn-disabled");
   
-  fcCurrent = fcQueue[0]; fcIsFlipped = false;
-  updateFcUI(); 
+  fcCurrent = fcQueue[0]; fcIsFlipped = false; updateFcUI(); 
   
-  let fcCard = document.getElementById("fc-card"); 
-  if(fcCard) { fcCard.classList.remove("is-flipped"); fcCard.className = `flash-card ${animClass}`; }
-  
-  let fcFront = document.getElementById("fc-front"); 
-  if(fcFront) { fcFront.innerText = fcCurrent.en; fcFront.style.fontSize = autoFontSize(fcCurrent.en); }
-  
-  let fcBack = document.getElementById("fc-back"); 
-  if(fcBack) { fcBack.innerText = fcCurrent.ko; fcBack.style.fontSize = autoFontSize(fcCurrent.ko); }
+  let fcCard = document.getElementById("fc-card"); if(fcCard) { fcCard.classList.remove("is-flipped"); fcCard.className = `flash-card ${animClass}`; }
+  let fcFront = document.getElementById("fc-front"); if(fcFront) { fcFront.innerText = fcCurrent.en; fcFront.style.fontSize = autoFontSize(fcCurrent.en); }
+  let fcBack = document.getElementById("fc-back"); if(fcBack) { fcBack.innerText = fcCurrent.ko; fcBack.style.fontSize = autoFontSize(fcCurrent.ko); }
   
   fcIsAnimating = true; cardAppearTime = Date.now();
   setTimeout(() => { fcIsAnimating = false; if(fcCard) fcCard.className = "flash-card"; }, 400);
@@ -707,20 +654,17 @@ bindClick("btn-dont-know", () => {
   fcIsAnimating = true; playSound("wrong");
   if (!isRetryPhase) { const alreadySaved = unknownWordsHistory.find((w) => w.en === fcCurrent.en); if (!alreadySaved) unknownWordsHistory.push(fcCurrent); }
   
-  let cardEl = document.getElementById("fc-card");
-  let btnEl = document.getElementById("btn-dont-know");
+  let cardEl = document.getElementById("fc-card"); let btnEl = document.getElementById("btn-dont-know");
   if(cardEl && btnEl) {
     const cardRect = cardEl.getBoundingClientRect(); const btnRect = btnEl.getBoundingClientRect();
     const moveX = btnRect.left + btnRect.width / 2 - (cardRect.left + cardRect.width / 2); const moveY = btnRect.top + btnRect.height / 2 - (cardRect.top + cardRect.height / 2);
     cardEl.style.transition = "all 0.4s cubic-bezier(0.6, -0.28, 0.735, 0.045)"; cardEl.style.transform = `translate(${moveX}px, ${moveY}px) scale(0) rotate(180deg)`; cardEl.style.opacity = "0";
     setTimeout(() => { cardEl.style.transition = "transform 0.4s cubic-bezier(0.4, 0.0, 0.2, 1)"; cardEl.style.transform = ""; cardEl.style.opacity = "1"; fcQueue.push(fcQueue.shift()); nextFlashcard("pop-in"); }, 400);
-  } else {
-    fcQueue.push(fcQueue.shift()); nextFlashcard("pop-in");
-  }
+  } else { fcQueue.push(fcQueue.shift()); nextFlashcard("pop-in"); }
 });
 
 // ==========================================
-// 씬 2: 메모리, 스피드매치, 퀴즈, 낚시 (기존 로직 동일하게 작동)
+// 12. 게임 로직: 메모리 게임 
 // ==========================================
 function updateMemoryUI() {
   const m = String(Math.floor(gameTimeRemaining / 60)).padStart(2, "0"); const s = String(gameTimeRemaining % 60).padStart(2, "0");
@@ -780,7 +724,9 @@ function checkMemoryMatch() {
 }
 function checkMemoryRoundEnd() { if (memoryPairsFound === 4) { memoryRound++; setTimeout(loadMemoryRound, 500); } }
 
-let smRound = 1; let smPairsFound = 0; let smSelected = []; 
+// ==========================================
+// 13. 게임 로직: 스피드 짝맞추기
+// ==========================================
 function updateSpeedMatchUI() {
   const m = String(Math.floor(gameTimeRemaining / 60)).padStart(2, "0"); const s = String(gameTimeRemaining % 60).padStart(2, "0");
   document.getElementById("sm-timer").innerText = `🕒 ${m}:${s}`; document.getElementById("sm-score").innerText = `점수: ${gameScore}`;
@@ -805,11 +751,14 @@ function createSmCard(item) {
   const card = document.createElement("div"); card.className = `sm-card`; card.innerText = item.text;
   card.style.fontSize = item.text.length > 30 ? "14px" : (item.text.length > 15 ? "18px" : "24px"); 
   wrapper.appendChild(card);
+  
   wrapper.onclick = () => {
     if (isGamePaused || card.classList.contains("selected") || card.classList.contains("matched")) return;
+    
     if (smSelected.length === 1 && smSelected[0].side === item.side) { smSelected[0].el.classList.remove("selected"); smSelected = []; }
     playSound("click"); card.classList.add("selected"); smSelected.push({ id: item.id, side: item.side, el: card, wrapper });
     updateSmSideAvailability();
+    
     if (smSelected.length === 2) { isGamePaused = true; checkSmMatch(); }
   }; return wrapper;
 }
@@ -826,6 +775,7 @@ function checkSmMatch() {
   if (c1.id === c2.id) { 
     playSound("success"); let earnedScore = calcSpeedBonus(); gameScore += earnedScore; updateSpeedMatchUI(); showGamePraise(earnedScore);
     c1.el.classList.add("matched"); c2.el.classList.add("matched"); smPairsFound++; smSelected = []; updateSmSideAvailability();
+    
     if (Math.random() < 0.3) triggerTreasureEvent(() => { checkSmRoundEnd(); isGamePaused = false; }); 
     else { checkSmRoundEnd(); isGamePaused = false; }
   } else { 
@@ -839,7 +789,9 @@ function checkSmMatch() {
 }
 function checkSmRoundEnd() { if (smPairsFound === 4) { smRound++; setTimeout(loadSpeedMatchRound, 500); } }
 
-let sqCurrentWord = null;
+// ==========================================
+// 14. 게임 로직: 심플 스피드 퀴즈
+// ==========================================
 function updateSpeedUI() {
   const m = String(Math.floor(gameTimeRemaining / 60)).padStart(2, "0"); const s = String(gameTimeRemaining % 60).padStart(2, "0");
   document.getElementById("speed-timer").innerText = `🕒 ${m}:${s}`; document.getElementById("speed-score").innerText = `점수: ${gameScore}`;
@@ -876,8 +828,9 @@ function loadNextSpeedQuiz() {
   });
 }
 
-let fishCards = []; let fishSelected = []; let fishEmojisCaught = 0; let lastFrameTime = 0; let caughtEmojisList = [];
-const fishPond = document.getElementById("fish-pond");
+// ==========================================
+// 15. 게임 로직: 이모지 낚시하기
+// ==========================================
 function startFishingLogic() {
   document.getElementById("fish-bucket").innerHTML = ""; fishPond.innerHTML = "";
   fishEmojisCaught = 0; caughtEmojisList = []; updateFishUI(); isFishing = true;
@@ -953,15 +906,11 @@ function moveFishes(currentTime) {
 }
 
 // ==========================================
-// 9. 결과, 피드백 전송 및 랭킹
+// 16. 결과, 랭킹 및 폭죽 이펙트
 // ==========================================
 async function goResult() {
-  clearInterval(gameTimerInterval);
-  clearInterval(cdInterval);
-  isGamePaused = true; 
-
-  document.getElementById("top-left-controls").style.display = "none"; 
-  showScreen("result-screen");
+  clearInterval(gameTimerInterval); clearInterval(cdInterval); isGamePaused = true; 
+  document.getElementById("top-left-controls").style.display = "none"; showScreen("result-screen");
   
   document.getElementById("praise-word").innerText = praises[Math.floor(Math.random() * praises.length)];
   document.getElementById("result-user").innerText = `${currentUser.emoji} ${currentUser.nickname} 학생`;
@@ -975,30 +924,20 @@ async function goResult() {
   try {
     await addDoc(collection(db, "scores"), {
       stdId: currentUser.stdId, nickname: currentUser.nickname, emoji: currentUser.emoji, classId: currentUser.classId,
-      score: currentUser.score, mode: currentGameMode, timestamp: Date.now(),
-      setId: currentSetId,       
-      setTitle: currentSetTitle  
+      score: currentUser.score, mode: currentGameMode, timestamp: Date.now(), setId: currentSetId, setTitle: currentSetTitle  
     });
   } catch(e) { console.error("점수 저장 실패:", e); }
 }
 
-bindClick("go-feedback-btn", () => {
-  playSound("click");
-  document.getElementById("feedback-text").value = "";
-  showScreen("feedback-screen");
-});
+bindClick("go-feedback-btn", () => { playSound("click"); document.getElementById("feedback-text").value = ""; showScreen("feedback-screen"); });
 bindClick("cancel-feedback-btn", () => { playSound("click"); showScreen("result-screen"); });
-
 bindClick("submit-feedback-btn", async () => {
   playSound("click");
   const text = document.getElementById("feedback-text").value.trim();
   if(!text) return alert("의견을 적어주세요!");
   try {
-    await addDoc(collection(db, "feedback"), {
-      stdId: currentUser.stdId, nickname: currentUser.nickname, emoji: currentUser.emoji, text: text, timestamp: Date.now()
-    });
-    alert("소중한 의견 감사합니다!");
-    showScreen("result-screen");
+    await addDoc(collection(db, "feedback"), { stdId: currentUser.stdId, nickname: currentUser.nickname, emoji: currentUser.emoji, text: text, timestamp: Date.now() });
+    alert("소중한 의견 감사합니다!"); showScreen("result-screen");
   } catch(e) { alert("전송에 실패했습니다."); }
 });
 
@@ -1009,19 +948,14 @@ bindClick("tab-all", () => { playSound("click"); showRankings("all", currentRank
 bindClick("ranking-home-btn", () => { playSound("click"); document.getElementById("confetti-canvas").style.display = "none"; showScreen("menu-screen"); });
 
 async function showRankings(tab, mode = currentRankingMode) {
-  currentRankingMode = mode; 
-  showScreen("ranking-screen");
+  currentRankingMode = mode; showScreen("ranking-screen");
+  
   document.querySelectorAll(".rank-tab").forEach(btn => btn.classList.remove("active"));
   document.getElementById(`tab-${tab}`).classList.add("active");
 
   const modeNames = {
-    "fc": "🃏 깜빡이 학습",
-    "memory": "🔠 메모리 게임",
-    "speed-match": "🧩 스피드 짝맞추기",
-    "speed": "⚡ 심플 스피드퀴즈",
-    "fish": "🎣 이모지 낚시하기",
-    "exam1": "📝 문장 순서맞추기", // 🌟 신규 모드 랭킹 연결!
-    "exam2": "✍️ 문장 직접쓰기"  // 🌟 신규 모드 랭킹 연결!
+    "fc": "🃏 깜빡이 학습", "memory": "🔠 메모리 게임", "speed-match": "🧩 짝맞추기", "speed": "⚡ 스피드퀴즈",
+    "fish": "🎣 낚시하기", "exam1": "📝 순서맞추기", "exam2": "✍️ 직접쓰기"
   };
 
   document.getElementById("ranking-mode-title").innerText = `[ ${currentSetTitle} ]\n${modeNames[mode] || "전체"} 순위`;
