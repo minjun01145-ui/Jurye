@@ -10,7 +10,6 @@
       body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
       .screen { position: fixed !important; top: 0; left: 0; width: 100vw !important; height: 100dvh !important; overflow: hidden !important; display: none; flex-direction: column; align-items: center; justify-content: center; box-sizing: border-box; }
       .screen.active { display: flex !important; }
-      /* CSS는 외부 styles.css에서 모두 로드합니다 */
     </style>
   </head>
   <body>
@@ -55,7 +54,7 @@
     </div>
 
     <div id="auth-screen" class="screen active">
-      <h1>👾주례여중 게임기 v7.0👾</h1>
+      <h1>👾주례여중 게임기 v8.0👾</h1>
       <p style="text-align: center; font-size: 18px">본인의 학번과 이름을 입력하세요.</p>
       <input type="number" id="auth-id" placeholder="학번 (예: 3201)" style="width: 200px; font-size: 20px; padding: 10px; margin-bottom: 10px;" />
       <input type="text" id="auth-name" placeholder="이름" style="width: 200px; font-size: 20px; padding: 10px;" />
@@ -138,37 +137,41 @@
       <div style="display: flex; gap: 10px; width: 90%; max-width: 350px; margin-bottom: 12px; align-items: stretch;">
         <button id="menu-list-btn" class="menu-btn" style="flex: 1; margin: 0; width: auto; background-color: #8BC34A; box-shadow: 0 6px 0 #689F38">📋학습 목록 보기</button>
       </div>
-
       <div style="display: flex; gap: 10px; width: 90%; max-width: 350px; margin-bottom: 12px; align-items: stretch;">
         <button id="menu-exam-btn" class="menu-btn" style="flex: 1; margin: 0; width: auto; background-color: #3F51B5; box-shadow: 0 6px 0 #303F9F">📝시험대비 모드</button>
       </div>
-
       <div style="display: flex; gap: 10px; width: 90%; max-width: 350px; margin-bottom: 12px; align-items: stretch;">
         <button id="menu-fc-btn" class="menu-btn" style="flex: 1; margin: 0; width: auto;">🃏깜빡이 학습</button>
         <button id="rank-fc-btn" class="menu-btn-rank">🏆</button>
       </div>
-
       <div style="display: flex; gap: 10px; width: 90%; max-width: 350px; margin-bottom: 12px; align-items: stretch;">
         <button id="menu-memory-btn" class="menu-btn" style="flex: 1; margin: 0; width: auto; background-color: #2196F3; box-shadow: 0 6px 0 #1976D2">🔠메모리</button>
         <button id="rank-memory-btn" class="menu-btn-rank">🏆</button>
       </div>
-
       <div style="display: flex; gap: 10px; width: 90%; max-width: 350px; margin-bottom: 12px; align-items: stretch;">
         <button id="menu-speed-match-btn" class="menu-btn" style="flex: 1; margin: 0; width: auto; background-color: #FF5722; box-shadow: 0 6px 0 #E64A19">🧩짝맞추기</button>
         <button id="rank-speed-match-btn" class="menu-btn-rank">🏆</button>
       </div>
-
       <div style="display: flex; gap: 10px; width: 90%; max-width: 350px; margin-bottom: 12px; align-items: stretch;">
         <button id="menu-speed-btn" class="menu-btn" style="flex: 1; margin: 0; width: auto; background-color: #9C27B0; box-shadow: 0 6px 0 #7B1FA2">⚡심플퀴즈</button>
         <button id="rank-speed-btn" class="menu-btn-rank">🏆</button>
       </div>
-
       <div style="display: flex; gap: 10px; width: 90%; max-width: 350px; margin-bottom: 12px; align-items: stretch;">
         <button id="menu-fish-btn" class="menu-btn" style="flex: 1; margin: 0; width: auto; background-color: #4caf50; box-shadow: 0 6px 0 #388e3c">🎣이모지 낚시</button>
         <button id="rank-fish-btn" class="menu-btn-rank">🏆</button>
       </div>
 
       <button id="menu-go-back-set-btn" class="menu-btn" style="background-color: #9e9e9e; box-shadow: 0 6px 0 #616161; margin-top: 15px;">⬅️ 다른 세트 고르기</button>
+    </div>
+
+    <div id="list-screen" class="screen">
+      <h2 id="list-title" style="margin-bottom: 10px; font-size: 26px;">학습 목록</h2>
+      <div style="display: flex; gap: 10px; margin-bottom: 15px; width: 95%; max-width: 500px;">
+        <button id="toggle-word-btn" style="flex: 1; margin: 0; background-color: #9c27b0; box-shadow: 0 5px 0 #7b1fa2; font-size: 16px; padding: 10px;">영어 가리기</button>
+        <button id="toggle-mean-btn" style="flex: 1; margin: 0; background-color: #ff9800; box-shadow: 0 5px 0 #f57c00; font-size: 16px; padding: 10px;">뜻 가리기</button>
+      </div>
+      <div id="word-list-container" style="width: 95%; max-width: 500px; height: 55vh; background: white; border: 3px solid #8BC34A; border-radius: 15px; overflow-y: auto; padding: 10px; box-sizing: border-box; box-shadow: inset 0 4px 10px rgba(0,0,0,0.05);"></div>
+      <button id="list-back-btn" class="menu-btn" style="background-color: #9e9e9e; box-shadow: 0 6px 0 #616161; margin-top: 20px;">⬅️ 메뉴로 돌아가기</button>
     </div>
 
     <div id="exam-option-screen" class="screen">
@@ -184,43 +187,6 @@
       <button id="exam-option-back-btn" class="menu-btn" style="background-color: #9e9e9e; box-shadow: 0 6px 0 #616161; margin-top: 20px;">⬅️ 메뉴로 돌아가기</button>
     </div>
 
-    <div id="exam1-screen" class="screen" style="background: #E8EAF6; padding: 0;">
-      <div style="width: 100%; display: flex; justify-content: space-between; padding: 15px 20px; box-sizing: border-box; border-bottom: 4px dashed #3F51B5; background: rgba(255,255,255,0.8); margin-bottom: 20px;">
-        <span id="exam1-progress" style="font-size: 24px; font-weight: bold; color: #3F51B5;">1 / 10</span>
-        <span id="exam1-score" style="font-size: 24px; font-weight: bold; color: #E91E63;">점수: 0</span>
-      </div>
-      <div id="exam1-ko" class="exam-ko-text">한글 문장</div>
-      
-      <p style="font-size:14px; color:#666; margin-bottom:5px;">단어를 터치하면 위로 올라갑니다!</p>
-      <div id="exam1-slots" class="exam-word-slots"></div>
-      <div id="exam1-pool" class="exam-word-pool"></div>
-      
-      <button id="exam1-submit-btn" style="background-color: #4CAF50; box-shadow: 0 6px 0 #388E3C; width: 80%; max-width: 400px; display: none;">정답 확인!</button>
-    </div>
-
-    <div id="exam2-screen" class="screen" style="background: #FCE4EC; padding: 0;">
-      <div style="width: 100%; display: flex; justify-content: space-between; padding: 15px 20px; box-sizing: border-box; border-bottom: 4px dashed #E91E63; background: rgba(255,255,255,0.8); margin-bottom: 20px;">
-        <span id="exam2-progress" style="font-size: 24px; font-weight: bold; color: #E91E63;">1 / 10</span>
-        <span id="exam2-score" style="font-size: 24px; font-weight: bold; color: #3F51B5;">점수: 0</span>
-      </div>
-      <div id="exam2-ko" class="exam-ko-text">한글 문장</div>
-      
-      <p style="font-size:14px; color:#666; margin-bottom:5px;">대소문자, 기호 무시하고 스펠링만 맞으면 정답!</p>
-      <input type="text" id="exam2-input" class="exam-input" placeholder="영어로 입력하세요" autocomplete="off" autocorrect="off" spellcheck="false"/>
-      
-      <button id="exam2-submit-btn" style="background-color: #4CAF50; box-shadow: 0 6px 0 #388E3C; width: 80%; max-width: 400px;">정답 제출!</button>
-    </div>
-
-    <div id="list-screen" class="screen">
-      <h2 id="list-title" style="margin-bottom: 10px; font-size: 26px;">학습 목록</h2>
-      <div style="display: flex; gap: 10px; margin-bottom: 15px; width: 95%; max-width: 500px;">
-        <button id="toggle-word-btn" style="flex: 1; margin: 0; background-color: #9c27b0; box-shadow: 0 5px 0 #7b1fa2; font-size: 16px; padding: 10px;">영어 가리기</button>
-        <button id="toggle-mean-btn" style="flex: 1; margin: 0; background-color: #ff9800; box-shadow: 0 5px 0 #f57c00; font-size: 16px; padding: 10px;">뜻 가리기</button>
-      </div>
-      <div id="word-list-container" style="width: 95%; max-width: 500px; height: 55vh; background: white; border: 3px solid #8BC34A; border-radius: 15px; overflow-y: auto; padding: 10px; box-sizing: border-box; box-shadow: inset 0 4px 10px rgba(0,0,0,0.05);"></div>
-      <button id="list-back-btn" class="menu-btn" style="background-color: #9e9e9e; box-shadow: 0 6px 0 #616161; margin-top: 20px;">⬅️ 메뉴로 돌아가기</button>
-    </div>
-
     <div id="fc-option-screen" class="screen">
       <h2>어떤 순서로 학습할까요?</h2>
       <button id="fc-order-btn" class="menu-btn">⬇️등록된 순서대로</button>
@@ -233,6 +199,29 @@
       <button id="time-3m-btn" class="menu-btn">⏱️3분 스피드 모드</button>
       <button id="time-5m-btn" class="menu-btn" style="background-color: #ff9800; box-shadow: 0 6px 0 #f57c00">⏱️5분 진득한 모드</button>
       <button id="time-option-back-btn" class="menu-btn" style="background-color: #9e9e9e; box-shadow: 0 6px 0 #616161; margin-top: 15px;">⬅️뒤로 가기</button>
+    </div>
+
+    <div id="exam1-screen" class="screen" style="background: #E8EAF6; padding: 0;">
+      <div style="width: 100%; display: flex; justify-content: space-between; padding: 15px 20px; box-sizing: border-box; border-bottom: 4px dashed #3F51B5; background: rgba(255,255,255,0.8); margin-bottom: 20px;">
+        <span id="exam1-progress" style="font-size: 24px; font-weight: bold; color: #3F51B5;">1 / 10</span>
+        <span id="exam1-score" style="font-size: 24px; font-weight: bold; color: #E91E63;">점수: 0</span>
+      </div>
+      <div id="exam1-ko" class="exam-ko-text">한글 문장</div>
+      <p style="font-size:14px; color:#666; margin-bottom:5px;">단어를 터치하면 위로 올라갑니다!</p>
+      <div id="exam1-slots" class="exam-word-slots"></div>
+      <div id="exam1-pool" class="exam-word-pool"></div>
+      <button id="exam1-submit-btn" style="background-color: #4CAF50; box-shadow: 0 6px 0 #388E3C; width: 80%; max-width: 400px; display: none;">정답 확인!</button>
+    </div>
+
+    <div id="exam2-screen" class="screen" style="background: #FCE4EC; padding: 0;">
+      <div style="width: 100%; display: flex; justify-content: space-between; padding: 15px 20px; box-sizing: border-box; border-bottom: 4px dashed #E91E63; background: rgba(255,255,255,0.8); margin-bottom: 20px;">
+        <span id="exam2-progress" style="font-size: 24px; font-weight: bold; color: #E91E63;">1 / 10</span>
+        <span id="exam2-score" style="font-size: 24px; font-weight: bold; color: #3F51B5;">점수: 0</span>
+      </div>
+      <div id="exam2-ko" class="exam-ko-text">한글 문장</div>
+      <p style="font-size:14px; color:#666; margin-bottom:5px;">대소문자, 기호 무시하고 스펠링만 맞으면 정답!</p>
+      <input type="text" id="exam2-input" class="exam-input" placeholder="영어로 입력하세요" autocomplete="off" autocorrect="off" spellcheck="false"/>
+      <button id="exam2-submit-btn" style="background-color: #4CAF50; box-shadow: 0 6px 0 #388E3C; width: 80%; max-width: 400px;">정답 제출!</button>
     </div>
 
     <div id="flashcard-screen" class="screen">
