@@ -60,27 +60,15 @@ button:active { transform: translateY(6px); box-shadow: none; }
 .rank-item:last-child { border-bottom: none; }
 .rank-medal { font-size: 24px; font-weight: bold; width: 40px; }
 
-/* 🌟 시험대비 모드용 CSS (글씨색 검정으로 명확히 수정!) */
-.exam-ko-text { font-size: 26px; font-weight: bold; color: #333; margin-bottom: 20px; text-align: center; word-break: keep-all; width: 90%; max-width: 600px;}
-.exam-word-pool { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; min-height: 80px; margin-bottom: 20px; padding: 15px; background: rgba(255,255,255,0.6); border-radius: 15px; width: 95%; max-width: 600px; box-shadow: inset 0 2px 5px rgba(0,0,0,0.1); }
-.exam-word-slots { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; min-height: 80px; margin-bottom: 20px; padding: 15px; background: rgba(255,255,255,0.9); border: 3px dashed #3F51B5; border-radius: 15px; width: 95%; max-width: 600px; }
-
-/* 🚨 버그 수정: 카드 글씨가 무조건 까만색(#333)으로 보이게 강제 고정! */
-.exam-card { padding: 12px 20px; font-size: 20px; font-weight: bold; background: white; color: #333 !important; border: 3px solid #ccc; border-radius: 12px; cursor: pointer; box-shadow: 0 5px 0 #ccc; transition: 0.1s; font-family: 'Paperlogy-4Regular'; margin: 0;}
-.exam-card:active { transform: translateY(5px); box-shadow: none; }
-
-.exam-input { width: 90%; max-width: 500px; font-size: 26px; padding: 15px; border: 4px solid #FF9800; border-radius: 15px; outline: none; margin-bottom: 20px; font-family: 'Paperlogy-4Regular'; text-align: center; color: #333; }
-.exam-input.wrong { animation: shake 0.4s; border-color: #F44336; background-color: #FFCDD2; }
-
-/* 스피드 짝맞추기 카드 스타일 */
+/* 🌟 스피드 짝맞추기 카드 스타일 */
 .sm-card-wrapper { flex: 1; cursor: pointer; width: 100%; display: flex; overflow: hidden; margin-bottom: 2px;}
-.sm-card { flex: 1; background: white; color: #333; border: 3px solid #ddd; border-radius: 10px; display: flex; justify-content: center; align-items: center; text-align: center; font-weight: bold; padding: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: 0.1s; line-height: 1.15; width: 100%; height: 100%; word-break: break-word; overflow: hidden;}
+.sm-card { flex: 1; background: white; border: 3px solid #ddd; border-radius: 10px; display: flex; justify-content: center; align-items: center; text-align: center; font-weight: bold; padding: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: 0.1s; line-height: 1.15; width: 100%; height: 100%; word-break: break-word; overflow: hidden; color: #333;}
 .sm-card.selected { border-color: #FF5722; background: #FFCCBC; transform: scale(1.05); }
 .sm-card.wrong { animation: shake 0.4s; background: #FFCDD2; border-color: #F44336; }
 .sm-card.matched { opacity: 0; pointer-events: none; transition: opacity 0.3s; transform: scale(0); }
 .sm-card-wrapper.disabled { pointer-events: none; opacity: 0.6; }
 
-/* 학습 목록 보기 스타일 */
+/* 🌟 학습 목록 보기 리스트 스타일 */
 .word-list-item { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px dashed #eee; padding: 12px 5px; gap: 10px; }
 .word-list-item:last-child { border-bottom: none; }
 .word-text-col { flex: 1; text-align: left; font-size: 18px; color: #333; font-weight: bold; word-break: keep-all; }
@@ -88,7 +76,8 @@ button:active { transform: translateY(6px); box-shadow: none; }
 .star-col { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 40px; }
 .star-count { font-size: 14px; font-weight: bold; color: #999; margin-top: 2px; }
 .hidden-text { background-color: #ccc !important; color: transparent !important; border-radius: 5px; user-select: none; }
-.star-btn { font-size: 28px; background: none; border: none; padding: 0; cursor: pointer; outline: none; transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); -webkit-tap-highlight-color: transparent; color: #ccc;}
+
+.star-btn { font-size: 28px; background: none; border: none; padding: 0; cursor: pointer; outline: none; transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); -webkit-tap-highlight-color: transparent; }
 .fire-0 { filter: grayscale(100%); opacity: 0.4; transform: scale(0.9); }
 .fire-1 { filter: grayscale(0%); color: #FFEB3B; text-shadow: 0 0 5px rgba(255,235,59,0.5); transform: scale(1.05); }
 .fire-2 { color: #FFC107; text-shadow: 0 0 10px #FF9800; transform: scale(1.15); }
@@ -96,6 +85,15 @@ button:active { transform: translateY(6px); box-shadow: none; }
 .fire-4 { color: #F44336; text-shadow: 0 -5px 15px #FF0000, 0 -12px 20px #FF9800, 0 -18px 25px #FFEB3B; transform: scale(1.35); animation: flame-shake 0.4s infinite alternate; }
 .fire-max { color: #fff; text-shadow: 0 0 8px #fff, 0 -8px 20px #FF0000, 0 -18px 30px #FF9800, 0 -28px 40px #FFEB3B; transform: scale(1.5); animation: flame-shake 0.2s infinite alternate; }
 @keyframes flame-shake { 0% { transform: scale(1.3) rotate(-3deg); } 100% { transform: scale(1.4) rotate(3deg); } }
+
+/* 🌟 시험대비 모드용 전용 CSS (글씨색 검은색 강제 고정!) */
+.exam-ko-text { font-size: 26px; font-weight: bold; color: #333; margin-bottom: 20px; text-align: center; word-break: keep-all; width: 90%; max-width: 600px;}
+.exam-word-pool { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; min-height: 80px; margin-bottom: 20px; padding: 15px; background: rgba(255,255,255,0.6); border-radius: 15px; width: 95%; max-width: 600px; box-shadow: inset 0 2px 5px rgba(0,0,0,0.1); }
+.exam-word-slots { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; min-height: 80px; margin-bottom: 20px; padding: 15px; background: rgba(255,255,255,0.9); border: 3px dashed #3F51B5; border-radius: 15px; width: 95%; max-width: 600px; }
+.exam-card { padding: 12px 20px; font-size: 20px; font-weight: bold; background: white; border: 3px solid #ccc; border-radius: 12px; cursor: pointer; box-shadow: 0 5px 0 #ccc; transition: 0.1s; font-family: 'Paperlogy-4Regular'; margin: 0; color: #333 !important;}
+.exam-card:active { transform: translateY(5px); box-shadow: none; }
+.exam-input { width: 90%; max-width: 500px; font-size: 26px; padding: 15px; border: 4px solid #FF9800; border-radius: 15px; outline: none; margin-bottom: 20px; font-family: 'Paperlogy-4Regular'; text-align: center; color: #333;}
+.exam-input.wrong { animation: shake 0.4s; border-color: #F44336; background-color: #FFCDD2; }
 
 @media screen and (max-height: 750px), screen and (max-width: 500px) {
   h1 { font-size: 30px; margin-top: 20px; }
@@ -128,3 +126,7 @@ button:active { transform: translateY(6px); box-shadow: none; }
 @keyframes explodeAnim { 0% { transform: scale(1); filter: brightness(1); } 50% { transform: scale(1.5) rotate(10deg); filter: brightness(2); opacity: 1;} 100% { transform: scale(2.5) rotate(-10deg); filter: brightness(3); opacity: 0; } }
 @keyframes popIn { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 .sq-fly-in { animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+.cm-fly-left { animation: flyLeft 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+.cm-fly-right { animation: flyRight 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+@keyframes flyLeft { from { transform: translateX(-100vw); } to { transform: translateX(0); } }
+@keyframes flyRight { from { transform: translateX(100vw); } to { transform: translateX(0); } }
