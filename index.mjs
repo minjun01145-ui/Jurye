@@ -536,4 +536,209 @@ async function renderAdminFeedbackList() {
     const qSnap = await getDocs(collection(db, "feedback")); let fList = []; qSnap.forEach(doc => fList.push({ id: doc.id, ...doc.data() })); fList.sort((a,b) => b.timestamp - a.timestamp); 
     listEl.innerHTML = ""; if(fList.length === 0) { listEl.innerHTML = "<p style='text-align:center; margin-top:50px;'>아직 등록된 의견이 없습니다.</p>"; return; }
     fList.forEach(f => { const date = new Date(f.timestamp).toLocaleString(); listEl.innerHTML += `<div style="border-bottom: 2px dashed #ddd; padding: 10px 5px; margin-bottom: 10px;"><div style="font-size:12px; color:#888; margin-bottom:5px;">${date}</div><div style="font-weight:bold; margin-bottom:5px;">${f.emoji} ${f.nickname} <span style="font-size:12px; font-weight:normal; color:#666;">(${f.stdId})</span></div><div style="font-size:16px; color:#333; line-height:1.4;">${f.text}</div></div>`; });
-  } catch(e) { listEl.innerHTML = "<p>에
+  } catch(e) { listEl.innerHTML = "<p>에러가 발생했습니다.</p>"; }
+}
+
+// ==========================================
+// 8. 기존 싱글 플레이 및 게임 메뉴 라우팅
+// ==========================================
+bindClick("menu-list-btn", () => { playSound("click"); isWordHidden = false; isMeanHidden = false; document.getElementById("toggle-word-btn").innerText = "영어 가리기"; document.getElementById("toggle-mean-btn").innerText = "뜻 가리기"; renderWordList(); showScreen("list-screen"); });
+bindClick("list-back-btn", () => { playSound("click"); showScreen("menu-screen"); });
+bindClick("toggle-word-btn", () => { playSound("click"); isWordHidden = !isWordHidden; document.getElementById("toggle-word-btn").innerText = isWordHidden ? "영어 보이기" : "영어 가리기"; document.querySelectorAll(".word-text-col span").forEach(el => { if(isWordHidden) el.classList.add("hidden-text"); else el.classList.remove("hidden-text"); }); });
+bindClick("toggle-mean-btn", () => { playSound("click"); isMeanHidden = !isMeanHidden; document.getElementById("toggle-mean-btn").innerText = isMeanHidden ? "뜻 보이기" : "뜻 가리기"; document.querySelectorAll(".mean-text-col span").forEach(el => { if(isMeanHidden) el.classList.add("hidden-text"); else el.classList.remove("hidden-text"); }); });
+
+function getStarClass(count) { if (count === 0) return "fire-0"; if (count === 1) return "fire-1"; if (count === 2) return "fire-2"; if (count <= 4) return "fire-3"; if (count <= 7) return "fire-4"; return "fire-max"; }
+function renderWordList() {
+  document.getElementById("list-title").innerText = `[ ${currentSetTitle} ] 목록`; const container = document.getElementById("word-list-container"); container.innerHTML = "";
+  const storageKey = `stars_${currentUser.stdId}_${currentSetId}`; try { const stored = localStorage.getItem(storageKey); if (stored) starData = JSON.parse(stored); else starData = {}; } catch(e) {}
+  wordList.forEach((word, idx) => {
+    const wId = `word_${idx}`; if(starData[wId] === undefined) starData[wId] = 0; 
+    const itemDiv = document.createElement("div"); itemDiv.className = "word-list-item"; const wordCol = document.createElement("div"); wordCol.className = "word-text-col";
+    const wSpan = document.createElement("span"); wSpan.innerText = word.en; if(isWordHidden) wSpan.classList.add("hidden-text"); wordCol.appendChild(wSpan);
+    const meanCol = document.createElement("div"); meanCol.className = "mean-text-col"; const mSpan = document.createElement("span"); mSpan.innerText = word.ko; if(isMeanHidden) mSpan.classList.add("hidden-text"); meanCol.appendChild(mSpan);
+    const starCol = document.createElement("div"); starCol.className = "star-col"; const starBtn = document.createElement("button"); starBtn.className = `star-btn ${getStarClass(starData[wId])}`; starBtn.innerText = "⭐";
+    const countSpan = document.createElement("span"); countSpan.className = "star-count"; countSpan.innerText = starData[wId] > 0 ? starData[wId] : "";
+    starBtn.onclick = () => { playSound("click"); starData[wId]++; starBtn.className = `star-btn ${getStarClass(starData[wId])}`; countSpan.innerText = starData[wId]; try { localStorage.setItem(storageKey, JSON.stringify(starData)); } catch(e){} };
+    starCol.appendChild(starBtn); starCol.appendChild(countSpan); itemDiv.appendChild(wordCol); itemDiv.appendChild(meanCol); itemDiv.appendChild(starCol); container.appendChild(itemDiv);
+  });
+}
+
+bindClick("menu-exam-btn", () => { playSound("click"); showScreen("exam-option-screen"); });
+bindClick("exam-option-back-btn", () => { playSound("click"); showScreen("menu-screen"); });
+bindClick("exam1-btn", () => { playSound("click"); currentGameMode = "exam1"; startExamCountdown(startExam1Logic); });
+bindClick("exam2-btn", () => { playSound("click"); currentGameMode = "exam2"; startExamCountdown(startExam2Logic); });
+bindClick("menu-fc-btn", () => { playSound("click"); currentGameMode = "fc"; showScreen("fc-option-screen"); });
+bindClick("fc-order-btn", () => { playSound("click"); fcIsRandom = false; startFlashcard(); });
+bindClick("fc-random-btn", () => { playSound("click"); fcIsRandom = true; startFlashcard(); });
+bindClick("fc-option-back-btn", () => { playSound("click"); showScreen("menu-screen"); }); 
+bindClick("menu-memory-btn", () => { playSound("click"); currentGameMode = "memory"; showScreen("time-option-screen"); });
+bindClick("menu-speed-match-btn", () => { playSound("click"); currentGameMode = "speed-match"; showScreen("time-option-screen"); });
+bindClick("menu-speed-btn", () => { playSound("click"); currentGameMode = "speed"; showScreen("time-option-screen"); });
+bindClick("menu-fish-btn", () => { playSound("click"); currentGameMode = "fish"; showScreen("time-option-screen"); });
+bindClick("time-option-back-btn", () => { playSound("click"); showScreen("menu-screen"); }); 
+bindClick("time-3m-btn", () => { playSound("click"); routeGameStart(3); });
+bindClick("time-5m-btn", () => { playSound("click"); routeGameStart(5); });
+
+// ==========================================
+// 9. 기존 게임 로직들 (짝맞추기 집중 수정)
+// ==========================================
+
+// 🌟 스피드 짝맞추기 로직 (라이브 모드 대응으로 업그레이드됨!)
+function loadSpeedMatchRound() {
+  smPairsFound = 0; smSelected = []; const leftCol = document.getElementById("sm-left-col"); const rightCol = document.getElementById("sm-right-col");
+  leftCol.innerHTML = ""; rightCol.innerHTML = ""; 
+  
+  if(currentLiveStatus !== "practice") { showGamePraise(0, `라운드 ${smRound}!`, "#FF5722"); }
+  
+  let shuffled = [...wordList].sort(() => 0.5 - Math.random()); let roundWords = shuffled.slice(0, 4);
+  let leftPool = roundWords.map(w => ({ text: w.en, id: w.en, side: 'left' })).sort(() => 0.5 - Math.random());
+  let rightPool = roundWords.map(w => ({ text: w.ko, id: w.en, side: 'right' })).sort(() => 0.5 - Math.random());
+  leftPool.forEach(item => leftCol.appendChild(createSmCard(item))); rightPool.forEach(item => rightCol.appendChild(createSmCard(item)));
+}
+function createSmCard(item) {
+  const wrapper = document.createElement("div"); wrapper.className = `sm-card-wrapper`; const card = document.createElement("div"); card.className = `sm-card`; card.innerText = item.text;
+  card.style.fontSize = item.text.length > 30 ? "14px" : (item.text.length > 15 ? "18px" : "24px"); wrapper.appendChild(card);
+  wrapper.onclick = () => {
+    if (isGamePaused || card.classList.contains("selected") || card.classList.contains("matched")) return;
+    if (smSelected.length === 1 && smSelected[0].side === item.side) { smSelected[0].el.classList.remove("selected"); smSelected = []; }
+    playSound("click"); card.classList.add("selected"); smSelected.push({ id: item.id, side: item.side, el: card, wrapper }); updateSmSideAvailability();
+    if (smSelected.length === 2) { isGamePaused = true; checkSmMatch(); }
+  }; return wrapper;
+}
+function updateSmSideAvailability() {
+  const leftWrappers = document.querySelectorAll("#sm-left-col .sm-card-wrapper"); const rightWrappers = document.querySelectorAll("#sm-right-col .sm-card-wrapper");
+  leftWrappers.forEach(w => w.classList.remove("disabled")); rightWrappers.forEach(w => w.classList.remove("disabled"));
+  if (smSelected.length === 1) { const sideToDisable = smSelected[0].side; if (sideToDisable === "left") leftWrappers.forEach(w => w.classList.add("disabled")); else rightWrappers.forEach(w => w.classList.add("disabled")); }
+}
+function checkSmMatch() {
+  let [c1, c2] = smSelected;
+  if (c1.id === c2.id) { 
+    playSound("success"); let earnedScore = calcSpeedBonus(); gameScore += earnedScore; 
+    document.getElementById("sm-score").innerText = `점수: ${gameScore}`; 
+    updateMyLiveScore(); // 🌟 라이브 중이면 DB 즉시 전송!
+
+    if(currentLiveStatus !== "practice") showGamePraise(earnedScore);
+    
+    c1.el.classList.add("matched"); c2.el.classList.add("matched"); smPairsFound++; smSelected = []; updateSmSideAvailability();
+    
+    // 아이템 로직 (관리자가 아이템 '사용함'으로 설정했을 때만 발동!)
+    let useItem = liveGameConfig.items; // 라이브 모드 설정 참조
+    if(currentLiveStatus === "lobby" || currentLiveStatus === "") useItem = true; // 싱글일때는 무조건 켬
+    
+    if (useItem && Math.random() < 0.3 && currentLiveStatus !== "practice") {
+      triggerTreasureEvent(() => { checkSmRoundEnd(); isGamePaused = false; }); 
+    } else { checkSmRoundEnd(); isGamePaused = false; }
+  } else { 
+    playSound("wrong"); let penalty = calcSpeedBonus(); gameScore = Math.max(0, gameScore - penalty); 
+    document.getElementById("sm-score").innerText = `점수: ${gameScore}`;
+    updateMyLiveScore(); // 🌟 감점도 DB 즉시 전송!
+
+    if(currentLiveStatus !== "practice") showBuffMsg("오답!", `-${penalty}점 ㅠㅠ`, 244, 67, 54);
+    c1.el.classList.add("wrong"); c2.el.classList.add("wrong");
+    setTimeout(() => { c1.el.classList.remove("selected", "wrong"); c2.el.classList.remove("selected", "wrong"); smSelected = []; updateSmSideAvailability(); isGamePaused = false; }, 400); 
+  }
+}
+function checkSmRoundEnd() { if (smPairsFound === 4) { smRound++; setTimeout(loadSpeedMatchRound, 500); } }
+
+// -----------------------------
+// 이하 생략할 수 없는 기존 게임/유틸 코드들 압축 (기능 100% 동일)
+// -----------------------------
+function startExam1Logic() { examQueue = [...wordList].sort(() => 0.5 - Math.random()); examCurrentIndex = 0; document.getElementById("exam1-score").innerText = `점수: 0`; loadExam1Question(); }
+function loadExam1Question() { if(examCurrentIndex >= examQueue.length) { currentUser.score = gameScore; document.getElementById("result-detail").innerText = `문장 조립을 모두 완료했습니다!`; goResult(); return; } let q = examQueue[examCurrentIndex]; document.getElementById("exam1-progress").innerText = `${examCurrentIndex + 1} / ${examQueue.length}`; document.getElementById("exam1-ko").innerText = q.ko; let words = q.en.split(' ').filter(w => w.trim() !== ''); examWords = words.map((w, i) => ({ id: i, text: w })).sort(() => 0.5 - Math.random()); examSlots = []; renderExam1Cards(); }
+function renderExam1Cards() { const pool = document.getElementById("exam1-pool"); const slots = document.getElementById("exam1-slots"); const submitBtn = document.getElementById("exam1-submit-btn"); pool.innerHTML = ''; slots.innerHTML = ''; examWords.forEach(item => { let btn = document.createElement("button"); btn.className = "exam-card"; btn.innerText = item.text; btn.onclick = () => { if(isGamePaused) return; playSound("click"); examSlots.push(item); examWords = examWords.filter(w => w.id !== item.id); renderExam1Cards(); }; pool.appendChild(btn); }); examSlots.forEach(item => { let btn = document.createElement("button"); btn.className = "exam-card"; btn.innerText = item.text; btn.style.backgroundColor = "#E8EAF6"; btn.style.borderColor = "#3F51B5"; btn.onclick = () => { if(isGamePaused) return; playSound("click"); examWords.push(item); examSlots = examSlots.filter(w => w.id !== item.id); renderExam1Cards(); }; slots.appendChild(btn); }); if (examWords.length === 0 && examSlots.length > 0) submitBtn.style.display = "block"; else submitBtn.style.display = "none"; }
+bindClick("exam1-submit-btn", () => { if(isGamePaused) return; isGamePaused = true; let answer = examSlots.map(item => item.text).join(' '); let target = examQueue[examCurrentIndex].en.split(' ').filter(w => w.trim()!== '').join(' '); if (answer === target) { playSound("success"); let earned = 100; gameScore += earned; document.getElementById("exam1-score").innerText = `점수: ${gameScore}`; showGamePraise(earned, "정답입니다!", "#4CAF50"); setTimeout(() => { examCurrentIndex++; isGamePaused = false; loadExam1Question(); }, 1200); } else { playSound("wrong"); gameScore = Math.max(0, gameScore - 50); document.getElementById("exam1-score").innerText = `점수: ${gameScore}`; showGamePraise(0, "순서가 틀렸어요!<br>다시 해보세요.", "#F44336"); setTimeout(() => { examWords = [...examWords, ...examSlots]; examSlots = []; renderExam1Cards(); isGamePaused = false; }, 1200); } });
+function startExam2Logic() { examQueue = [...wordList].sort(() => 0.5 - Math.random()); examCurrentIndex = 0; document.getElementById("exam2-score").innerText = `점수: 0`; loadExam2Question(); }
+function loadExam2Question() { if(examCurrentIndex >= examQueue.length) { currentUser.score = gameScore; document.getElementById("result-detail").innerText = `문장 직접쓰기를 모두 완료했습니다!`; goResult(); return; } let q = examQueue[examCurrentIndex]; document.getElementById("exam2-progress").innerText = `${examCurrentIndex + 1} / ${examQueue.length}`; document.getElementById("exam2-ko").innerText = q.ko; document.getElementById("exam2-input").value = ''; document.getElementById("exam2-input").classList.remove("wrong"); setTimeout(()=> document.getElementById("exam2-input").focus(), 100); }
+bindClick("exam2-submit-btn", () => { if(isGamePaused) return; isGamePaused = true; let inputVal = document.getElementById("exam2-input").value; let target = examQueue[examCurrentIndex].en; let normInput = inputVal.toLowerCase().replace(/[^a-z0-9]/gi, ''); let normTarget = target.toLowerCase().replace(/[^a-z0-9]/gi, ''); if (normInput === normTarget && normTarget.length > 0) { playSound("success"); let earned = 100; gameScore += earned; document.getElementById("exam2-score").innerText = `점수: ${gameScore}`; showGamePraise(earned, "정답입니다!", "#4CAF50"); setTimeout(() => { examCurrentIndex++; isGamePaused = false; loadExam2Question(); }, 1200); } else { playSound("wrong"); gameScore = Math.max(0, gameScore - 50); document.getElementById("exam2-score").innerText = `점수: ${gameScore}`; const inputEl = document.getElementById("exam2-input"); inputEl.classList.add("wrong"); showGamePraise(0, "틀렸어요!<br>스펠링을 확인해보세요.", "#F44336"); setTimeout(() => { inputEl.classList.remove("wrong"); isGamePaused = false; inputEl.focus(); }, 1200); } });
+const exam2InputBox = document.getElementById("exam2-input"); if(exam2InputBox) { exam2InputBox.addEventListener("keypress", function(event) { if (event.key === "Enter") { event.preventDefault(); document.getElementById("exam2-submit-btn").click(); } }); }
+function startFlashcard() { if (!wordList || wordList.length === 0) return alert("단어장이 비어 있습니다!"); fcQueue = fcIsRandom ? [...wordList].sort(() => 0.5 - Math.random()) : [...wordList]; fcStartTime = Date.now(); fcKnown = 0; fcScore = 0; unknownWordsHistory = []; isRetryPhase = false; currentUser.caughtEmojis = ""; document.getElementById("fc-score").innerText = "점수: 0"; document.getElementById("top-left-controls").style.display = "flex"; showScreen("flashcard-screen"); nextFlashcard("fly-right-in"); }
+function autoFontSize(text) { return text.length > 40 ? "18px" : (text.length > 20 ? "24px" : "32px"); }
+function updateFcUI() { let total = isRetryPhase ? unknownWordsHistory.length : wordList.length; let currentIdx = total - fcQueue.length + 1; if (currentIdx > total) currentIdx = total; document.getElementById("fc-progress").innerText = isRetryPhase ? `복습 모드: ${currentIdx} / ${total}` : `단어: ${currentIdx} / ${total}`; document.getElementById("fc-stats").innerText = `🟢 알아요: ${fcKnown}개 | 🔴 몰라요: ${unknownWordsHistory.length}개`; document.querySelectorAll(".retry-badge").forEach((el) => (el.style.display = isRetryPhase ? "block" : "none")); }
+function nextFlashcard(animClass) { if (fcQueue.length === 0) { if (!isRetryPhase && unknownWordsHistory.length > 0) { alert("지금부터는 몰라요를 눌렀던 카드들이에요! 이번에 맞추면 추가 점수 보너스!"); isRetryPhase = true; fcQueue = fcIsRandom ? [...unknownWordsHistory].sort(() => 0.5 - Math.random()) : [...unknownWordsHistory]; nextFlashcard("pop-in"); return; } else { currentUser.score = fcScore; document.getElementById("result-detail").innerText = `최종 깜빡이 점수입니다!`; goResult(); return; } } hasFlippedToCheck = false; document.getElementById("btn-know").classList.add("btn-disabled"); document.getElementById("btn-dont-know").classList.add("btn-disabled"); fcCurrent = fcQueue[0]; fcIsFlipped = false; updateFcUI(); let fcCard = document.getElementById("fc-card"); fcCard.classList.remove("is-flipped"); fcCard.className = `flash-card ${animClass}`; document.getElementById("fc-front").innerText = fcCurrent.en; document.getElementById("fc-front").style.fontSize = autoFontSize(fcCurrent.en); document.getElementById("fc-back").innerText = fcCurrent.ko; document.getElementById("fc-back").style.fontSize = autoFontSize(fcCurrent.ko); fcIsAnimating = true; cardAppearTime = Date.now(); setTimeout(() => { fcIsAnimating = false; fcCard.className = "flash-card"; }, 400); }
+bindClick("fc-card", () => { if (fcIsAnimating) return; playSound("click"); fcIsFlipped = !fcIsFlipped; let fcCard = document.getElementById("fc-card"); if (fcIsFlipped) { fcCard.classList.add("is-flipped"); hasFlippedToCheck = true; document.getElementById("btn-know").classList.remove("btn-disabled"); document.getElementById("btn-dont-know").classList.remove("btn-disabled"); } else { fcCard.classList.remove("is-flipped"); } });
+bindClick("btn-know", () => { if (!hasFlippedToCheck || fcIsAnimating) return; fcIsAnimating = true; playSound("click"); const reactTime = Date.now() - cardAppearTime; let speedBonus = Math.max(0, 150 - Math.floor(reactTime / 15)); let finalEarned = 100 + speedBonus; if (isRetryPhase) finalEarned += 100; fcScore += finalEarned; document.getElementById("fc-score").innerText = "점수: " + fcScore; document.getElementById("fc-card").className = "flash-card fly-left"; setTimeout(() => { fcQueue.shift(); fcKnown++; nextFlashcard("fly-right-in"); }, 400); });
+bindClick("btn-dont-know", () => { if (!hasFlippedToCheck || fcIsAnimating) return; fcIsAnimating = true; playSound("wrong"); if (!isRetryPhase) { const alreadySaved = unknownWordsHistory.find((w) => w.en === fcCurrent.en); if (!alreadySaved) unknownWordsHistory.push(fcCurrent); } let cardEl = document.getElementById("fc-card"); let btnEl = document.getElementById("btn-dont-know"); const cardRect = cardEl.getBoundingClientRect(); const btnRect = btnEl.getBoundingClientRect(); const moveX = btnRect.left + btnRect.width / 2 - (cardRect.left + cardRect.width / 2); const moveY = btnRect.top + btnRect.height / 2 - (cardRect.top + cardRect.height / 2); cardEl.style.transition = "all 0.4s cubic-bezier(0.6, -0.28, 0.735, 0.045)"; cardEl.style.transform = `translate(${moveX}px, ${moveY}px) scale(0) rotate(180deg)`; cardEl.style.opacity = "0"; setTimeout(() => { cardEl.style.transition = "transform 0.4s cubic-bezier(0.4, 0.0, 0.2, 1)"; cardEl.style.transform = ""; cardEl.style.opacity = "1"; fcQueue.push(fcQueue.shift()); nextFlashcard("pop-in"); }, 400); });
+function updateMemoryUI() { const m = String(Math.floor(gameTimeRemaining / 60)).padStart(2, "0"); const s = String(gameTimeRemaining % 60).padStart(2, "0"); document.getElementById("memory-timer").innerText = `🕒 ${m}:${s}`; document.getElementById("memory-score").innerText = `점수: ${gameScore}`; }
+function startMemoryLogic() { memoryRound = 1; updateMemoryUI(); gameTimerInterval = setInterval(() => { if (!isGamePaused) { gameTimeRemaining--; updateMemoryUI(); if (gameTimeRemaining <= 0) { currentUser.score = gameScore; document.getElementById("result-detail").innerText = `제한 시간 종료! 획득한 점수입니다!`; goResult(); } } }, 1000); loadMemoryRound(); }
+function loadMemoryRound() { memoryPairsFound = 0; memoryFlipped = []; const leftCol = document.getElementById("memory-left-col"); const rightCol = document.getElementById("memory-right-col"); leftCol.innerHTML = ""; rightCol.innerHTML = ""; showGamePraise(0, `라운드 ${memoryRound}!`, "#9C27B0"); let shuffled = [...wordList].sort(() => 0.5 - Math.random()); let roundWords = shuffled.slice(0, 4); let leftPool = roundWords.map(w => ({ text: w.en, id: w.en, side: 'left' })).sort(() => 0.5 - Math.random()); let rightPool = roundWords.map(w => ({ text: w.ko, id: w.en, side: 'right' })).sort(() => 0.5 - Math.random()); leftPool.forEach(item => leftCol.appendChild(createMemoryCard(item))); rightPool.forEach(item => rightCol.appendChild(createMemoryCard(item))); }
+function createMemoryCard(item) { const wrapper = document.createElement("div"); wrapper.className = `memory-card-wrapper`; const card = document.createElement("div"); card.className = `memory-card memory-card-${item.side}`; const front = document.createElement("div"); front.className = "memory-card-face memory-card-front"; front.innerText = "?"; const back = document.createElement("div"); back.className = "memory-card-face memory-card-back"; back.innerText = item.text; card.appendChild(front); card.appendChild(back); wrapper.appendChild(card); wrapper.onclick = () => { if (isGamePaused || card.classList.contains("flipped")) return; if (memoryFlipped.length === 1 && memoryFlipped[0].side === item.side) return; playSound("click"); card.classList.add("flipped"); memoryFlipped.push({ id: item.id, side: item.side, el: card, wrapper }); updateMemorySideAvailability(); if (memoryFlipped.length === 2) checkMemoryMatch(); }; return wrapper; }
+function updateMemorySideAvailability() { const leftWrappers = document.querySelectorAll("#memory-left-col .memory-card-wrapper"); const rightWrappers = document.querySelectorAll("#memory-right-col .memory-card-wrapper"); leftWrappers.forEach(w => w.classList.remove("disabled")); rightWrappers.forEach(w => w.classList.remove("disabled")); if (memoryFlipped.length === 1) { const sideToDisable = memoryFlipped[0].side; if (sideToDisable === "left") leftWrappers.forEach(w => w.classList.add("disabled")); else rightWrappers.forEach(w => w.classList.add("disabled")); } }
+function checkMemoryMatch() { isGamePaused = true; let [c1, c2] = memoryFlipped; if (c1.id === c2.id) { setTimeout(() => { playSound("success"); let earnedScore = calcSpeedBonus(); gameScore += earnedScore; updateMemoryUI(); showGamePraise(earnedScore); c1.el.classList.add("matched"); c2.el.classList.add("matched"); memoryPairsFound++; memoryFlipped = []; updateMemorySideAvailability(); if (Math.random() < 0.3) triggerTreasureEvent(() => { checkMemoryRoundEnd(); }); else { checkMemoryRoundEnd(); isGamePaused = false; } }, 600); } else { setTimeout(() => { playSound("wrong"); showGamePraise(0, "짝이 아니네요...<br><span style='font-size:24px; color:#ddd'>불이익은 없어요</span>", "#F44336"); setTimeout(() => { c1.el.classList.remove("flipped"); c2.el.classList.remove("flipped"); memoryFlipped = []; updateMemorySideAvailability(); isGamePaused = false; }, 1200); }, 600); } }
+function checkMemoryRoundEnd() { if (memoryPairsFound === 4) { memoryRound++; setTimeout(loadMemoryRound, 500); } }
+function updateSpeedUI() { const m = String(Math.floor(gameTimeRemaining / 60)).padStart(2, "0"); const s = String(gameTimeRemaining % 60).padStart(2, "0"); document.getElementById("speed-timer").innerText = `🕒 ${m}:${s}`; document.getElementById("speed-score").innerText = `점수: ${gameScore}`; }
+function startSpeedLogic() { updateSpeedUI(); gameTimerInterval = setInterval(() => { if (!isGamePaused) { gameTimeRemaining--; updateSpeedUI(); if (gameTimeRemaining <= 0) { currentUser.score = gameScore; document.getElementById("result-detail").innerText = `제한 시간 종료! 획득한 퀴즈 점수입니다!`; goResult(); } } }, 1000); loadNextSpeedQuiz(); }
+function loadNextSpeedQuiz() { sqCurrentWord = wordList[Math.floor(Math.random() * wordList.length)]; let wrongWord = wordList[Math.floor(Math.random() * wordList.length)]; while(wrongWord.ko === sqCurrentWord.ko && wordList.length > 1) wrongWord = wordList[Math.floor(Math.random() * wordList.length)]; const wordBox = document.getElementById("speed-word-card"); const btn1 = document.getElementById("speed-opt-1"); const btn2 = document.getElementById("speed-opt-2"); wordBox.innerText = sqCurrentWord.en; wordBox.style.fontSize = sqCurrentWord.en.length > 30 ? "20px" : (sqCurrentWord.en.length > 15 ? "26px" : "35px"); wordBox.classList.remove("sq-fly-in"); void wordBox.offsetWidth; wordBox.classList.add("sq-fly-in"); let opts = [ {text: sqCurrentWord.ko, isCorrect: true}, {text: wrongWord.ko, isCorrect: false} ]; opts.sort(() => 0.5 - Math.random()); [btn1, btn2].forEach((btn, idx) => { btn.innerText = opts[idx].text; btn.style.fontSize = opts[idx].text.length > 25 ? "14px" : (opts[idx].text.length > 15 ? "16px" : "22px"); btn.classList.remove("sq-fly-in"); void btn.offsetWidth; btn.classList.add("sq-fly-in"); btn.onclick = () => { if (isGamePaused) return; if(opts[idx].isCorrect) { playSound("success"); let earnedScore = calcSpeedBonus(); gameScore += earnedScore; updateSpeedUI(); showGamePraise(earnedScore); if (Math.random() < 0.3) { triggerTreasureEvent(() => { loadNextSpeedQuiz(); }); } else { loadNextSpeedQuiz(); } } else { playSound("wrong"); isGamePaused = true; let penalty = calcSpeedBonus(); gameScore -= penalty; updateSpeedUI(); const penaltyOverlay = document.getElementById("sq-penalty-overlay"); document.getElementById("sq-penalty-text").innerText = `틀렸어요... -${penalty}점`; document.getElementById("sq-penalty-answer").innerText = `정답: ${sqCurrentWord.ko}`; penaltyOverlay.style.display = "flex"; let count = 3; document.getElementById("sq-countdown").innerText = count; let pcd = setInterval(() => { count--; if(count > 0) { document.getElementById("sq-countdown").innerText = count; playSound("click"); } else { clearInterval(pcd); penaltyOverlay.style.display = "none"; isGamePaused = false; loadNextSpeedQuiz(); } }, 1000); } }; }); }
+function startFishingLogic() { document.getElementById("fish-bucket").innerHTML = ""; fishPond.innerHTML = ""; fishEmojisCaught = 0; caughtEmojisList = []; updateFishUI(); isFishing = true; gameTimerInterval = setInterval(() => { if(!isGamePaused){ gameTimeRemaining--; updateFishUI(); if (gameTimeRemaining <= 0) { currentUser.score = fishEmojisCaught * 50; currentUser.caughtEmojis = caughtEmojisList.join(""); document.getElementById("result-detail").innerText = `제한 시간 종료! 총 ${fishEmojisCaught}마리의 이모지를 낚았습니다!`; goResult(); } } }, 1000); fishCards = []; fishSelected = []; let shuffled = [...wordList].sort(() => 0.5 - Math.random()); for (let i = 0; i < 3; i++) { createFishEl(shuffled[i].en, "en", shuffled[i].en); createFishEl(shuffled[i].ko, "ko", shuffled[i].en); } createFishEl(shuffled[3].en, "en", shuffled[3].en); createFishEl(shuffled[4].ko, "ko", shuffled[4].en); lastFrameTime = performance.now(); requestAnimationFrame(moveFishes); }
+function updateFishUI() { const m = String(Math.floor(gameTimeRemaining / 60)).padStart(2, "0"); const s = String(gameTimeRemaining % 60).padStart(2, "0"); document.getElementById("fish-timer").innerText = `🕒 ${m}:${s}`; document.getElementById("fish-score").innerText = `이모지: ${fishEmojisCaught}마리`; }
+function animateFlyToBucket(emoji, startX, startY) { const flyEl = document.createElement("div"); flyEl.innerText = emoji; flyEl.style.position = "fixed"; flyEl.style.left = startX - 20 + "px"; flyEl.style.top = startY - 20 + "px"; flyEl.style.fontSize = "40px"; flyEl.style.zIndex = "1000"; flyEl.style.pointerEvents = "none"; flyEl.style.transition = "all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)"; document.body.appendChild(flyEl); const bucket = document.getElementById("fish-bucket"); const bRect = bucket.getBoundingClientRect(); const targetX = bRect.left + 10 + Math.random() * (bRect.width - 50); const targetY = bRect.top + 10 + Math.random() * (bRect.height - 50); void flyEl.offsetWidth; flyEl.style.left = targetX + "px"; flyEl.style.top = targetY + "px"; flyEl.style.transform = "scale(0.8) rotate(360deg)"; setTimeout(() => { flyEl.remove(); bucket.innerHTML += `<span>${emoji}</span>`; bucket.scrollTop = bucket.scrollHeight; }, 500); }
+function refillFishes() { let enIds = fishCards.filter((f) => f.lang === "en").map((f) => f.targetId); let koIds = fishCards.filter((f) => f.lang === "ko").map((f) => f.targetId); let matchCount = enIds.filter(id => koIds.includes(id)).length; let unmatchedEn = enIds.filter(id => !koIds.includes(id)); let unmatchedKo = koIds.filter(id => !enIds.includes(id)); let spawnList = []; if (matchCount >= 2) { let w1 = wordList[Math.floor(Math.random() * wordList.length)]; let w2 = wordList[Math.floor(Math.random() * wordList.length)]; while (w1.en === w2.en && wordList.length > 1) w2 = wordList[Math.floor(Math.random() * wordList.length)]; spawnList.push({ id: w1.en, lang: "en" }); spawnList.push({ id: w2.en, lang: "ko" }); } else if (matchCount === 1) { if (unmatchedEn.length > 0) spawnList.push({ id: unmatchedEn[0], lang: "ko" }); else if (unmatchedKo.length > 0) spawnList.push({ id: unmatchedKo[0], lang: "en" }); else { let w = wordList[Math.floor(Math.random() * wordList.length)]; spawnList.push({ id: w.en, lang: "ko" }); } let w2 = wordList[Math.floor(Math.random() * wordList.length)]; while (w2.en === spawnList[0].id && wordList.length > 1) w2 = wordList[Math.floor(Math.random() * wordList.length)]; spawnList.push({ id: w2.en, lang: spawnList[0].lang === "en" ? "ko" : "en" }); } else { let resolved = 0; if (unmatchedEn.length > 0) { spawnList.push({ id: unmatchedEn[0], lang: "ko" }); resolved++; } if (resolved < 2 && unmatchedEn.length > 1) { spawnList.push({ id: unmatchedEn[1], lang: "ko" }); resolved++; } if (resolved < 2 && unmatchedKo.length > 0) { spawnList.push({ id: unmatchedKo[0], lang: "en" }); resolved++; } if (resolved < 2 && unmatchedKo.length > 1) { spawnList.push({ id: unmatchedKo[1], lang: "en" }); resolved++; } } spawnList.forEach((item) => { let wordObj = wordList.find((w) => w.en === item.id); if (wordObj) createFishEl(item.lang === "en" ? wordObj.en : wordObj.ko, item.lang, item.id); }); }
+function createFishEl(text, lang, targetId) { const el = document.createElement("div"); el.className = "fish-card pop-in"; let emoji = allEmojis[Math.floor(Math.random() * allEmojis.length)]; let fontSize = text.length > 20 ? "11px" : text.length > 10 ? "13px" : "15px"; el.innerHTML = `<div class="fish-emoji">${emoji}</div><div class="fish-text" style="font-size:${fontSize}">${text}</div>`; fishPond.appendChild(el); let angle = Math.random() * Math.PI * 2; let speed = 80 + Math.random() * 80; let vx = Math.cos(angle) * speed; let vy = Math.sin(angle) * speed; let x = fishPond.clientWidth / 2 - 50 + (Math.random() * 40 - 20); let y = fishPond.clientHeight / 2 - 50 + (Math.random() * 40 - 20); let fishObj = { el, text, lang, targetId, emoji, x, y, vx, vy }; fishCards.push(fishObj); el.onclick = () => { if (isGamePaused || fishSelected.length >= 2 || fishSelected.includes(fishObj)) return; playSound("click"); el.classList.add("selected"); fishSelected.push(fishObj); if (fishSelected.length === 2) { let [f1, f2] = fishSelected; if (f1.lang !== f2.lang && f1.targetId === f2.targetId) { playSound("success"); showGamePraise(0, praises[Math.floor(Math.random() * praises.length)], "#4CAF50"); fishEmojisCaught += 2; updateFishUI(); caughtEmojisList.push(f1.emoji, f2.emoji); const rect1 = f1.el.getBoundingClientRect(); const rect2 = f2.el.getBoundingClientRect(); animateFlyToBucket(f1.emoji, rect1.left + rect1.width / 2, rect1.top + rect1.height / 2); animateFlyToBucket(f2.emoji, rect2.left + rect2.width / 2, rect2.top + rect2.height / 2); f1.el.remove(); f2.el.remove(); fishCards = fishCards.filter((c) => c !== f1 && c !== f2); if (Math.random() < 0.5) { triggerTreasureEvent(() => { refillFishes(); fishSelected = []; }); } else { refillFishes(); fishSelected = []; } } else { playSound("wrong"); showGamePraise(0, "Try again..", "#F44336"); f1.el.classList.add("wrong"); f2.el.classList.add("wrong"); setTimeout(() => { f1.el.classList.remove("selected", "wrong"); f2.el.classList.remove("selected", "wrong"); fishSelected = []; }, 400); } } }; }
+function moveFishes(currentTime) { if (!isFishing) return; let dt = (currentTime - lastFrameTime) / 1000; if (dt > 0.1 || !dt) dt = 0.016; lastFrameTime = currentTime; if(!isGamePaused) { const pondW = fishPond.clientWidth; const pondH = fishPond.clientHeight; fishCards.forEach((f) => { const w = f.el.offsetWidth || 100; const h = f.el.offsetHeight || 100; f.x += f.vx * dt; f.y += f.vy * dt; if (f.x <= 0) { f.x = 0; f.vx *= -1; } if (f.x + w >= pondW) { f.x = pondW - w; f.vx *= -1; } if (f.y <= 0) { f.y = 0; f.vy *= -1; } if (f.y + h >= pondH) { f.y = pondH - h; f.vy *= -1; } let scale = f.el.classList.contains("selected") ? "scale(1.1)" : "scale(1)"; f.el.style.transform = `translate3d(${f.x}px, ${f.y}px, 0) ${scale}`; }); } requestAnimationFrame(moveFishes); }
+
+// ==========================================
+// 10. 공통 랭킹 및 피드백 전송
+// ==========================================
+async function goResult() {
+  clearInterval(gameTimerInterval); clearInterval(cdInterval); isGamePaused = true; 
+  document.getElementById("top-left-controls").style.display = "none"; showScreen("result-screen");
+  
+  document.getElementById("praise-word").innerText = praises[Math.floor(Math.random() * praises.length)];
+  document.getElementById("result-user").innerText = `${currentUser.emoji} ${currentUser.nickname} 학생`;
+  document.getElementById("final-score").innerText = currentUser.score;
+  const emojiBox = document.getElementById("result-caught-emojis"); if (currentGameMode === "fish" && currentUser.caughtEmojis) { emojiBox.style.display = "block"; emojiBox.innerText = "🎣 낚은 이모지:\n" + currentUser.caughtEmojis; } else { emojiBox.style.display = "none"; }
+  playSound("success");
+
+  // 싱글일 때만 이쪽에서 저장 (라이브 멀티는 끝날 때 자동으로 저장됨)
+  if(currentLiveStatus !== "ended") {
+    try { await addDoc(collection(db, "scores"), { stdId: currentUser.stdId, nickname: currentUser.nickname, emoji: currentUser.emoji, classId: currentUser.classId, score: currentUser.score, mode: currentGameMode, timestamp: Date.now(), setId: currentSetId, setTitle: currentSetTitle }); } catch(e) {}
+  }
+}
+
+bindClick("go-feedback-btn", () => { playSound("click"); document.getElementById("feedback-text").value = ""; showScreen("feedback-screen"); });
+bindClick("cancel-feedback-btn", () => { playSound("click"); showScreen("result-screen"); });
+bindClick("submit-feedback-btn", async () => {
+  playSound("click"); const text = document.getElementById("feedback-text").value.trim(); if(!text) return alert("의견을 적어주세요!");
+  try { await addDoc(collection(db, "feedback"), { stdId: currentUser.stdId, nickname: currentUser.nickname, emoji: currentUser.emoji, text: text, timestamp: Date.now() }); alert("소중한 의견 감사합니다!"); showScreen("result-screen"); } catch(e) { alert("전송에 실패했습니다."); }
+});
+
+bindClick("go-ranking-btn", () => { playSound("click"); showRankings("today", currentGameMode); });
+bindClick("tab-today", () => { playSound("click"); showRankings("today", currentRankingMode); });
+bindClick("tab-class", () => { playSound("click"); showRankings("class", currentRankingMode); });
+bindClick("tab-all", () => { playSound("click"); showRankings("all", currentRankingMode); });
+bindClick("ranking-home-btn", () => { playSound("click"); document.getElementById("confetti-canvas").style.display = "none"; showScreen("hub-screen"); });
+
+async function showRankings(tab, mode = currentRankingMode) {
+  currentRankingMode = mode; showScreen("ranking-screen");
+  document.querySelectorAll(".rank-tab").forEach(btn => btn.classList.remove("active")); document.getElementById(`tab-${tab}`).classList.add("active");
+  document.getElementById("ranking-mode-title").innerText = `[ ${currentSetTitle} ]\n${modeNames[mode] || "전체"} 순위`;
+  const quotes = ["Wanna try again? 🚀", "You're a star! ⭐", "Keep it up! 🔥", "Fantastic job! 🎉", "Challenge the top! 🏆"];
+  document.getElementById("ranking-encourage").innerText = quotes[Math.floor(Math.random() * quotes.length)];
+  document.getElementById("ranking-msg").innerText = `축하해요!! ${currentUser.emoji}${currentUser.nickname}님은 ${currentUser.score}점입니다!`;
+  const listEl = document.getElementById("ranking-list"); listEl.innerHTML = "<div style='text-align:center; padding: 20px;'>순위를 불러오는 중...🔍</div>";
+
+  try {
+    const qSnap = await getDocs(collection(db, "scores")); let allScores = []; qSnap.forEach(doc => allScores.push(doc.data()));
+    let filtered = allScores.filter(s => s.mode === currentRankingMode && s.setId === currentSetId);
+    const now = new Date(); const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    if (tab === "today") filtered = filtered.filter(s => s.timestamp >= todayStart); else if (tab === "class") filtered = filtered.filter(s => s.classId === currentUser.classId);
+
+    let uniqueTop = {}; filtered.forEach(s => { if(!uniqueTop[s.stdId] || uniqueTop[s.stdId].score < s.score) uniqueTop[s.stdId] = s; }); let sorted = Object.values(uniqueTop).sort((a, b) => b.score - a.score);
+    listEl.innerHTML = "";
+    if (sorted.length === 0) { listEl.innerHTML = "<div style='text-align:center; padding:20px;'>아직 등록된 기록이 없어요!</div>"; } 
+    else { sorted.forEach((s, idx) => { let medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx+1}위`; listEl.innerHTML += `<div class="rank-item"><div><span class="rank-medal">${medal}</span> ${s.emoji} ${s.nickname}</div><div style="color:#ff4081; font-weight:bold;">${s.score}점</div></div>`; }); }
+    fireConfetti();
+  } catch(e) { listEl.innerHTML = "데이터를 불러오지 못했습니다."; console.error(e); }
+}
+
+let confettiParticles = []; let confettiCtx = null; let confettiAnimId = null;
+function fireConfetti() {
+  const canvas = document.getElementById("confetti-canvas"); canvas.style.display = "block"; canvas.width = window.innerWidth; canvas.height = window.innerHeight; confettiCtx = canvas.getContext("2d"); confettiParticles = [];
+  const colors = ["#ff4081", "#00bcd4", "#4caf50", "#ffeb3b", "#ff9800", "#9c27b0"];
+  for(let i=0; i<100; i++) { confettiParticles.push({ x: canvas.width / 2, y: canvas.height / 2 + 100, r: Math.random() * 6 + 4, dx: Math.random() * 20 - 10, dy: Math.random() * -20 - 5, color: colors[Math.floor(Math.random() * colors.length)], tilt: Math.random() * 10, tiltAngleInc: (Math.random() * 0.07) + 0.05, tiltAngle: 0 }); }
+  if (confettiAnimId) cancelAnimationFrame(confettiAnimId); renderConfetti();
+}
+function renderConfetti() {
+  if (!confettiCtx) return; const canvas = document.getElementById("confetti-canvas"); confettiCtx.clearRect(0, 0, canvas.width, canvas.height); let activeCount = 0;
+  confettiParticles.forEach(p => { p.tiltAngle += p.tiltAngleInc; p.y += (Math.cos(p.tiltAngle) + 1 + p.r / 2) / 2; p.x += Math.sin(p.tiltAngle) * 2 + p.dx; p.dy += 0.2; p.y += p.dy; if (p.y <= canvas.height) activeCount++; confettiCtx.beginPath(); confettiCtx.lineWidth = p.r; confettiCtx.strokeStyle = p.color; confettiCtx.moveTo(p.x + p.tilt + p.r, p.y); confettiCtx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r); confettiCtx.stroke(); });
+  if (activeCount > 0) confettiAnimId = requestAnimationFrame(renderConfetti); else canvas.style.display = "none";
+}
