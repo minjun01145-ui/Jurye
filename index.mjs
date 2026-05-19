@@ -1,5 +1,5 @@
 // ==========================================
-// 1. 파이어베이스 세팅
+// 1. 파이어베이스 라이브러리 세팅
 // ==========================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
 import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, onSnapshot, query, orderBy, limit, where, deleteDoc } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
@@ -24,10 +24,7 @@ let isWordHidden = false; let isMeanHidden = false; let starData = {};
 let currentUser = { stdId: "", realName: "", classId: "", nickname: "", emoji: "", score: 0, caughtEmojis: "" };
 let currentEditingSetId = null; 
 
-// 라이브 멀티플레이 전용 상태 변수
-let currentLiveStatus = "lobby"; // lobby, practice, playing, ended
-let lobbyUnsubUsers = null; let lobbyUnsubChat = null; let liveStateUnsub = null; let liveScoresUnsub = null;
-let liveGameTimeRemaining = 0;
+let currentLiveStatus = "lobby"; let lobbyUnsubUsers = null; let lobbyUnsubChat = null; let liveStateUnsub = null; let liveScoresUnsub = null; let liveGameTimeRemaining = 0;
 
 const allEmojis = ["🎮", "🕹️", "🎲", "🎯", "🐶", "🐱", "🍓", "😎", "🤩", "🚀", "🌟", "🔥", "🦄", "🍀", "🍔", "👽","😀","😂","😍","🥳","👻","🤡","🤗","🤔","🤐","🐭","🐹","🐰","🦊","🐻","🐼","🐨","🐯","🦁","🐮","🐷","🐸","🐵","🐧","🐤","🦆","🦉","🦇","🐺","🐝","🦋","🐢","🐍","🦖","🐙","🦑","🦀","🐠","🐬","🐳","🦈","🐅","🦓","🦍","🐘","🐫","🦒","🦘","🐎","🐏","🐐","🦌","🐕","🐈","🦚","🦜","🦢","🦩","🕊","🦝","🦨","🦥","🐿","🦔","🐉","🍎","🍊","🍋","🍌","🍉","🍇","🫐","🍒","🍑","🍍","🥥","🥝","🍅","🥑","🥦","🥒","🌶","🌽","🥕","🥔","🍠","🥐","🍞","🥨","🧀","🍳","🥞","🥓","🥩","🍗","🌭","🍟","🍕","🥪","🌮","🥗","🍣","🍱","🥟","🍤","🍙","🍚","🍧","🍦","🍰","🎂","🍭","🍬","🍫","🍩","🍪","🍯","🍼","☕️","🧃","🥤","🍺","🍻","🥂","🍷","🥃","🧊","⚽️","🏀","🏈","⚾️","🎾","🏐","🏓","🏸","🥊","🛹","⛸","🎿","🏂","🏋️","🏄","🏊","🚴","🏆","🥇","🏅","🎟","🎪","🎭","🎨","🎬","🎤","🎧","🎹","🥁","🎸","🎳","🎰","🧩","🚗","🚓","🚑","🚒","🚜","🚲","🛵","🏍","✈️","🚁","⛵️","🛳","🗺","🗽","🏰","🎡","🎢","⛺️","🏠","🏢","🏥","🏦","🏫","⛪️","🌅","🌌","⌚️","📱","💻","⌨️","🖥","📷","📸","🎥","📞","☎️","📺","📻","⏱","⏰","⏳","💡","💸","💵","💰","💳","💎","🛠","🔫","💣","🪄"];
 const praises = ["Fabulous!", "Terrific!", "Awesome!", "Incredible!", "Great Job!", "Perfect!"];
@@ -61,6 +58,9 @@ function playSound(type) {
   } catch(e) {}
 }
 
+let isMuted = false;
+document.body.addEventListener("click", () => { getAudioCtx(); }, {once: true}); // 첫 터치시 오디오 권한 획득
+
 function showScreen(screenId) { document.querySelectorAll(".screen").forEach((s) => { s.style.display = "none"; s.classList.remove("active"); }); if (screenId) { const screen = document.getElementById(screenId); if(screen) { screen.style.display = "flex"; screen.classList.add("active"); } } }
 function bindClick(id, callback) { const el = document.getElementById(id); if (el) el.onclick = callback; }
 
@@ -83,19 +83,29 @@ function resetGameStates() {
 bindClick("close-modal-btn", () => { document.getElementById("unknown-modal").style.display = "none"; });
 bindClick("back-to-menu-btn", () => { 
   playSound("click"); document.getElementById("top-left-controls").style.display = "none"; document.getElementById("unknown-modal").style.display = "none"; resetGameStates(); 
-  // 만약 라이브 상태에서 나간다면 로비에서 아예 퇴장시킵니다.
   if(liveStateUnsub) { leaveLobby(); } else { showScreen("menu-screen"); }
 });
 bindClick("home-btn", () => { playSound("click"); showScreen("hub-screen"); }); 
 
 // ==========================================
-// 4. 로그인 및 DB 로드
+// 🌟 4. 로그인 로직 (비동기 안전장치 탑재 완료!)
 // ==========================================
 async function loadAllFromDB() {
+  const authBtn = document.getElementById("auth-btn");
   try {
     const setSnap = await getDoc(doc(db, "gameData", "wordSets")); if (setSnap.exists()) wordSets = setSnap.data().sets || [];
     const stdSnap = await getDoc(doc(db, "gameData", "students")); if (stdSnap.exists()) studentList = stdSnap.data().students || [];
-  } catch (error) { console.error("DB 로딩 에러:", error); }
+    
+    // 🌟 데이터 로딩이 완료되면 비로소 버튼 잠금을 해제합니다!
+    if(authBtn) {
+      authBtn.innerText = "인증하기";
+      authBtn.disabled = false;
+      authBtn.style.cursor = "pointer";
+    }
+  } catch (error) { 
+    console.error("DB 로딩 에러:", error); 
+    if(authBtn) authBtn.innerText = "연결 실패 (새로고침 하세요)";
+  }
 }
 loadAllFromDB(); 
 
@@ -104,18 +114,18 @@ bindClick("auth-btn", () => {
   if(!inputId || !inputName) return alert("학번과 이름을 모두 적어주세요!");
   const matchedStudent = studentList.find(s => s.stdId === inputId && s.name === inputName);
   if (matchedStudent) { currentUser.stdId = inputId; currentUser.realName = inputName; currentUser.classId = inputId.substring(0, 2); showScreen("login-screen"); } 
-  else { alert("데이터베이스에 없는 학번이거나 이름이 틀렸습니다!"); }
+  else { alert("데이터베이스에 없는 학번이거나 이름이 틀렸습니다! 오타가 없는지 확인하세요."); }
 });
 
 bindClick("login-btn", () => {
   playSound("click"); const nick = document.getElementById("nickname").value.trim();
   if (!nick || !currentUser.emoji) return alert("닉네임과 이모지를 모두 골라주세요!");
   currentUser.nickname = nick; document.getElementById("user-display").innerText = `${currentUser.emoji} ${currentUser.nickname}`;
-  showScreen("hub-screen"); // 로그인 완료 후 허브로 이동!
+  showScreen("hub-screen");
 });
 
 // ==========================================
-// 🌟 5. 허브(HUB) 화면 (싱글 / 멀티 / 관리자)
+// 5. 허브(HUB) 화면 (싱글 / 멀티 / 관리자)
 // ==========================================
 bindClick("btn-singleplayer", () => {
   playSound("click");
@@ -130,7 +140,6 @@ bindClick("btn-hub-admin", () => {
   if (pwd === "1234") showScreen("admin-main-screen"); else if (pwd !== null) alert("비밀번호가 틀렸습니다!");
 });
 
-// 싱글플레이 세트 버튼 생성
 const setBtnColors = [ { bg: "#FFCDD2", shadow: "#E57373", color: "#333" }, { bg: "#F8BBD0", shadow: "#F06292", color: "#333" }, { bg: "#E1BEE7", shadow: "#BA68C8", color: "#333" }, { bg: "#D1C4E9", shadow: "#9575CD", color: "#333" }, { bg: "#C5CAE9", shadow: "#7E57C2", color: "#333" }, { bg: "#BBDEFB", shadow: "#64B5F6", color: "#333" }, { bg: "#B3E5FC", shadow: "#4FC3F7", color: "#333" }, { bg: "#B2EBF2", shadow: "#4DD0E1", color: "#333" }, { bg: "#B2DFDB", shadow: "#4DB6AC", color: "#333" }, { bg: "#C8E6C9", shadow: "#81C784", color: "#333" }, { bg: "#DCEDC8", shadow: "#AED581", color: "#333" }, { bg: "#FFF9C4", shadow: "#FBC02D", color: "#333" }, { bg: "#FFECB3", shadow: "#FFCA28", color: "#333" }, { bg: "#FFE0B2", shadow: "#FFB300", color: "#333" }, { bg: "#FFCCBC", shadow: "#FF8A65", color: "#333" } ];
 function renderSetSelectList() {
   const container = document.getElementById("set-select-list"); container.innerHTML = "";
@@ -148,7 +157,7 @@ bindClick("menu-go-back-set-btn", () => { playSound("click"); showScreen("set-se
 bindClick("admin-main-close-btn", () => { playSound("click"); showScreen("hub-screen"); });
 
 // ==========================================
-// 🌟 6. 라이브 멀티플레이 시스템 (학생 관점)
+// 6. 라이브 멀티플레이 시스템 (학생)
 // ==========================================
 let liveGameConfig = { mode: "", time: 0, items: false, teamMode: "indiv", setId: "" };
 
@@ -156,37 +165,19 @@ async function enterLobby() {
   if (wordSets.length === 0) return alert("서버에 등록된 단어장이 없습니다. 선생님께 문의하세요.");
   showScreen("lobby-screen");
   
-  // 1. 내 상태를 온라인으로 기록
   try { await setDoc(doc(db, "lobby_users", currentUser.stdId), { stdId: currentUser.stdId, nickname: currentUser.nickname, emoji: currentUser.emoji, online: true, lastActive: Date.now() }); } catch(e) {}
-
-  // 2. 접속자 & 채팅 리스너 시작
   startLobbyListeners();
 
-  // 3. 🌟 가장 중요한 관리자 상태(State) 리스너 시작!
   liveStateUnsub = onSnapshot(doc(db, "gameData", "liveRoom"), (docSnap) => {
     if(docSnap.exists()) {
-      let data = docSnap.data();
-      liveGameConfig = data;
-
-      // 대기실 UI 텍스트 업데이트
-      let setText = wordSets.find(s=>s.id === data.setId)?.title || "세트 미정";
-      let modeText = modeNames[data.mode] || "미정";
+      let data = docSnap.data(); liveGameConfig = data;
+      let setText = wordSets.find(s=>s.id === data.setId)?.title || "세트 미정"; let modeText = modeNames[data.mode] || "미정";
       document.getElementById("lobby-game-info").innerHTML = `종목: <b>${modeText}</b> <br>시간: <b>${data.time/60}분</b> / <b>${data.teamMode==='indiv'?'개인전':'팀전'}</b> <br>단어장: <b>${setText}</b> <br>아이템: <b>${data.items?'사용함':'없음'}</b>`;
 
-      // 🌟 상태 변화 감지 및 강제 화면 전환 로직
-      if (data.status === "practice" && currentLiveStatus !== "practice") {
-        currentLiveStatus = "practice";
-        startLivePractice(data);
-      } else if (data.status === "playing" && currentLiveStatus !== "playing") {
-        currentLiveStatus = "playing";
-        startLiveMainGame(data);
-      } else if (data.status === "ended" && currentLiveStatus !== "ended") {
-        currentLiveStatus = "ended";
-        endLiveGame();
-      } else if (data.status === "lobby" && currentLiveStatus !== "lobby") {
-        currentLiveStatus = "lobby";
-        showScreen("lobby-screen");
-      }
+      if (data.status === "practice" && currentLiveStatus !== "practice") { currentLiveStatus = "practice"; startLivePractice(data); } 
+      else if (data.status === "playing" && currentLiveStatus !== "playing") { currentLiveStatus = "playing"; startLiveMainGame(data); } 
+      else if (data.status === "ended" && currentLiveStatus !== "ended") { currentLiveStatus = "ended"; endLiveGame(); } 
+      else if (data.status === "lobby" && currentLiveStatus !== "lobby") { currentLiveStatus = "lobby"; showScreen("lobby-screen"); }
     }
   });
 }
@@ -228,256 +219,121 @@ function renderLobbyChat(msgs, boxId) {
     const align = isMe ? "flex-end" : "flex-start"; const bg = isMe ? "#BBDEFB" : "#F5F5F5";
     const name = isMe ? "" : `<div style="font-size: 12px; color: #888; margin-bottom: 2px;">${m.emoji} ${m.nickname}</div>`;
     return `<div style="display: flex; flex-direction: column; align-items: ${align}; width: 100%; margin-bottom:5px;">${name}<div style="background: ${bg}; padding: 8px 12px; border-radius: 15px; font-size: 14px; max-width: 80%; word-break: break-all; color: #333; text-align: left; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">${m.text}</div></div>`;
-  }).join("");
-  box.scrollTop = box.scrollHeight;
+  }).join(""); box.scrollTop = box.scrollHeight;
 }
 
-// 🌟 강제 전환 1단계: 연습 모드 시작
 function startLivePractice(config) {
-  resetGameStates();
-  currentLiveStatus = "practice";
+  resetGameStates(); currentLiveStatus = "practice";
   wordList = wordSets.find(s=>s.id === config.setId).words || [];
   currentSetId = config.setId; currentGameMode = config.mode;
-  
-  showScreen("speed-match-screen");
-  document.getElementById("top-left-controls").style.display = "flex";
-  
-  // UI 변경: 연습 모드 배너 띄우기
-  let banner = document.getElementById("live-sm-banner");
-  banner.style.display = "block"; banner.style.backgroundColor = "#9C27B0"; banner.innerText = "💪 [연습 모드] 손가락 풀기!";
-  
-  // 연습모드는 점수 안 올라감
+  showScreen("speed-match-screen"); document.getElementById("top-left-controls").style.display = "flex";
+  let banner = document.getElementById("live-sm-banner"); banner.style.display = "block"; banner.style.backgroundColor = "#9C27B0"; banner.innerText = "💪 [연습 모드] 손가락 풀기!";
   gameScore = 0; document.getElementById("sm-score").innerText = `점수: ${gameScore}`;
-  
-  // 10초 타이머 세팅 (클라이언트 기준)
-  liveGameTimeRemaining = 10;
-  document.getElementById("sm-timer").innerText = `🕒 00:10`;
-  
-  loadSpeedMatchRound(); // 기존 짝맞추기 로드 함수 그대로 씀
+  liveGameTimeRemaining = 10; document.getElementById("sm-timer").innerText = `🕒 00:10`;
+  loadSpeedMatchRound(); 
 
   gameTimerInterval = setInterval(() => {
     if (!isGamePaused) { 
-      liveGameTimeRemaining--;
-      document.getElementById("sm-timer").innerText = `🕒 00:${String(liveGameTimeRemaining).padStart(2,"0")}`;
-      
-      // 🌟 핵심: 5초 남았을 때 거대 카운트다운 시작!
-      if (liveGameTimeRemaining <= 5 && liveGameTimeRemaining > 0) {
-        document.getElementById("huge-countdown-overlay").style.display = "flex";
-        document.getElementById("huge-text").innerText = liveGameTimeRemaining;
-        playSound("click");
-      }
+      liveGameTimeRemaining--; document.getElementById("sm-timer").innerText = `🕒 00:${String(liveGameTimeRemaining).padStart(2,"0")}`;
+      if (liveGameTimeRemaining <= 5 && liveGameTimeRemaining > 0) { document.getElementById("huge-countdown-overlay").style.display = "flex"; document.getElementById("huge-text").innerText = liveGameTimeRemaining; playSound("click"); }
     }
   }, 1000);
 }
 
-// 🌟 강제 전환 2단계: 본 게임 시작
 function startLiveMainGame(config) {
-  resetGameStates();
-  currentLiveStatus = "playing";
+  resetGameStates(); currentLiveStatus = "playing";
   wordList = wordSets.find(s=>s.id === config.setId).words || [];
   currentSetId = config.setId; currentGameMode = config.mode;
-  
-  // 거대 카운트다운 숨기기
   document.getElementById("huge-countdown-overlay").style.display = "none";
-  showScreen("speed-match-screen");
-  document.getElementById("top-left-controls").style.display = "flex";
-  
-  // 배너 변경
-  let banner = document.getElementById("live-sm-banner");
-  banner.style.display = "block"; banner.style.backgroundColor = "#FF5722"; banner.innerText = "🔥 [본 게임] 랭킹전 시작!";
-  
+  showScreen("speed-match-screen"); document.getElementById("top-left-controls").style.display = "flex";
+  let banner = document.getElementById("live-sm-banner"); banner.style.display = "block"; banner.style.backgroundColor = "#FF5722"; banner.innerText = "🔥 [본 게임] 랭킹전 시작!";
   gameScore = 0; document.getElementById("sm-score").innerText = `점수: ${gameScore}`;
-  
-  // 서버에서 정해준 시간으로 세팅
   liveGameTimeRemaining = parseInt(config.time);
-  
-  loadSpeedMatchRound(); // 리셋된 상태로 새 라운드 시작
+  loadSpeedMatchRound(); 
 
   gameTimerInterval = setInterval(() => {
     if (!isGamePaused) { 
       liveGameTimeRemaining--;
       const m = String(Math.floor(liveGameTimeRemaining / 60)).padStart(2, "0"); const s = String(liveGameTimeRemaining % 60).padStart(2, "0");
       document.getElementById("sm-timer").innerText = `🕒 ${m}:${s}`;
-      
-      // 만약 선생님이 종료 안 누르고 시간이 다 되면 자체적으로 끝냄
-      if (liveGameTimeRemaining <= 0) {
-        endLiveGame();
-      }
+      if (liveGameTimeRemaining <= 0) { endLiveGame(); }
     }
   }, 1000);
 }
 
-// 본게임 도중 내 점수가 오를 때마다 서버로 전송하는 함수
 async function updateMyLiveScore() {
-  if (currentLiveStatus === "playing") {
-    try {
-      await setDoc(doc(db, "liveRoom_scores", currentUser.stdId), {
-        stdId: currentUser.stdId, nickname: currentUser.nickname, emoji: currentUser.emoji, score: gameScore, timestamp: Date.now()
-      });
-    } catch(e) {}
-  }
+  if (currentLiveStatus === "playing") { try { await setDoc(doc(db, "liveRoom_scores", currentUser.stdId), { stdId: currentUser.stdId, nickname: currentUser.nickname, emoji: currentUser.emoji, score: gameScore, timestamp: Date.now() }); } catch(e) {} }
 }
 
-// 강제 전환 3단계: 게임 종료
 function endLiveGame() {
-  resetGameStates();
-  document.getElementById("live-sm-banner").style.display = "none";
-  
-  // 최종 점수를 일반 결과 화면으로 보냄
-  currentUser.score = gameScore;
-  document.getElementById("result-detail").innerText = `라이브 대전이 끝났습니다!`; 
-  
-  // 라이브 로비 리스너 유지한 채 결과만 보여줌 (포기하고 나가기 누르면 아예 나감)
-  showScreen("result-screen");
-  document.getElementById("praise-word").innerText = "Good Job!";
-  document.getElementById("result-user").innerText = `${currentUser.emoji} ${currentUser.nickname} 학생`;
-  document.getElementById("final-score").innerText = currentUser.score;
-  document.getElementById("result-caught-emojis").style.display = "none";
-  playSound("success");
-  
-  // 최종 점수 영구 보관용 DB에 저장
+  resetGameStates(); document.getElementById("live-sm-banner").style.display = "none";
+  currentUser.score = gameScore; document.getElementById("result-detail").innerText = `라이브 대전이 끝났습니다!`; 
+  showScreen("result-screen"); document.getElementById("praise-word").innerText = "Good Job!"; document.getElementById("result-user").innerText = `${currentUser.emoji} ${currentUser.nickname} 학생`; document.getElementById("final-score").innerText = currentUser.score; document.getElementById("result-caught-emojis").style.display = "none"; playSound("success");
   try { addDoc(collection(db, "scores"), { stdId: currentUser.stdId, nickname: currentUser.nickname, emoji: currentUser.emoji, classId: currentUser.classId, score: currentUser.score, mode: currentGameMode, timestamp: Date.now(), setId: currentSetId, setTitle: currentSetTitle }); } catch(e) {}
 }
 
-
 // ==========================================
-// 🌟 7. 관리자 (선생님) 라이브 로비 로직
+// 7. 관리자 (선생님) 라이브 로비 로직
 // ==========================================
 bindClick("admin-go-live-btn", () => { playSound("click"); enterAdminLobby(); });
 
 async function enterAdminLobby() {
   if (wordSets.length === 0) return alert("단어장을 먼저 등록하세요.");
   showScreen("admin-lobby-screen");
-  
-  // 단어장 셀렉트 박스 채우기
-  const setSelect = document.getElementById("admin-live-set");
-  setSelect.innerHTML = "";
-  wordSets.forEach(s => {
-    let opt = document.createElement("option"); opt.value = s.id; opt.innerText = s.title + ` (${s.words.length}단어)`; setSelect.appendChild(opt);
-  });
-
-  // 상태를 기본값(lobby)으로 서버에 즉시 푸시
+  const setSelect = document.getElementById("admin-live-set"); setSelect.innerHTML = "";
+  wordSets.forEach(s => { let opt = document.createElement("option"); opt.value = s.id; opt.innerText = s.title + ` (${s.words.length}단어)`; setSelect.appendChild(opt); });
   await pushAdminLiveState("lobby");
-
-  // 셀렉트 박스 변경 시 실시간으로 푸시 (아이들 화면에 바로 공지됨)
-  ["admin-live-set", "admin-live-mode", "admin-live-time", "admin-live-team", "admin-live-item"].forEach(id => {
-    document.getElementById(id).addEventListener("change", () => pushAdminLiveState("lobby"));
-  });
-
-  startLobbyListeners(); // 관리자도 채팅/접속자 봄
+  ["admin-live-set", "admin-live-mode", "admin-live-time", "admin-live-team", "admin-live-item"].forEach(id => { document.getElementById(id).addEventListener("change", () => pushAdminLiveState("lobby")); });
+  startLobbyListeners(); 
 }
 
 async function pushAdminLiveState(statusStr) {
-  let config = {
-    status: statusStr,
-    setId: document.getElementById("admin-live-set").value,
-    mode: document.getElementById("admin-live-mode").value,
-    time: parseInt(document.getElementById("admin-live-time").value),
-    teamMode: document.getElementById("admin-live-team").value,
-    items: document.getElementById("admin-live-item").value === "true"
-  };
+  let config = { status: statusStr, setId: document.getElementById("admin-live-set").value, mode: document.getElementById("admin-live-mode").value, time: parseInt(document.getElementById("admin-live-time").value), teamMode: document.getElementById("admin-live-team").value, items: document.getElementById("admin-live-item").value === "true" };
   await setDoc(doc(db, "gameData", "liveRoom"), config);
 }
 
-// 관리자 로비 나가기
-bindClick("admin-lobby-leave-btn", () => {
-  playSound("click");
-  if (lobbyUnsubUsers) { lobbyUnsubUsers(); lobbyUnsubUsers = null; }
-  if (lobbyUnsubChat) { lobbyUnsubChat(); lobbyUnsubChat = null; }
-  showScreen("admin-main-screen");
-});
+bindClick("admin-lobby-leave-btn", () => { playSound("click"); if (lobbyUnsubUsers) { lobbyUnsubUsers(); lobbyUnsubUsers = null; } if (lobbyUnsubChat) { lobbyUnsubChat(); lobbyUnsubChat = null; } showScreen("admin-main-screen"); });
 
-// 공지사항 보내기
-function sendAdminChat() {
-  const inputEl = document.getElementById("admin-lobby-chat-input"); const text = inputEl.value.trim(); if(!text) return; inputEl.value = "";
-  addDoc(collection(db, "lobby_chat"), { stdId: "ADMIN", nickname: "👑민준쌤", emoji: "👨‍🏫", text: text, timestamp: Date.now() });
-}
+function sendAdminChat() { const inputEl = document.getElementById("admin-lobby-chat-input"); const text = inputEl.value.trim(); if(!text) return; inputEl.value = ""; addDoc(collection(db, "lobby_chat"), { stdId: "ADMIN", nickname: "👑민준쌤", emoji: "👨‍🏫", text: text, timestamp: Date.now() }); }
 bindClick("admin-lobby-chat-send-btn", () => { playSound("click"); sendAdminChat(); });
 document.getElementById("admin-lobby-chat-input").addEventListener("keypress", (e) => { if(e.key === "Enter") { playSound("click"); sendAdminChat(); } });
 
-// 🌟 [게임 시작!] 버튼 로직
 bindClick("admin-live-start-btn", async () => {
-  playSound("click");
-  if(!confirm("모든 학생을 연습 모드(10초)로 보내고 게임을 시작하시겠습니까?")) return;
-
-  // 1. 이전 라이브 게임 점수(Collection) 모두 날리기 (안전하게 0점 처리)
-  const qScores = query(collection(db, "liveRoom_scores"));
-  const snapScores = await getDocs(qScores);
-  const deletePromises = [];
-  snapScores.forEach(d => deletePromises.push(deleteDoc(d.ref)));
-  await Promise.all(deletePromises);
-
-  // 2. 상태를 'practice'로 변경
+  playSound("click"); if(!confirm("모든 학생을 연습 모드(10초)로 보내고 게임을 시작하시겠습니까?")) return;
+  const qScores = query(collection(db, "liveRoom_scores")); const snapScores = await getDocs(qScores); const deletePromises = []; snapScores.forEach(d => deletePromises.push(deleteDoc(d.ref))); await Promise.all(deletePromises);
   await pushAdminLiveState("practice");
-  
-  // 3. 선생님 화면을 '모니터'로 전환
-  showScreen("admin-live-monitor-screen");
-  document.getElementById("admin-live-status-text").innerText = "상태: 🏃‍♂️ 연습중... (10초 후 본게임 시작)";
-  
-  // 4. 모니터링 애니메이션 시작
+  showScreen("admin-live-monitor-screen"); document.getElementById("admin-live-status-text").innerText = "상태: 🏃‍♂️ 연습중... (10초 후 본게임 시작)";
   startAdminMonitor();
-
-  // 5. 선생님의 백그라운드에서 10.5초 대기 후 자동으로 'playing'으로 변경!
-  setTimeout(async () => {
-    await pushAdminLiveState("playing");
-    document.getElementById("admin-live-status-text").innerText = "상태: 🔥 본게임 진행 중!";
-    document.getElementById("admin-live-status-text").style.color = "#FF4081";
-  }, 10500); // 0.5초 여유 둠
+  setTimeout(async () => { await pushAdminLiveState("playing"); document.getElementById("admin-live-status-text").innerText = "상태: 🔥 본게임 진행 중!"; document.getElementById("admin-live-status-text").style.color = "#FF4081"; }, 10500); 
 });
 
-// 게임 강제 종료 버튼
 bindClick("admin-live-end-btn", async () => {
-  playSound("click");
-  if(!confirm("진행 중인 라이브 게임을 강제로 종료하시겠습니까?")) return;
-  await pushAdminLiveState("ended");
-  if(liveScoresUnsub) { liveScoresUnsub(); liveScoresUnsub = null; }
-  showScreen("admin-lobby-screen");
-  await pushAdminLiveState("lobby"); // 다시 대기실로 원복
+  playSound("click"); if(!confirm("진행 중인 라이브 게임을 강제로 종료하시겠습니까?")) return;
+  await pushAdminLiveState("ended"); if(liveScoresUnsub) { liveScoresUnsub(); liveScoresUnsub = null; }
+  showScreen("admin-lobby-screen"); await pushAdminLiveState("lobby"); 
 });
 
-// 🌟 선생님 라이브 모니터 (스무스 랭킹 애니메이션의 핵심)
 function startAdminMonitor() {
-  const container = document.getElementById("admin-live-rank-container");
-  container.innerHTML = ""; // 기존 막대기들 지우기
-
+  const container = document.getElementById("admin-live-rank-container"); container.innerHTML = ""; 
   const q = query(collection(db, "liveRoom_scores"));
   liveScoresUnsub = onSnapshot(q, (snap) => {
-    let scores = []; snap.forEach(d => scores.push(d.data()));
-    
-    // 점수 높은 순으로 줄 세우기!
-    scores.sort((a, b) => b.score - a.score);
-
+    let scores = []; snap.forEach(d => scores.push(d.data())); scores.sort((a, b) => b.score - a.score);
     scores.forEach((s, idx) => {
-      let rowId = `live-row-${s.stdId}`;
-      let row = document.getElementById(rowId);
-      
-      // 막대기가 아직 없으면 새로 생성
+      let rowId = `live-row-${s.stdId}`; let row = document.getElementById(rowId);
       if (!row) {
-        row = document.createElement("div");
-        row.id = rowId;
-        row.className = "live-rank-row";
-        
-        let medalSpan = document.createElement("div"); medalSpan.className = "live-rank-medal";
-        let nameSpan = document.createElement("div"); nameSpan.className = "live-rank-name";
-        let scoreSpan = document.createElement("div"); scoreSpan.className = "live-rank-score";
-        
-        row.appendChild(medalSpan); row.appendChild(nameSpan); row.appendChild(scoreSpan);
-        container.appendChild(row);
+        row = document.createElement("div"); row.id = rowId; row.className = "live-rank-row";
+        let medalSpan = document.createElement("div"); medalSpan.className = "live-rank-medal"; let nameSpan = document.createElement("div"); nameSpan.className = "live-rank-name"; let scoreSpan = document.createElement("div"); scoreSpan.className = "live-rank-score";
+        row.appendChild(medalSpan); row.appendChild(nameSpan); row.appendChild(scoreSpan); container.appendChild(row);
       }
-      
-      // 순위에 따라 훈장 및 높이(Top) 지정 (이게 애니메이션을 만듦!)
       let medalHtml = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx+1}위`;
-      row.children[0].innerHTML = medalHtml;
-      row.children[1].innerHTML = `${s.emoji} ${s.nickname}`;
-      row.children[2].innerHTML = `${s.score}점`;
-      
-      row.style.top = (idx * 65) + "px"; // 65px 간격으로 자기 자리 찾아가게 만듦!
+      row.children[0].innerHTML = medalHtml; row.children[1].innerHTML = `${s.emoji} ${s.nickname}`; row.children[2].innerHTML = `${s.score}점`;
+      row.style.top = (idx * 65) + "px"; 
     });
   });
 }
 
 // ==========================================
-// 기존 관리자 잡다한 기능들 
+// 8. 관리자 학생/세트/피드백 잡다한 기능들
 // ==========================================
 bindClick("admin-go-student-btn", () => { playSound("click"); renderAdminStudentList(); showScreen("admin-student-screen"); });
 bindClick("admin-go-set-btn", () => { playSound("click"); renderAdminSetList(); showScreen("admin-set-list-screen"); });
@@ -540,7 +396,7 @@ async function renderAdminFeedbackList() {
 }
 
 // ==========================================
-// 8. 기존 싱글 플레이 및 게임 메뉴 라우팅
+// 9. 기존 싱글 플레이 및 게임 메뉴 라우팅
 // ==========================================
 bindClick("menu-list-btn", () => { playSound("click"); isWordHidden = false; isMeanHidden = false; document.getElementById("toggle-word-btn").innerText = "영어 가리기"; document.getElementById("toggle-mean-btn").innerText = "뜻 가리기"; renderWordList(); showScreen("list-screen"); });
 bindClick("list-back-btn", () => { playSound("click"); showScreen("menu-screen"); });
@@ -580,16 +436,12 @@ bindClick("time-3m-btn", () => { playSound("click"); routeGameStart(3); });
 bindClick("time-5m-btn", () => { playSound("click"); routeGameStart(5); });
 
 // ==========================================
-// 9. 기존 게임 로직들 (짝맞추기 집중 수정)
+// 10. 스피드 짝맞추기 게임 로직 (라이브 연동)
 // ==========================================
-
-// 🌟 스피드 짝맞추기 로직 (라이브 모드 대응으로 업그레이드됨!)
 function loadSpeedMatchRound() {
   smPairsFound = 0; smSelected = []; const leftCol = document.getElementById("sm-left-col"); const rightCol = document.getElementById("sm-right-col");
   leftCol.innerHTML = ""; rightCol.innerHTML = ""; 
-  
   if(currentLiveStatus !== "practice") { showGamePraise(0, `라운드 ${smRound}!`, "#FF5722"); }
-  
   let shuffled = [...wordList].sort(() => 0.5 - Math.random()); let roundWords = shuffled.slice(0, 4);
   let leftPool = roundWords.map(w => ({ text: w.en, id: w.en, side: 'left' })).sort(() => 0.5 - Math.random());
   let rightPool = roundWords.map(w => ({ text: w.ko, id: w.en, side: 'right' })).sort(() => 0.5 - Math.random());
@@ -614,25 +466,14 @@ function checkSmMatch() {
   let [c1, c2] = smSelected;
   if (c1.id === c2.id) { 
     playSound("success"); let earnedScore = calcSpeedBonus(); gameScore += earnedScore; 
-    document.getElementById("sm-score").innerText = `점수: ${gameScore}`; 
-    updateMyLiveScore(); // 🌟 라이브 중이면 DB 즉시 전송!
-
+    document.getElementById("sm-score").innerText = `점수: ${gameScore}`; updateMyLiveScore(); 
     if(currentLiveStatus !== "practice") showGamePraise(earnedScore);
-    
     c1.el.classList.add("matched"); c2.el.classList.add("matched"); smPairsFound++; smSelected = []; updateSmSideAvailability();
-    
-    // 아이템 로직 (관리자가 아이템 '사용함'으로 설정했을 때만 발동!)
-    let useItem = liveGameConfig.items; // 라이브 모드 설정 참조
-    if(currentLiveStatus === "lobby" || currentLiveStatus === "") useItem = true; // 싱글일때는 무조건 켬
-    
-    if (useItem && Math.random() < 0.3 && currentLiveStatus !== "practice") {
-      triggerTreasureEvent(() => { checkSmRoundEnd(); isGamePaused = false; }); 
-    } else { checkSmRoundEnd(); isGamePaused = false; }
+    let useItem = liveGameConfig.items; if(currentLiveStatus === "lobby" || currentLiveStatus === "") useItem = true; 
+    if (useItem && Math.random() < 0.3 && currentLiveStatus !== "practice") { triggerTreasureEvent(() => { checkSmRoundEnd(); isGamePaused = false; }); } else { checkSmRoundEnd(); isGamePaused = false; }
   } else { 
     playSound("wrong"); let penalty = calcSpeedBonus(); gameScore = Math.max(0, gameScore - penalty); 
-    document.getElementById("sm-score").innerText = `점수: ${gameScore}`;
-    updateMyLiveScore(); // 🌟 감점도 DB 즉시 전송!
-
+    document.getElementById("sm-score").innerText = `점수: ${gameScore}`; updateMyLiveScore(); 
     if(currentLiveStatus !== "practice") showBuffMsg("오답!", `-${penalty}점 ㅠㅠ`, 244, 67, 54);
     c1.el.classList.add("wrong"); c2.el.classList.add("wrong");
     setTimeout(() => { c1.el.classList.remove("selected", "wrong"); c2.el.classList.remove("selected", "wrong"); smSelected = []; updateSmSideAvailability(); isGamePaused = false; }, 400); 
@@ -640,9 +481,9 @@ function checkSmMatch() {
 }
 function checkSmRoundEnd() { if (smPairsFound === 4) { smRound++; setTimeout(loadSpeedMatchRound, 500); } }
 
-// -----------------------------
-// 이하 생략할 수 없는 기존 게임/유틸 코드들 압축 (기능 100% 동일)
-// -----------------------------
+// ==========================================
+// 11. 나머지 게임 로직 압축 (코드 길이 최적화, 기능 동일)
+// ==========================================
 function startExam1Logic() { examQueue = [...wordList].sort(() => 0.5 - Math.random()); examCurrentIndex = 0; document.getElementById("exam1-score").innerText = `점수: 0`; loadExam1Question(); }
 function loadExam1Question() { if(examCurrentIndex >= examQueue.length) { currentUser.score = gameScore; document.getElementById("result-detail").innerText = `문장 조립을 모두 완료했습니다!`; goResult(); return; } let q = examQueue[examCurrentIndex]; document.getElementById("exam1-progress").innerText = `${examCurrentIndex + 1} / ${examQueue.length}`; document.getElementById("exam1-ko").innerText = q.ko; let words = q.en.split(' ').filter(w => w.trim() !== ''); examWords = words.map((w, i) => ({ id: i, text: w })).sort(() => 0.5 - Math.random()); examSlots = []; renderExam1Cards(); }
 function renderExam1Cards() { const pool = document.getElementById("exam1-pool"); const slots = document.getElementById("exam1-slots"); const submitBtn = document.getElementById("exam1-submit-btn"); pool.innerHTML = ''; slots.innerHTML = ''; examWords.forEach(item => { let btn = document.createElement("button"); btn.className = "exam-card"; btn.innerText = item.text; btn.onclick = () => { if(isGamePaused) return; playSound("click"); examSlots.push(item); examWords = examWords.filter(w => w.id !== item.id); renderExam1Cards(); }; pool.appendChild(btn); }); examSlots.forEach(item => { let btn = document.createElement("button"); btn.className = "exam-card"; btn.innerText = item.text; btn.style.backgroundColor = "#E8EAF6"; btn.style.borderColor = "#3F51B5"; btn.onclick = () => { if(isGamePaused) return; playSound("click"); examWords.push(item); examSlots = examSlots.filter(w => w.id !== item.id); renderExam1Cards(); }; slots.appendChild(btn); }); if (examWords.length === 0 && examSlots.length > 0) submitBtn.style.display = "block"; else submitBtn.style.display = "none"; }
@@ -676,19 +517,19 @@ function createFishEl(text, lang, targetId) { const el = document.createElement(
 function moveFishes(currentTime) { if (!isFishing) return; let dt = (currentTime - lastFrameTime) / 1000; if (dt > 0.1 || !dt) dt = 0.016; lastFrameTime = currentTime; if(!isGamePaused) { const pondW = fishPond.clientWidth; const pondH = fishPond.clientHeight; fishCards.forEach((f) => { const w = f.el.offsetWidth || 100; const h = f.el.offsetHeight || 100; f.x += f.vx * dt; f.y += f.vy * dt; if (f.x <= 0) { f.x = 0; f.vx *= -1; } if (f.x + w >= pondW) { f.x = pondW - w; f.vx *= -1; } if (f.y <= 0) { f.y = 0; f.vy *= -1; } if (f.y + h >= pondH) { f.y = pondH - h; f.vy *= -1; } let scale = f.el.classList.contains("selected") ? "scale(1.1)" : "scale(1)"; f.el.style.transform = `translate3d(${f.x}px, ${f.y}px, 0) ${scale}`; }); } requestAnimationFrame(moveFishes); }
 
 // ==========================================
-// 10. 공통 랭킹 및 피드백 전송
+// 12. 공통 결과 및 랭킹 관리
 // ==========================================
 async function goResult() {
   clearInterval(gameTimerInterval); clearInterval(cdInterval); isGamePaused = true; 
   document.getElementById("top-left-controls").style.display = "none"; showScreen("result-screen");
-  
   document.getElementById("praise-word").innerText = praises[Math.floor(Math.random() * praises.length)];
   document.getElementById("result-user").innerText = `${currentUser.emoji} ${currentUser.nickname} 학생`;
   document.getElementById("final-score").innerText = currentUser.score;
-  const emojiBox = document.getElementById("result-caught-emojis"); if (currentGameMode === "fish" && currentUser.caughtEmojis) { emojiBox.style.display = "block"; emojiBox.innerText = "🎣 낚은 이모지:\n" + currentUser.caughtEmojis; } else { emojiBox.style.display = "none"; }
-  playSound("success");
 
-  // 싱글일 때만 이쪽에서 저장 (라이브 멀티는 끝날 때 자동으로 저장됨)
+  const emojiBox = document.getElementById("result-caught-emojis");
+  if (currentGameMode === "fish" && currentUser.caughtEmojis) { emojiBox.style.display = "block"; emojiBox.innerText = "🎣 낚은 이모지:\n" + currentUser.caughtEmojis; } 
+  else { emojiBox.style.display = "none"; } playSound("success");
+
   if(currentLiveStatus !== "ended") {
     try { await addDoc(collection(db, "scores"), { stdId: currentUser.stdId, nickname: currentUser.nickname, emoji: currentUser.emoji, classId: currentUser.classId, score: currentUser.score, mode: currentGameMode, timestamp: Date.now(), setId: currentSetId, setTitle: currentSetTitle }); } catch(e) {}
   }
