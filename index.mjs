@@ -1,5 +1,5 @@
 // ==========================================
-// 1. 파이어베이스 라이브러리 세팅
+// 1. 파이어베이스 세팅
 // ==========================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
 import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, onSnapshot, query, orderBy, limit, where, deleteDoc } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
@@ -14,7 +14,7 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 // ==========================================
-// 2. 단일 원본 전역 변수들
+// 2. 단일 원본 전역 변수 (중복 100% 제거)
 // ==========================================
 let wordSets = []; let studentList = []; let wordList = []; let unknownWordsHistory = [];
 let gameTimerInterval; let cdInterval; let gameTimeRemaining = 0; let gameScore = 0; let lastMatchTime = 0;
@@ -29,6 +29,7 @@ let currentLiveStatus = "lobby"; let lobbyUnsubUsers = null; let lobbyUnsubChat 
 const allEmojis = ["🎮", "🕹️", "🎲", "🎯", "🐶", "🐱", "🍓", "😎", "🤩", "🚀", "🌟", "🔥", "🦄", "🍀", "🍔", "👽","😀","😂","😍","🥳","👻","🤡","🤗","🤔","🤐","🐭","🐹","🐰","🦊","🐻","🐼","🐨","🐯","🦁","🐮","🐷","🐸","🐵","🐧","🐤","🦆","🦉","🦇","🐺","🐝","🦋","🐢","🐍","🦖","🐙","🦑","🦀","🐠","🐬","🐳","🦈","🐅","🦓","🦍","🐘","🐫","🦒","🦘","🐎","🐏","🐐","🦌","🐕","🐈","🦚","🦜","🦢","🦩","🕊","🦝","🦨","🦥","🐿","🦔","🐉","🍎","🍊","🍋","🍌","🍉","🍇","🫐","🍒","🍑","🍍","🥥","🥝","🍅","🥑","🥦","🥒","🌶","🌽","🥕","🥔","🍠","🥐","🍞","🥨","🧀","🍳","🥞","🥓","🥩","🍗","🌭","🍟","🍕","🥪","🌮","🥗","🍣","🍱","🥟","🍤","🍙","🍚","🍧","🍦","🍰","🎂","🍭","🍬","🍫","🍩","🍪","🍯","🍼","☕️","🧃","🥤","🍺","🍻","🥂","🍷","🥃","🧊","⚽️","🏀","🏈","⚾️","🎾","🏐","🏓","🏸","🥊","🛹","⛸","🎿","🏂","🏋️","🏄","🏊","🚴","🏆","🥇","🏅","🎟","🎪","🎭","🎨","🎬","🎤","🎧","🎹","🥁","🎸","🎳","🎰","🧩","🚗","🚓","🚑","🚒","🚜","🚲","🛵","🏍","✈️","🚁","⛵️","🛳","🗺","🗽","🏰","🎡","🎢","⛺️","🏠","🏢","🏥","🏦","🏫","⛪️","🌅","🌌","⌚️","📱","💻","⌨️","🖥","📷","📸","🎥","📞","☎️","📺","📻","⏱","⏰","⏳","💡","💸","💵","💰","💳","💎","🛠","🔫","💣","🪄"];
 const praises = ["Fabulous!", "Terrific!", "Awesome!", "Incredible!", "Great Job!", "Perfect!"];
 const modeNames = { "fc": "🃏 깜빡이", "memory": "🔠 메모리", "speed-match": "🧩 짝맞추기", "speed": "⚡ 스피드퀴즈", "fish": "🎣 낚시", "exam1": "📝 순서맞추기", "exam2": "✍️ 직접쓰기" };
+const setBtnColors = [ { bg: "#FFCDD2", shadow: "#E57373", color: "#333" }, { bg: "#F8BBD0", shadow: "#F06292", color: "#333" }, { bg: "#E1BEE7", shadow: "#BA68C8", color: "#333" }, { bg: "#D1C4E9", shadow: "#9575CD", color: "#333" }, { bg: "#C5CAE9", shadow: "#7E57C2", color: "#333" }, { bg: "#BBDEFB", shadow: "#64B5F6", color: "#333" }, { bg: "#B3E5FC", shadow: "#4FC3F7", color: "#333" }, { bg: "#B2EBF2", shadow: "#4DD0E1", color: "#333" }, { bg: "#B2DFDB", shadow: "#4DB6AC", color: "#333" }, { bg: "#C8E6C9", shadow: "#81C784", color: "#333" }, { bg: "#DCEDC8", shadow: "#AED581", color: "#333" }, { bg: "#FFF9C4", shadow: "#FBC02D", color: "#333" }, { bg: "#FFECB3", shadow: "#FFCA28", color: "#333" }, { bg: "#FFE0B2", shadow: "#FFB300", color: "#333" }, { bg: "#FFCCBC", shadow: "#FF8A65", color: "#333" } ];
 
 let examQueue = []; let examCurrentIndex = 0; let examWords = []; let examSlots = [];
 let fcQueue = []; let fcCurrent = null; let fcStartTime = 0; let fcKnown = 0; let fcIsFlipped = false; let fcIsAnimating = false; let fcScore = 0; let cardAppearTime = 0; let isRetryPhase = false; let hasFlippedToCheck = false; 
@@ -38,13 +39,15 @@ let sqCurrentWord = null;
 let fishCards = []; let fishSelected = []; let fishEmojisCaught = 0; let lastFrameTime = 0; let caughtEmojisList = [];
 
 // ==========================================
-// 3. UI 및 오디오 설정 (BGM 제거 완료)
+// 3. UI 및 오디오 (BGM 제거, 효과음 유지)
 // ==========================================
 const pastelColors = [{ hex: "#FFE4E1" }, { hex: "#FFF0E6" }, { hex: "#FFFACD" }, { hex: "#E8F8F5" }, { hex: "#E1F5FE" }, { hex: "#F3E5F5" }, { hex: "#FBE9E7" }, { hex: "#E0F2F1" }, { hex: "#FCF3CF" }, { hex: "#E8EAF6" }];
 document.body.style.backgroundColor = pastelColors[Math.floor(Math.random() * pastelColors.length)].hex;
 
-let globalAudioCtx = null;
+let globalAudioCtx = null; let isMuted = false;
 function getAudioCtx() { if (!globalAudioCtx) { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null; globalAudioCtx = new AC(); } if (globalAudioCtx.state === "suspended") globalAudioCtx.resume(); return globalAudioCtx; }
+document.body.addEventListener("click", () => { getAudioCtx(); }, {once: true}); 
+
 function playSound(type) {
   try {
     const ctx = getAudioCtx(); if (!ctx || isMuted) return;
@@ -58,9 +61,6 @@ function playSound(type) {
   } catch(e) {}
 }
 
-let isMuted = false;
-document.body.addEventListener("click", () => { getAudioCtx(); }, {once: true}); // 첫 터치시 오디오 권한 획득
-
 function showScreen(screenId) { document.querySelectorAll(".screen").forEach((s) => { s.style.display = "none"; s.classList.remove("active"); }); if (screenId) { const screen = document.getElementById(screenId); if(screen) { screen.style.display = "flex"; screen.classList.add("active"); } } }
 function bindClick(id, callback) { const el = document.getElementById(id); if (el) el.onclick = callback; }
 
@@ -72,7 +72,6 @@ if(emojiContainer) {
     btn.onclick = () => { document.querySelectorAll(".emoji-btn").forEach((b) => b.classList.remove("selected")); btn.classList.add("selected"); currentUser.emoji = emoji; playSound("click"); }; emojiContainer.appendChild(btn);
   });
 }
-bindClick("mute-btn", () => { isMuted = !isMuted; document.getElementById("mute-btn").innerText = isMuted ? "🔇" : "🔊"; playSound("click"); });
 
 function resetGameStates() {
   clearInterval(gameTimerInterval); clearInterval(cdInterval); isFishing = false; isGamePaused = false; gameScore = 0; globalScoreMultiplier = 1; currentUser.caughtEmojis = ""; currentLiveStatus = "lobby";
@@ -80,32 +79,21 @@ function resetGameStates() {
   ["pile-double_current", "pile-half_current", "pile-double_future"].forEach(id => { let el = document.getElementById(id); if(el) el.innerHTML = ""; });
 }
 
+// 공통 버튼 리스너
 bindClick("close-modal-btn", () => { document.getElementById("unknown-modal").style.display = "none"; });
-bindClick("back-to-menu-btn", () => { 
-  playSound("click"); document.getElementById("top-left-controls").style.display = "none"; document.getElementById("unknown-modal").style.display = "none"; resetGameStates(); 
-  if(liveStateUnsub) { leaveLobby(); } else { showScreen("menu-screen"); }
-});
+bindClick("back-to-menu-btn", () => { playSound("click"); document.getElementById("top-left-controls").style.display = "none"; document.getElementById("unknown-modal").style.display = "none"; resetGameStates(); if(liveStateUnsub) { leaveLobby(); } else { showScreen("menu-screen"); } });
 bindClick("home-btn", () => { playSound("click"); showScreen("hub-screen"); }); 
 
 // ==========================================
-// 🌟 4. 로그인 로직 (비동기 안전장치 탑재 완료!)
+// 4. DB 로딩 및 로그인
 // ==========================================
 async function loadAllFromDB() {
   const authBtn = document.getElementById("auth-btn");
   try {
     const setSnap = await getDoc(doc(db, "gameData", "wordSets")); if (setSnap.exists()) wordSets = setSnap.data().sets || [];
     const stdSnap = await getDoc(doc(db, "gameData", "students")); if (stdSnap.exists()) studentList = stdSnap.data().students || [];
-    
-    // 🌟 데이터 로딩이 완료되면 비로소 버튼 잠금을 해제합니다!
-    if(authBtn) {
-      authBtn.innerText = "인증하기";
-      authBtn.disabled = false;
-      authBtn.style.cursor = "pointer";
-    }
-  } catch (error) { 
-    console.error("DB 로딩 에러:", error); 
-    if(authBtn) authBtn.innerText = "연결 실패 (새로고침 하세요)";
-  }
+    if(authBtn) { authBtn.innerText = "인증하기"; authBtn.disabled = false; authBtn.style.cursor = "pointer"; authBtn.style.backgroundColor = "#2196F3"; }
+  } catch (error) { console.error("DB 로딩 에러:", error); if(authBtn) authBtn.innerText = "연결 실패 (새로고침 하세요)"; }
 }
 loadAllFromDB(); 
 
@@ -132,15 +120,9 @@ bindClick("btn-singleplayer", () => {
   if (wordSets.length === 0) return alert("현재 등록된 학습 세트가 없습니다! 관리자 설정에서 세트를 만들어주세요.");
   renderSetSelectList(); showScreen("set-select-screen");
 });
-
 bindClick("btn-multiplayer", () => { playSound("click"); enterLobby(); });
+bindClick("btn-hub-admin", () => { playSound("click"); const pwd = prompt("관리자 비밀번호 4자리를 입력하세요.", ""); if (pwd === "1234") showScreen("admin-main-screen"); else if (pwd !== null) alert("비밀번호가 틀렸습니다!"); });
 
-bindClick("btn-hub-admin", () => {
-  playSound("click"); const pwd = prompt("관리자 비밀번호 4자리를 입력하세요.", "");
-  if (pwd === "1234") showScreen("admin-main-screen"); else if (pwd !== null) alert("비밀번호가 틀렸습니다!");
-});
-
-const setBtnColors = [ { bg: "#FFCDD2", shadow: "#E57373", color: "#333" }, { bg: "#F8BBD0", shadow: "#F06292", color: "#333" }, { bg: "#E1BEE7", shadow: "#BA68C8", color: "#333" }, { bg: "#D1C4E9", shadow: "#9575CD", color: "#333" }, { bg: "#C5CAE9", shadow: "#7E57C2", color: "#333" }, { bg: "#BBDEFB", shadow: "#64B5F6", color: "#333" }, { bg: "#B3E5FC", shadow: "#4FC3F7", color: "#333" }, { bg: "#B2EBF2", shadow: "#4DD0E1", color: "#333" }, { bg: "#B2DFDB", shadow: "#4DB6AC", color: "#333" }, { bg: "#C8E6C9", shadow: "#81C784", color: "#333" }, { bg: "#DCEDC8", shadow: "#AED581", color: "#333" }, { bg: "#FFF9C4", shadow: "#FBC02D", color: "#333" }, { bg: "#FFECB3", shadow: "#FFCA28", color: "#333" }, { bg: "#FFE0B2", shadow: "#FFB300", color: "#333" }, { bg: "#FFCCBC", shadow: "#FF8A65", color: "#333" } ];
 function renderSetSelectList() {
   const container = document.getElementById("set-select-list"); container.innerHTML = "";
   wordSets.forEach(set => {
@@ -157,14 +139,13 @@ bindClick("menu-go-back-set-btn", () => { playSound("click"); showScreen("set-se
 bindClick("admin-main-close-btn", () => { playSound("click"); showScreen("hub-screen"); });
 
 // ==========================================
-// 6. 라이브 멀티플레이 시스템 (학생)
+// 6. 라이브 멀티플레이 (대기실/강제전환)
 // ==========================================
 let liveGameConfig = { mode: "", time: 0, items: false, teamMode: "indiv", setId: "" };
 
 async function enterLobby() {
   if (wordSets.length === 0) return alert("서버에 등록된 단어장이 없습니다. 선생님께 문의하세요.");
   showScreen("lobby-screen");
-  
   try { await setDoc(doc(db, "lobby_users", currentUser.stdId), { stdId: currentUser.stdId, nickname: currentUser.nickname, emoji: currentUser.emoji, online: true, lastActive: Date.now() }); } catch(e) {}
   startLobbyListeners();
 
@@ -224,13 +205,11 @@ function renderLobbyChat(msgs, boxId) {
 
 function startLivePractice(config) {
   resetGameStates(); currentLiveStatus = "practice";
-  wordList = wordSets.find(s=>s.id === config.setId).words || [];
-  currentSetId = config.setId; currentGameMode = config.mode;
+  wordList = wordSets.find(s=>s.id === config.setId).words || []; currentSetId = config.setId; currentGameMode = config.mode;
   showScreen("speed-match-screen"); document.getElementById("top-left-controls").style.display = "flex";
   let banner = document.getElementById("live-sm-banner"); banner.style.display = "block"; banner.style.backgroundColor = "#9C27B0"; banner.innerText = "💪 [연습 모드] 손가락 풀기!";
   gameScore = 0; document.getElementById("sm-score").innerText = `점수: ${gameScore}`;
-  liveGameTimeRemaining = 10; document.getElementById("sm-timer").innerText = `🕒 00:10`;
-  loadSpeedMatchRound(); 
+  liveGameTimeRemaining = 10; document.getElementById("sm-timer").innerText = `🕒 00:10`; loadSpeedMatchRound(); 
 
   gameTimerInterval = setInterval(() => {
     if (!isGamePaused) { 
@@ -242,28 +221,23 @@ function startLivePractice(config) {
 
 function startLiveMainGame(config) {
   resetGameStates(); currentLiveStatus = "playing";
-  wordList = wordSets.find(s=>s.id === config.setId).words || [];
-  currentSetId = config.setId; currentGameMode = config.mode;
+  wordList = wordSets.find(s=>s.id === config.setId).words || []; currentSetId = config.setId; currentGameMode = config.mode;
   document.getElementById("huge-countdown-overlay").style.display = "none";
   showScreen("speed-match-screen"); document.getElementById("top-left-controls").style.display = "flex";
   let banner = document.getElementById("live-sm-banner"); banner.style.display = "block"; banner.style.backgroundColor = "#FF5722"; banner.innerText = "🔥 [본 게임] 랭킹전 시작!";
   gameScore = 0; document.getElementById("sm-score").innerText = `점수: ${gameScore}`;
-  liveGameTimeRemaining = parseInt(config.time);
-  loadSpeedMatchRound(); 
+  liveGameTimeRemaining = parseInt(config.time); loadSpeedMatchRound(); 
 
   gameTimerInterval = setInterval(() => {
     if (!isGamePaused) { 
-      liveGameTimeRemaining--;
-      const m = String(Math.floor(liveGameTimeRemaining / 60)).padStart(2, "0"); const s = String(liveGameTimeRemaining % 60).padStart(2, "0");
+      liveGameTimeRemaining--; const m = String(Math.floor(liveGameTimeRemaining / 60)).padStart(2, "0"); const s = String(liveGameTimeRemaining % 60).padStart(2, "0");
       document.getElementById("sm-timer").innerText = `🕒 ${m}:${s}`;
       if (liveGameTimeRemaining <= 0) { endLiveGame(); }
     }
   }, 1000);
 }
 
-async function updateMyLiveScore() {
-  if (currentLiveStatus === "playing") { try { await setDoc(doc(db, "liveRoom_scores", currentUser.stdId), { stdId: currentUser.stdId, nickname: currentUser.nickname, emoji: currentUser.emoji, score: gameScore, timestamp: Date.now() }); } catch(e) {} }
-}
+async function updateMyLiveScore() { if (currentLiveStatus === "playing") { try { await setDoc(doc(db, "liveRoom_scores", currentUser.stdId), { stdId: currentUser.stdId, nickname: currentUser.nickname, emoji: currentUser.emoji, score: gameScore, timestamp: Date.now() }); } catch(e) {} } }
 
 function endLiveGame() {
   resetGameStates(); document.getElementById("live-sm-banner").style.display = "none";
@@ -273,13 +247,12 @@ function endLiveGame() {
 }
 
 // ==========================================
-// 7. 관리자 (선생님) 라이브 로비 로직
+// 7. 관리자 로비 및 기능들
 // ==========================================
 bindClick("admin-go-live-btn", () => { playSound("click"); enterAdminLobby(); });
 
 async function enterAdminLobby() {
-  if (wordSets.length === 0) return alert("단어장을 먼저 등록하세요.");
-  showScreen("admin-lobby-screen");
+  if (wordSets.length === 0) return alert("단어장을 먼저 등록하세요."); showScreen("admin-lobby-screen");
   const setSelect = document.getElementById("admin-live-set"); setSelect.innerHTML = "";
   wordSets.forEach(s => { let opt = document.createElement("option"); opt.value = s.id; opt.innerText = s.title + ` (${s.words.length}단어)`; setSelect.appendChild(opt); });
   await pushAdminLiveState("lobby");
@@ -332,9 +305,6 @@ function startAdminMonitor() {
   });
 }
 
-// ==========================================
-// 8. 관리자 학생/세트/피드백 잡다한 기능들
-// ==========================================
 bindClick("admin-go-student-btn", () => { playSound("click"); renderAdminStudentList(); showScreen("admin-student-screen"); });
 bindClick("admin-go-set-btn", () => { playSound("click"); renderAdminSetList(); showScreen("admin-set-list-screen"); });
 bindClick("admin-student-back-btn", () => { playSound("click"); showScreen("admin-main-screen"); });
@@ -345,38 +315,18 @@ bindClick("admin-go-feedback-btn", () => { playSound("click"); renderAdminFeedba
 bindClick("admin-feedback-back-btn", () => { playSound("click"); showScreen("admin-main-screen"); });
 
 function renderAdminStudentList() {
-  const listEl = document.getElementById("admin-student-list"); listEl.innerHTML = "";
-  if(studentList.length === 0) return listEl.innerHTML = "<p style='text-align:center; margin-top:50px;'>등록된 학생이 없습니다.</p>";
-  studentList.forEach(std => {
-    const item = document.createElement("div"); item.className = "admin-list-item"; item.innerHTML = `<span><b>[${std.stdId}]</b> ${std.name}</span>`;
-    const delBtn = document.createElement("button"); delBtn.className = "admin-btn-small"; delBtn.innerText = "삭제";
-    delBtn.onclick = async () => { if(confirm(`${std.name} 학생을 정말 삭제하시겠습니까?`)) { playSound("click"); studentList = studentList.filter(s => s.stdId !== std.stdId); await setDoc(doc(db, "gameData", "students"), { students: studentList }); renderAdminStudentList(); } };
-    item.appendChild(delBtn); listEl.appendChild(item);
-  });
+  const listEl = document.getElementById("admin-student-list"); listEl.innerHTML = ""; if(studentList.length === 0) return listEl.innerHTML = "<p style='text-align:center; margin-top:50px;'>등록된 학생이 없습니다.</p>";
+  studentList.forEach(std => { const item = document.createElement("div"); item.className = "admin-list-item"; item.innerHTML = `<span><b>[${std.stdId}]</b> ${std.name}</span>`; const delBtn = document.createElement("button"); delBtn.className = "admin-btn-small"; delBtn.innerText = "삭제"; delBtn.onclick = async () => { if(confirm(`${std.name} 학생을 정말 삭제하시겠습니까?`)) { playSound("click"); studentList = studentList.filter(s => s.stdId !== std.stdId); await setDoc(doc(db, "gameData", "students"), { students: studentList }); renderAdminStudentList(); } }; item.appendChild(delBtn); listEl.appendChild(item); });
 }
 bindClick("admin-student-upload-btn", async () => {
   playSound("click"); const text = document.getElementById("admin-student-textarea").value; const lines = text.trim().split("\n"); let addedCount = 0;
-  for (let line of lines) {
-    const parts = line.split('\t'); 
-    if (parts.length >= 2 && parts[0].trim() !== "" && parts[1].trim() !== "") {
-      const stdId = parts[0].trim(); const name = parts[1].trim(); const existingIndex = studentList.findIndex(s => s.stdId === stdId);
-      if(existingIndex >= 0) studentList[existingIndex].name = name; else studentList.push({ stdId, name }); addedCount++;
-    }
-  }
+  for (let line of lines) { const parts = line.split('\t'); if (parts.length >= 2 && parts[0].trim() !== "" && parts[1].trim() !== "") { const stdId = parts[0].trim(); const name = parts[1].trim(); const existingIndex = studentList.findIndex(s => s.stdId === stdId); if(existingIndex >= 0) studentList[existingIndex].name = name; else studentList.push({ stdId, name }); addedCount++; } }
   if (addedCount === 0) return alert("입력된 학생 정보가 없거나 양식이 틀렸습니다!");
   try { await setDoc(doc(db, "gameData", "students"), { students: studentList }); alert(`성공! 총 ${addedCount}명의 학생 정보를 처리했습니다.`); document.getElementById("admin-student-textarea").value = ""; renderAdminStudentList(); } catch (error) { alert("저장에 실패했습니다."); }
 });
 function renderAdminSetList() {
-  const listEl = document.getElementById("admin-set-list"); listEl.innerHTML = "";
-  if(wordSets.length === 0) return listEl.innerHTML = "<p style='text-align:center; margin-top:50px;'>등록된 세트가 없습니다.</p>";
-  wordSets.forEach(set => {
-    const item = document.createElement("div"); item.className = "admin-list-item"; item.innerHTML = `<span style="font-weight:bold;">${set.title} <span style="font-size:12px; font-weight:normal; color:#666;">(${set.words.length}단어)</span></span>`;
-    const btnBox = document.createElement("div"); const editBtn = document.createElement("button"); editBtn.className = "admin-btn-small admin-btn-edit"; editBtn.innerText = "수정";
-    editBtn.onclick = () => { playSound("click"); currentEditingSetId = set.id; document.getElementById("admin-set-title").value = set.title; document.getElementById("admin-set-textarea").value = set.words.map(w => `${w.en}\t${w.ko}`).join("\n"); showScreen("admin-set-edit-screen"); };
-    const delBtn = document.createElement("button"); delBtn.className = "admin-btn-small"; delBtn.innerText = "삭제";
-    delBtn.onclick = async () => { if(confirm(`[${set.title}] 세트를 정말 삭제하시겠습니까?`)) { playSound("click"); wordSets = wordSets.filter(s => s.id !== set.id); await setDoc(doc(db, "gameData", "wordSets"), { sets: wordSets }); renderAdminSetList(); } };
-    btnBox.appendChild(editBtn); btnBox.appendChild(delBtn); item.appendChild(btnBox); listEl.appendChild(item);
-  });
+  const listEl = document.getElementById("admin-set-list"); listEl.innerHTML = ""; if(wordSets.length === 0) return listEl.innerHTML = "<p style='text-align:center; margin-top:50px;'>등록된 세트가 없습니다.</p>";
+  wordSets.forEach(set => { const item = document.createElement("div"); item.className = "admin-list-item"; item.innerHTML = `<span style="font-weight:bold;">${set.title} <span style="font-size:12px; font-weight:normal; color:#666;">(${set.words.length}단어)</span></span>`; const btnBox = document.createElement("div"); const editBtn = document.createElement("button"); editBtn.className = "admin-btn-small admin-btn-edit"; editBtn.innerText = "수정"; editBtn.onclick = () => { playSound("click"); currentEditingSetId = set.id; document.getElementById("admin-set-title").value = set.title; document.getElementById("admin-set-textarea").value = set.words.map(w => `${w.en}\t${w.ko}`).join("\n"); showScreen("admin-set-edit-screen"); }; const delBtn = document.createElement("button"); delBtn.className = "admin-btn-small"; delBtn.innerText = "삭제"; delBtn.onclick = async () => { if(confirm(`[${set.title}] 세트를 정말 삭제하시겠습니까?`)) { playSound("click"); wordSets = wordSets.filter(s => s.id !== set.id); await setDoc(doc(db, "gameData", "wordSets"), { sets: wordSets }); renderAdminSetList(); } }; btnBox.appendChild(editBtn); btnBox.appendChild(delBtn); item.appendChild(btnBox); listEl.appendChild(item); });
 }
 bindClick("admin-set-save-btn", async () => {
   playSound("click"); const title = document.getElementById("admin-set-title").value.trim(); if(!title) return alert("세트 이름을 적어주세요!");
@@ -396,94 +346,31 @@ async function renderAdminFeedbackList() {
 }
 
 // ==========================================
-// 9. 기존 싱글 플레이 및 게임 메뉴 라우팅
+// 8. 기타 기능 및 게임 로직 (수정 없음)
 // ==========================================
 bindClick("menu-list-btn", () => { playSound("click"); isWordHidden = false; isMeanHidden = false; document.getElementById("toggle-word-btn").innerText = "영어 가리기"; document.getElementById("toggle-mean-btn").innerText = "뜻 가리기"; renderWordList(); showScreen("list-screen"); });
 bindClick("list-back-btn", () => { playSound("click"); showScreen("menu-screen"); });
 bindClick("toggle-word-btn", () => { playSound("click"); isWordHidden = !isWordHidden; document.getElementById("toggle-word-btn").innerText = isWordHidden ? "영어 보이기" : "영어 가리기"; document.querySelectorAll(".word-text-col span").forEach(el => { if(isWordHidden) el.classList.add("hidden-text"); else el.classList.remove("hidden-text"); }); });
 bindClick("toggle-mean-btn", () => { playSound("click"); isMeanHidden = !isMeanHidden; document.getElementById("toggle-mean-btn").innerText = isMeanHidden ? "뜻 보이기" : "뜻 가리기"; document.querySelectorAll(".mean-text-col span").forEach(el => { if(isMeanHidden) el.classList.add("hidden-text"); else el.classList.remove("hidden-text"); }); });
-
 function getStarClass(count) { if (count === 0) return "fire-0"; if (count === 1) return "fire-1"; if (count === 2) return "fire-2"; if (count <= 4) return "fire-3"; if (count <= 7) return "fire-4"; return "fire-max"; }
-function renderWordList() {
-  document.getElementById("list-title").innerText = `[ ${currentSetTitle} ] 목록`; const container = document.getElementById("word-list-container"); container.innerHTML = "";
-  const storageKey = `stars_${currentUser.stdId}_${currentSetId}`; try { const stored = localStorage.getItem(storageKey); if (stored) starData = JSON.parse(stored); else starData = {}; } catch(e) {}
-  wordList.forEach((word, idx) => {
-    const wId = `word_${idx}`; if(starData[wId] === undefined) starData[wId] = 0; 
-    const itemDiv = document.createElement("div"); itemDiv.className = "word-list-item"; const wordCol = document.createElement("div"); wordCol.className = "word-text-col";
-    const wSpan = document.createElement("span"); wSpan.innerText = word.en; if(isWordHidden) wSpan.classList.add("hidden-text"); wordCol.appendChild(wSpan);
-    const meanCol = document.createElement("div"); meanCol.className = "mean-text-col"; const mSpan = document.createElement("span"); mSpan.innerText = word.ko; if(isMeanHidden) mSpan.classList.add("hidden-text"); meanCol.appendChild(mSpan);
-    const starCol = document.createElement("div"); starCol.className = "star-col"; const starBtn = document.createElement("button"); starBtn.className = `star-btn ${getStarClass(starData[wId])}`; starBtn.innerText = "⭐";
-    const countSpan = document.createElement("span"); countSpan.className = "star-count"; countSpan.innerText = starData[wId] > 0 ? starData[wId] : "";
-    starBtn.onclick = () => { playSound("click"); starData[wId]++; starBtn.className = `star-btn ${getStarClass(starData[wId])}`; countSpan.innerText = starData[wId]; try { localStorage.setItem(storageKey, JSON.stringify(starData)); } catch(e){} };
-    starCol.appendChild(starBtn); starCol.appendChild(countSpan); itemDiv.appendChild(wordCol); itemDiv.appendChild(meanCol); itemDiv.appendChild(starCol); container.appendChild(itemDiv);
-  });
-}
+function renderWordList() { document.getElementById("list-title").innerText = `[ ${currentSetTitle} ] 목록`; const container = document.getElementById("word-list-container"); container.innerHTML = ""; const storageKey = `stars_${currentUser.stdId}_${currentSetId}`; try { const stored = localStorage.getItem(storageKey); if (stored) starData = JSON.parse(stored); else starData = {}; } catch(e) {} wordList.forEach((word, idx) => { const wId = `word_${idx}`; if(starData[wId] === undefined) starData[wId] = 0; const itemDiv = document.createElement("div"); itemDiv.className = "word-list-item"; const wordCol = document.createElement("div"); wordCol.className = "word-text-col"; const wSpan = document.createElement("span"); wSpan.innerText = word.en; if(isWordHidden) wSpan.classList.add("hidden-text"); wordCol.appendChild(wSpan); const meanCol = document.createElement("div"); meanCol.className = "mean-text-col"; const mSpan = document.createElement("span"); mSpan.innerText = word.ko; if(isMeanHidden) mSpan.classList.add("hidden-text"); meanCol.appendChild(mSpan); const starCol = document.createElement("div"); starCol.className = "star-col"; const starBtn = document.createElement("button"); starBtn.className = `star-btn ${getStarClass(starData[wId])}`; starBtn.innerText = "⭐"; const countSpan = document.createElement("span"); countSpan.className = "star-count"; countSpan.innerText = starData[wId] > 0 ? starData[wId] : ""; starBtn.onclick = () => { playSound("click"); starData[wId]++; starBtn.className = `star-btn ${getStarClass(starData[wId])}`; countSpan.innerText = starData[wId]; try { localStorage.setItem(storageKey, JSON.stringify(starData)); } catch(e){} }; starCol.appendChild(starBtn); starCol.appendChild(countSpan); itemDiv.appendChild(wordCol); itemDiv.appendChild(meanCol); itemDiv.appendChild(starCol); container.appendChild(itemDiv); }); }
+bindClick("menu-exam-btn", () => { playSound("click"); showScreen("exam-option-screen"); }); bindClick("exam-option-back-btn", () => { playSound("click"); showScreen("menu-screen"); }); bindClick("exam1-btn", () => { playSound("click"); currentGameMode = "exam1"; startExamCountdown(startExam1Logic); }); bindClick("exam2-btn", () => { playSound("click"); currentGameMode = "exam2"; startExamCountdown(startExam2Logic); }); bindClick("menu-fc-btn", () => { playSound("click"); currentGameMode = "fc"; showScreen("fc-option-screen"); }); bindClick("fc-order-btn", () => { playSound("click"); fcIsRandom = false; startFlashcard(); }); bindClick("fc-random-btn", () => { playSound("click"); fcIsRandom = true; startFlashcard(); }); bindClick("fc-option-back-btn", () => { playSound("click"); showScreen("menu-screen"); }); bindClick("menu-memory-btn", () => { playSound("click"); currentGameMode = "memory"; showScreen("time-option-screen"); }); bindClick("menu-speed-match-btn", () => { playSound("click"); currentGameMode = "speed-match"; showScreen("time-option-screen"); }); bindClick("menu-speed-btn", () => { playSound("click"); currentGameMode = "speed"; showScreen("time-option-screen"); }); bindClick("menu-fish-btn", () => { playSound("click"); currentGameMode = "fish"; showScreen("time-option-screen"); }); bindClick("time-option-back-btn", () => { playSound("click"); showScreen("menu-screen"); }); bindClick("time-3m-btn", () => { playSound("click"); routeGameStart(3); }); bindClick("time-5m-btn", () => { playSound("click"); routeGameStart(5); });
 
-bindClick("menu-exam-btn", () => { playSound("click"); showScreen("exam-option-screen"); });
-bindClick("exam-option-back-btn", () => { playSound("click"); showScreen("menu-screen"); });
-bindClick("exam1-btn", () => { playSound("click"); currentGameMode = "exam1"; startExamCountdown(startExam1Logic); });
-bindClick("exam2-btn", () => { playSound("click"); currentGameMode = "exam2"; startExamCountdown(startExam2Logic); });
-bindClick("menu-fc-btn", () => { playSound("click"); currentGameMode = "fc"; showScreen("fc-option-screen"); });
-bindClick("fc-order-btn", () => { playSound("click"); fcIsRandom = false; startFlashcard(); });
-bindClick("fc-random-btn", () => { playSound("click"); fcIsRandom = true; startFlashcard(); });
-bindClick("fc-option-back-btn", () => { playSound("click"); showScreen("menu-screen"); }); 
-bindClick("menu-memory-btn", () => { playSound("click"); currentGameMode = "memory"; showScreen("time-option-screen"); });
-bindClick("menu-speed-match-btn", () => { playSound("click"); currentGameMode = "speed-match"; showScreen("time-option-screen"); });
-bindClick("menu-speed-btn", () => { playSound("click"); currentGameMode = "speed"; showScreen("time-option-screen"); });
-bindClick("menu-fish-btn", () => { playSound("click"); currentGameMode = "fish"; showScreen("time-option-screen"); });
-bindClick("time-option-back-btn", () => { playSound("click"); showScreen("menu-screen"); }); 
-bindClick("time-3m-btn", () => { playSound("click"); routeGameStart(3); });
-bindClick("time-5m-btn", () => { playSound("click"); routeGameStart(5); });
+function routeGameStart(minutes) { if(currentGameMode === "memory") startCountdown(minutes, "memory-screen", startMemoryLogic); else if(currentGameMode === "speed-match") startCountdown(minutes, "speed-match-screen", startSpeedMatchLogic); else if(currentGameMode === "speed") startCountdown(minutes, "speed-screen", startSpeedLogic); else if(currentGameMode === "fish") startCountdown(minutes, "fishing-screen", startFishingLogic); }
+function startCountdown(minutes, screenId, logicCallback) { showScreen(screenId); document.getElementById("top-left-controls").style.display = "flex"; const overlay = document.getElementById("game-countdown-overlay"); const textEl = document.getElementById("countdown-text"); overlay.style.display = "flex"; gameTimeRemaining = minutes * 60; gameScore = 0; globalScoreMultiplier = 1; document.getElementById("pile-double_current").innerHTML = ""; document.getElementById("pile-half_current").innerHTML = ""; document.getElementById("pile-double_future").innerHTML = ""; clearInterval(gameTimerInterval); clearInterval(cdInterval); let count = 5; textEl.innerText = count; cdInterval = setInterval(() => { count--; if (count > 0) { playSound("click"); textEl.style.animation = "none"; void textEl.offsetWidth; textEl.style.animation = null; textEl.innerText = count; } else { clearInterval(cdInterval); overlay.style.display = "none"; playSound("success"); lastMatchTime = Date.now(); logicCallback(); } }, 1000); }
+function startExamCountdown(logicCallback) { showScreen(currentGameMode === "exam1" ? "exam1-screen" : "exam2-screen"); document.getElementById("top-left-controls").style.display = "flex"; const overlay = document.getElementById("game-countdown-overlay"); const textEl = document.getElementById("countdown-text"); overlay.style.display = "flex"; gameScore = 0; globalScoreMultiplier = 1; clearInterval(gameTimerInterval); clearInterval(cdInterval); let count = 3; textEl.innerText = count; cdInterval = setInterval(() => { count--; if (count > 0) { playSound("click"); textEl.style.animation = "none"; void textEl.offsetWidth; textEl.style.animation = null; textEl.innerText = count; } else { clearInterval(cdInterval); overlay.style.display = "none"; playSound("success"); logicCallback(); } }, 1000); }
+function showGamePraise(earnedScore, customMsg, customColor) { const overlay = document.getElementById("game-praise-overlay"); overlay.style.color = customColor || "#FF4081"; if (customMsg) overlay.innerHTML = customMsg; else { const randPraise = praises[Math.floor(Math.random() * praises.length)]; overlay.innerHTML = `<div id="praise-title">${randPraise}</div><div id="praise-score">+ ${earnedScore}점!</div>`; } overlay.classList.remove("praise-anim-pop"); void overlay.offsetWidth; overlay.classList.add("praise-anim-pop"); }
+let buffTimeout; function showBuffMsg(text, subText, r, g, b) { const overlay = document.getElementById("buff-msg-overlay"); overlay.innerHTML = `<div>${text}</div><div style="font-size:24px; font-weight:normal; margin-top:5px;">${subText}</div>`; overlay.style.background = `rgba(${r}, ${g}, ${b}, 0.85)`; overlay.style.display = "flex"; overlay.classList.remove("drift-anim"); void overlay.offsetWidth; overlay.classList.add("drift-anim"); overlay.onclick = () => { overlay.style.display = "none"; clearTimeout(buffTimeout); }; clearTimeout(buffTimeout); buffTimeout = setTimeout(() => { overlay.style.display = "none"; }, 2500); }
+function calcSpeedBonus() { const timeDiff = Date.now() - lastMatchTime; let bonus = 50 - Math.floor(timeDiff / 100); if (bonus < 0) bonus = 0; if (bonus > 50) bonus = 50; lastMatchTime = Date.now(); return (100 + bonus) * globalScoreMultiplier; }
+function addInventoryItem(type) { let color, text; if(type === 'double_current') { color = '#2196F3'; text = '🔵 x2'; } else if(type === 'half_current') { color = '#F44336'; text = '🔴 ÷2'; } else if(type === 'double_future') { color = '#FFC107'; text = '🟡 버프'; } let el = document.createElement("div"); el.className = "inventory-item"; el.style.background = color; el.innerText = text; document.getElementById("pile-" + type).appendChild(el); }
+function triggerTreasureEvent(callback) { isGamePaused = true; playSound("treasure"); const overlay = document.getElementById("treasure-overlay"); overlay.style.display = "flex"; const chests = document.querySelectorAll(".treasure-chest"); chests.forEach(chest => { chest.onclick = null; chest.onclick = () => { playSound("click"); chest.classList.add("chest-explode"); setTimeout(() => { overlay.style.display = "none"; chest.classList.remove("chest-explode"); let effectType = Math.floor(Math.random() * 3); if (effectType === 0) { gameScore *= 2; addInventoryItem("double_current"); showBuffMsg("버프 획득!", "현재 점수 2배!", 33, 150, 243); } else if (effectType === 1) { gameScore = Math.floor(gameScore / 2); addInventoryItem("half_current"); showBuffMsg("앗, 함정!", "현재 점수 반토막...", 244, 67, 54); } else if (effectType === 2) { globalScoreMultiplier *= 2; addInventoryItem("double_future"); showBuffMsg("슈퍼 버프 획득!", "앞으로 얻는 모든 점수 2배!", 255, 193, 7); } if(currentGameMode === "memory") updateMemoryUI(); else if(currentGameMode === "speed-match") updateSpeedMatchUI(); else if(currentGameMode === "speed") updateSpeedUI(); isGamePaused = false; callback(); }, 400); }; }); }
 
-// ==========================================
-// 10. 스피드 짝맞추기 게임 로직 (라이브 연동)
-// ==========================================
-function loadSpeedMatchRound() {
-  smPairsFound = 0; smSelected = []; const leftCol = document.getElementById("sm-left-col"); const rightCol = document.getElementById("sm-right-col");
-  leftCol.innerHTML = ""; rightCol.innerHTML = ""; 
-  if(currentLiveStatus !== "practice") { showGamePraise(0, `라운드 ${smRound}!`, "#FF5722"); }
-  let shuffled = [...wordList].sort(() => 0.5 - Math.random()); let roundWords = shuffled.slice(0, 4);
-  let leftPool = roundWords.map(w => ({ text: w.en, id: w.en, side: 'left' })).sort(() => 0.5 - Math.random());
-  let rightPool = roundWords.map(w => ({ text: w.ko, id: w.en, side: 'right' })).sort(() => 0.5 - Math.random());
-  leftPool.forEach(item => leftCol.appendChild(createSmCard(item))); rightPool.forEach(item => rightCol.appendChild(createSmCard(item)));
-}
-function createSmCard(item) {
-  const wrapper = document.createElement("div"); wrapper.className = `sm-card-wrapper`; const card = document.createElement("div"); card.className = `sm-card`; card.innerText = item.text;
-  card.style.fontSize = item.text.length > 30 ? "14px" : (item.text.length > 15 ? "18px" : "24px"); wrapper.appendChild(card);
-  wrapper.onclick = () => {
-    if (isGamePaused || card.classList.contains("selected") || card.classList.contains("matched")) return;
-    if (smSelected.length === 1 && smSelected[0].side === item.side) { smSelected[0].el.classList.remove("selected"); smSelected = []; }
-    playSound("click"); card.classList.add("selected"); smSelected.push({ id: item.id, side: item.side, el: card, wrapper }); updateSmSideAvailability();
-    if (smSelected.length === 2) { isGamePaused = true; checkSmMatch(); }
-  }; return wrapper;
-}
-function updateSmSideAvailability() {
-  const leftWrappers = document.querySelectorAll("#sm-left-col .sm-card-wrapper"); const rightWrappers = document.querySelectorAll("#sm-right-col .sm-card-wrapper");
-  leftWrappers.forEach(w => w.classList.remove("disabled")); rightWrappers.forEach(w => w.classList.remove("disabled"));
-  if (smSelected.length === 1) { const sideToDisable = smSelected[0].side; if (sideToDisable === "left") leftWrappers.forEach(w => w.classList.add("disabled")); else rightWrappers.forEach(w => w.classList.add("disabled")); }
-}
-function checkSmMatch() {
-  let [c1, c2] = smSelected;
-  if (c1.id === c2.id) { 
-    playSound("success"); let earnedScore = calcSpeedBonus(); gameScore += earnedScore; 
-    document.getElementById("sm-score").innerText = `점수: ${gameScore}`; updateMyLiveScore(); 
-    if(currentLiveStatus !== "practice") showGamePraise(earnedScore);
-    c1.el.classList.add("matched"); c2.el.classList.add("matched"); smPairsFound++; smSelected = []; updateSmSideAvailability();
-    let useItem = liveGameConfig.items; if(currentLiveStatus === "lobby" || currentLiveStatus === "") useItem = true; 
-    if (useItem && Math.random() < 0.3 && currentLiveStatus !== "practice") { triggerTreasureEvent(() => { checkSmRoundEnd(); isGamePaused = false; }); } else { checkSmRoundEnd(); isGamePaused = false; }
-  } else { 
-    playSound("wrong"); let penalty = calcSpeedBonus(); gameScore = Math.max(0, gameScore - penalty); 
-    document.getElementById("sm-score").innerText = `점수: ${gameScore}`; updateMyLiveScore(); 
-    if(currentLiveStatus !== "practice") showBuffMsg("오답!", `-${penalty}점 ㅠㅠ`, 244, 67, 54);
-    c1.el.classList.add("wrong"); c2.el.classList.add("wrong");
-    setTimeout(() => { c1.el.classList.remove("selected", "wrong"); c2.el.classList.remove("selected", "wrong"); smSelected = []; updateSmSideAvailability(); isGamePaused = false; }, 400); 
-  }
-}
+function loadSpeedMatchRound() { smPairsFound = 0; smSelected = []; const leftCol = document.getElementById("sm-left-col"); const rightCol = document.getElementById("sm-right-col"); leftCol.innerHTML = ""; rightCol.innerHTML = ""; if(currentLiveStatus !== "practice") { showGamePraise(0, `라운드 ${smRound}!`, "#FF5722"); } let shuffled = [...wordList].sort(() => 0.5 - Math.random()); let roundWords = shuffled.slice(0, 4); let leftPool = roundWords.map(w => ({ text: w.en, id: w.en, side: 'left' })).sort(() => 0.5 - Math.random()); let rightPool = roundWords.map(w => ({ text: w.ko, id: w.en, side: 'right' })).sort(() => 0.5 - Math.random()); leftPool.forEach(item => leftCol.appendChild(createSmCard(item))); rightPool.forEach(item => rightCol.appendChild(createSmCard(item))); }
+function createSmCard(item) { const wrapper = document.createElement("div"); wrapper.className = `sm-card-wrapper`; const card = document.createElement("div"); card.className = `sm-card`; card.innerText = item.text; card.style.fontSize = item.text.length > 30 ? "14px" : (item.text.length > 15 ? "18px" : "24px"); wrapper.appendChild(card); wrapper.onclick = () => { if (isGamePaused || card.classList.contains("selected") || card.classList.contains("matched")) return; if (smSelected.length === 1 && smSelected[0].side === item.side) { smSelected[0].el.classList.remove("selected"); smSelected = []; } playSound("click"); card.classList.add("selected"); smSelected.push({ id: item.id, side: item.side, el: card, wrapper }); updateSmSideAvailability(); if (smSelected.length === 2) { isGamePaused = true; checkSmMatch(); } }; return wrapper; }
+function updateSmSideAvailability() { const leftWrappers = document.querySelectorAll("#sm-left-col .sm-card-wrapper"); const rightWrappers = document.querySelectorAll("#sm-right-col .sm-card-wrapper"); leftWrappers.forEach(w => w.classList.remove("disabled")); rightWrappers.forEach(w => w.classList.remove("disabled")); if (smSelected.length === 1) { const sideToDisable = smSelected[0].side; if (sideToDisable === "left") leftWrappers.forEach(w => w.classList.add("disabled")); else rightWrappers.forEach(w => w.classList.add("disabled")); } }
+function checkSmMatch() { let [c1, c2] = smSelected; if (c1.id === c2.id) { playSound("success"); let earnedScore = calcSpeedBonus(); gameScore += earnedScore; document.getElementById("sm-score").innerText = `점수: ${gameScore}`; updateMyLiveScore(); if(currentLiveStatus !== "practice") showGamePraise(earnedScore); c1.el.classList.add("matched"); c2.el.classList.add("matched"); smPairsFound++; smSelected = []; updateSmSideAvailability(); let useItem = liveGameConfig.items; if(currentLiveStatus === "lobby" || currentLiveStatus === "") useItem = true; if (useItem && Math.random() < 0.3 && currentLiveStatus !== "practice") { triggerTreasureEvent(() => { checkSmRoundEnd(); isGamePaused = false; }); } else { checkSmRoundEnd(); isGamePaused = false; } } else { playSound("wrong"); let penalty = calcSpeedBonus(); gameScore = Math.max(0, gameScore - penalty); document.getElementById("sm-score").innerText = `점수: ${gameScore}`; updateMyLiveScore(); if(currentLiveStatus !== "practice") showBuffMsg("오답!", `-${penalty}점 ㅠㅠ`, 244, 67, 54); c1.el.classList.add("wrong"); c2.el.classList.add("wrong"); setTimeout(() => { c1.el.classList.remove("selected", "wrong"); c2.el.classList.remove("selected", "wrong"); smSelected = []; updateSmSideAvailability(); isGamePaused = false; }, 400); } }
 function checkSmRoundEnd() { if (smPairsFound === 4) { smRound++; setTimeout(loadSpeedMatchRound, 500); } }
 
-// ==========================================
-// 11. 나머지 게임 로직 압축 (코드 길이 최적화, 기능 동일)
-// ==========================================
 function startExam1Logic() { examQueue = [...wordList].sort(() => 0.5 - Math.random()); examCurrentIndex = 0; document.getElementById("exam1-score").innerText = `점수: 0`; loadExam1Question(); }
 function loadExam1Question() { if(examCurrentIndex >= examQueue.length) { currentUser.score = gameScore; document.getElementById("result-detail").innerText = `문장 조립을 모두 완료했습니다!`; goResult(); return; } let q = examQueue[examCurrentIndex]; document.getElementById("exam1-progress").innerText = `${examCurrentIndex + 1} / ${examQueue.length}`; document.getElementById("exam1-ko").innerText = q.ko; let words = q.en.split(' ').filter(w => w.trim() !== ''); examWords = words.map((w, i) => ({ id: i, text: w })).sort(() => 0.5 - Math.random()); examSlots = []; renderExam1Cards(); }
 function renderExam1Cards() { const pool = document.getElementById("exam1-pool"); const slots = document.getElementById("exam1-slots"); const submitBtn = document.getElementById("exam1-submit-btn"); pool.innerHTML = ''; slots.innerHTML = ''; examWords.forEach(item => { let btn = document.createElement("button"); btn.className = "exam-card"; btn.innerText = item.text; btn.onclick = () => { if(isGamePaused) return; playSound("click"); examSlots.push(item); examWords = examWords.filter(w => w.id !== item.id); renderExam1Cards(); }; pool.appendChild(btn); }); examSlots.forEach(item => { let btn = document.createElement("button"); btn.className = "exam-card"; btn.innerText = item.text; btn.style.backgroundColor = "#E8EAF6"; btn.style.borderColor = "#3F51B5"; btn.onclick = () => { if(isGamePaused) return; playSound("click"); examWords.push(item); examSlots = examSlots.filter(w => w.id !== item.id); renderExam1Cards(); }; slots.appendChild(btn); }); if (examWords.length === 0 && examSlots.length > 0) submitBtn.style.display = "block"; else submitBtn.style.display = "none"; }
@@ -516,32 +403,19 @@ function refillFishes() { let enIds = fishCards.filter((f) => f.lang === "en").m
 function createFishEl(text, lang, targetId) { const el = document.createElement("div"); el.className = "fish-card pop-in"; let emoji = allEmojis[Math.floor(Math.random() * allEmojis.length)]; let fontSize = text.length > 20 ? "11px" : text.length > 10 ? "13px" : "15px"; el.innerHTML = `<div class="fish-emoji">${emoji}</div><div class="fish-text" style="font-size:${fontSize}">${text}</div>`; fishPond.appendChild(el); let angle = Math.random() * Math.PI * 2; let speed = 80 + Math.random() * 80; let vx = Math.cos(angle) * speed; let vy = Math.sin(angle) * speed; let x = fishPond.clientWidth / 2 - 50 + (Math.random() * 40 - 20); let y = fishPond.clientHeight / 2 - 50 + (Math.random() * 40 - 20); let fishObj = { el, text, lang, targetId, emoji, x, y, vx, vy }; fishCards.push(fishObj); el.onclick = () => { if (isGamePaused || fishSelected.length >= 2 || fishSelected.includes(fishObj)) return; playSound("click"); el.classList.add("selected"); fishSelected.push(fishObj); if (fishSelected.length === 2) { let [f1, f2] = fishSelected; if (f1.lang !== f2.lang && f1.targetId === f2.targetId) { playSound("success"); showGamePraise(0, praises[Math.floor(Math.random() * praises.length)], "#4CAF50"); fishEmojisCaught += 2; updateFishUI(); caughtEmojisList.push(f1.emoji, f2.emoji); const rect1 = f1.el.getBoundingClientRect(); const rect2 = f2.el.getBoundingClientRect(); animateFlyToBucket(f1.emoji, rect1.left + rect1.width / 2, rect1.top + rect1.height / 2); animateFlyToBucket(f2.emoji, rect2.left + rect2.width / 2, rect2.top + rect2.height / 2); f1.el.remove(); f2.el.remove(); fishCards = fishCards.filter((c) => c !== f1 && c !== f2); if (Math.random() < 0.5) { triggerTreasureEvent(() => { refillFishes(); fishSelected = []; }); } else { refillFishes(); fishSelected = []; } } else { playSound("wrong"); showGamePraise(0, "Try again..", "#F44336"); f1.el.classList.add("wrong"); f2.el.classList.add("wrong"); setTimeout(() => { f1.el.classList.remove("selected", "wrong"); f2.el.classList.remove("selected", "wrong"); fishSelected = []; }, 400); } } }; }
 function moveFishes(currentTime) { if (!isFishing) return; let dt = (currentTime - lastFrameTime) / 1000; if (dt > 0.1 || !dt) dt = 0.016; lastFrameTime = currentTime; if(!isGamePaused) { const pondW = fishPond.clientWidth; const pondH = fishPond.clientHeight; fishCards.forEach((f) => { const w = f.el.offsetWidth || 100; const h = f.el.offsetHeight || 100; f.x += f.vx * dt; f.y += f.vy * dt; if (f.x <= 0) { f.x = 0; f.vx *= -1; } if (f.x + w >= pondW) { f.x = pondW - w; f.vx *= -1; } if (f.y <= 0) { f.y = 0; f.vy *= -1; } if (f.y + h >= pondH) { f.y = pondH - h; f.vy *= -1; } let scale = f.el.classList.contains("selected") ? "scale(1.1)" : "scale(1)"; f.el.style.transform = `translate3d(${f.x}px, ${f.y}px, 0) ${scale}`; }); } requestAnimationFrame(moveFishes); }
 
-// ==========================================
-// 12. 공통 결과 및 랭킹 관리
-// ==========================================
 async function goResult() {
   clearInterval(gameTimerInterval); clearInterval(cdInterval); isGamePaused = true; 
   document.getElementById("top-left-controls").style.display = "none"; showScreen("result-screen");
   document.getElementById("praise-word").innerText = praises[Math.floor(Math.random() * praises.length)];
   document.getElementById("result-user").innerText = `${currentUser.emoji} ${currentUser.nickname} 학생`;
   document.getElementById("final-score").innerText = currentUser.score;
-
-  const emojiBox = document.getElementById("result-caught-emojis");
-  if (currentGameMode === "fish" && currentUser.caughtEmojis) { emojiBox.style.display = "block"; emojiBox.innerText = "🎣 낚은 이모지:\n" + currentUser.caughtEmojis; } 
-  else { emojiBox.style.display = "none"; } playSound("success");
-
-  if(currentLiveStatus !== "ended") {
-    try { await addDoc(collection(db, "scores"), { stdId: currentUser.stdId, nickname: currentUser.nickname, emoji: currentUser.emoji, classId: currentUser.classId, score: currentUser.score, mode: currentGameMode, timestamp: Date.now(), setId: currentSetId, setTitle: currentSetTitle }); } catch(e) {}
-  }
+  const emojiBox = document.getElementById("result-caught-emojis"); if (currentGameMode === "fish" && currentUser.caughtEmojis) { emojiBox.style.display = "block"; emojiBox.innerText = "🎣 낚은 이모지:\n" + currentUser.caughtEmojis; } else { emojiBox.style.display = "none"; } playSound("success");
+  if(currentLiveStatus !== "ended") { try { await addDoc(collection(db, "scores"), { stdId: currentUser.stdId, nickname: currentUser.nickname, emoji: currentUser.emoji, classId: currentUser.classId, score: currentUser.score, mode: currentGameMode, timestamp: Date.now(), setId: currentSetId, setTitle: currentSetTitle }); } catch(e) {} }
 }
 
 bindClick("go-feedback-btn", () => { playSound("click"); document.getElementById("feedback-text").value = ""; showScreen("feedback-screen"); });
 bindClick("cancel-feedback-btn", () => { playSound("click"); showScreen("result-screen"); });
-bindClick("submit-feedback-btn", async () => {
-  playSound("click"); const text = document.getElementById("feedback-text").value.trim(); if(!text) return alert("의견을 적어주세요!");
-  try { await addDoc(collection(db, "feedback"), { stdId: currentUser.stdId, nickname: currentUser.nickname, emoji: currentUser.emoji, text: text, timestamp: Date.now() }); alert("소중한 의견 감사합니다!"); showScreen("result-screen"); } catch(e) { alert("전송에 실패했습니다."); }
-});
-
+bindClick("submit-feedback-btn", async () => { playSound("click"); const text = document.getElementById("feedback-text").value.trim(); if(!text) return alert("의견을 적어주세요!"); try { await addDoc(collection(db, "feedback"), { stdId: currentUser.stdId, nickname: currentUser.nickname, emoji: currentUser.emoji, text: text, timestamp: Date.now() }); alert("소중한 의견 감사합니다!"); showScreen("result-screen"); } catch(e) { alert("전송에 실패했습니다."); } });
 bindClick("go-ranking-btn", () => { playSound("click"); showRankings("today", currentGameMode); });
 bindClick("tab-today", () => { playSound("click"); showRankings("today", currentRankingMode); });
 bindClick("tab-class", () => { playSound("click"); showRankings("class", currentRankingMode); });
@@ -562,7 +436,6 @@ async function showRankings(tab, mode = currentRankingMode) {
     let filtered = allScores.filter(s => s.mode === currentRankingMode && s.setId === currentSetId);
     const now = new Date(); const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
     if (tab === "today") filtered = filtered.filter(s => s.timestamp >= todayStart); else if (tab === "class") filtered = filtered.filter(s => s.classId === currentUser.classId);
-
     let uniqueTop = {}; filtered.forEach(s => { if(!uniqueTop[s.stdId] || uniqueTop[s.stdId].score < s.score) uniqueTop[s.stdId] = s; }); let sorted = Object.values(uniqueTop).sort((a, b) => b.score - a.score);
     listEl.innerHTML = "";
     if (sorted.length === 0) { listEl.innerHTML = "<div style='text-align:center; padding:20px;'>아직 등록된 기록이 없어요!</div>"; } 
