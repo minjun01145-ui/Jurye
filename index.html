@@ -41,10 +41,11 @@
     <div id="auth-screen" class="screen active">
       <h1>👾 주례여중 오락실 👾</h1>
       <div class="n-box" style="margin-top: 20px;">
-        <h3 style="margin-bottom: 15px;">학번과 이름을 입력하세요</h3>
+        <h3 style="margin-bottom: 5px;">학번과 이름을 입력하세요</h3>
+        <p id="db-status-msg" style="font-size:14px; color:#FF4081; margin-top:0; margin-bottom:15px;">데이터베이스 연결 중...⏳</p>
         <input type="number" id="auth-id" class="n-input" placeholder="학번 (예: 3201)" />
         <input type="text" id="auth-name" class="n-input" placeholder="이름" />
-        <button id="auth-btn" class="n-btn" disabled>서버 연결 중...⏳</button>
+        <button id="auth-btn" class="n-btn btn-yellow" style="width:100%">[ENTER] 인증하기</button>
       </div>
     </div>
 
@@ -132,14 +133,14 @@
       <h3 style="color:#FF4081;">내 이름은 <span id="user-display"></span></h3>
       <div class="n-box menu-grid">
         <button id="menu-list-btn" class="n-btn full btn-green">📋 학습 목록 보기</button>
-        <button id="menu-chunk-study-btn" class="n-btn full btn-cyan">📖 문장 해석 모드 (연습)</button>
+        <button id="menu-chunk-study-btn" class="n-btn full btn-cyan">📖 문장 해석 모드 (무제한 연습)</button>
         
-        <button id="menu-chunk-game-btn" class="n-btn btn-pink">🧩 문장 해석 (게임)</button><button id="rank-chunk-btn" class="n-btn btn-small">🏆</button>
-        <button id="menu-fc-btn" class="n-btn">🃏 깜빡이</button><button id="rank-fc-btn" class="n-btn btn-small">🏆</button>
-        <button id="menu-memory-btn" class="n-btn">🔠 메모리</button><button id="rank-memory-btn" class="n-btn btn-small">🏆</button>
-        <button id="menu-speed-match-btn" class="n-btn btn-orange">🧩 짝맞추기</button><button id="rank-speed-match-btn" class="n-btn btn-small">🏆</button>
-        <button id="menu-speed-btn" class="n-btn">⚡ 퀴즈</button><button id="rank-speed-btn" class="n-btn btn-small">🏆</button>
-        <button id="menu-fish-btn" class="n-btn">🎣 낚시</button><button id="rank-fish-btn" class="n-btn btn-small">🏆</button>
+        <div class="flex-row full"><button id="menu-chunk-game-btn" class="n-btn btn-pink flex-1">🧩 문장 해석 (게임)</button><button id="rank-chunk-btn" class="n-btn btn-small">🏆</button></div>
+        <div class="flex-row full"><button id="menu-fc-btn" class="n-btn flex-1">🃏 깜빡이</button><button id="rank-fc-btn" class="n-btn btn-small">🏆</button></div>
+        <div class="flex-row full"><button id="menu-memory-btn" class="n-btn flex-1">🔠 메모리</button><button id="rank-memory-btn" class="n-btn btn-small">🏆</button></div>
+        <div class="flex-row full"><button id="menu-speed-match-btn" class="n-btn btn-orange flex-1">🧩 짝맞추기</button><button id="rank-speed-match-btn" class="n-btn btn-small">🏆</button></div>
+        <div class="flex-row full"><button id="menu-speed-btn" class="n-btn flex-1">⚡ 퀴즈</button><button id="rank-speed-btn" class="n-btn btn-small">🏆</button></div>
+        <div class="flex-row full"><button id="menu-fish-btn" class="n-btn flex-1">🎣 낚시</button><button id="rank-fish-btn" class="n-btn btn-small">🏆</button></div>
       </div>
       <button id="menu-go-back-set-btn" class="n-btn btn-gray">⬅️ 단어장 변경</button>
     </div>
@@ -154,7 +155,7 @@
     <div id="chunk-screen" class="screen">
       <div class="top-bar">
          <div id="live-chunk-banner" class="live-banner" style="display:none;">[라이브 모드]</div>
-         <span id="chunk-timer" class="stat-text" style="color:var(--neon-alert); display:none;">TIME: 03:00</span>
+         <span id="chunk-timer" class="stat-text" style="color:#FF4081; display:none;">TIME: 03:00</span>
          <span id="chunk-progress" class="stat-text" style="color:#00BCD4">1/10</span>
          <span id="chunk-score" class="stat-text" style="display:none;">SCORE: 0</span>
       </div>
