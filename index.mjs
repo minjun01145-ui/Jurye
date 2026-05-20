@@ -994,7 +994,7 @@ async function showRankings(tab, mode = currentRankingMode) {
     "memory": "🔠 메모 게임",
     "speed-match": "🧩 스피드 짝맞추기",
     "speed": "⚡ 심플 스피드퀴즈",
-    "fish": "🎣 이모지 낚시하기"
+    "fish": "🎣 이모지 낚시하기",
 "chunk": "🧩 문장 해석 게임"
   };
 
