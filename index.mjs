@@ -1237,3 +1237,4 @@ function checkChunkAnswer(validChunkWords) {
       isGamePaused = false;
     }, 600);
   }
+}
