@@ -1106,7 +1106,7 @@ function loadNextChunkQuiz(validChunkWords) {
 const wordObj = validChunkWords[currentChunkIndex]; 
   
   let enParts = wordObj.en.split('/').map(s => s.trim());
-
+let koParts = wordObj.ko.split('/').map(s => s.trim());
   chunkLength = Math.min(enParts.length, koParts.length);
   enParts = enParts.slice(0, chunkLength);
   koParts = koParts.slice(0, chunkLength);
@@ -1236,4 +1236,3 @@ function checkChunkAnswer(validChunkWords) {
       isGamePaused = false;
     }, 600);
   }
-}
