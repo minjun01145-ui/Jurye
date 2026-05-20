@@ -3,15 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>주례여중 레트로 시스템</title>
+    <title>주례여중 펑키 오락실</title>
     <link rel="stylesheet" href="styles.css" />
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
-      .swal2-popup { background: #111 !important; color: #00FF41 !important; border: 2px solid #00FF41 !important; font-family: 'DungGeunMo', monospace !important; border-radius: 0 !important;}
-      .swal2-title, .swal2-html-container { color: #00FF41 !important; }
-      .swal2-confirm { background: transparent !important; color: #00FF41 !important; border: 1px solid #00FF41 !important; border-radius: 0 !important; font-family: 'DungGeunMo', monospace !important; }
-      .swal2-cancel { background: transparent !important; color: #FF003C !important; border: 1px solid #FF003C !important; border-radius: 0 !important; font-family: 'DungGeunMo', monospace !important;}
+      .swal2-popup { font-family: 'Jua', sans-serif !important; border: 3px solid #333 !important; border-radius: 15px !important; box-shadow: 5px 5px 0 #333 !important; }
+      .swal2-confirm { background: #FFEB3B !important; color: #333 !important; border: 2px solid #333 !important; box-shadow: 2px 2px 0 #333 !important;}
     </style>
   </head>
   <body>
@@ -19,159 +17,156 @@
 
     <div id="huge-countdown-overlay"><div id="huge-text" class="huge-text">5</div></div>
     
-    <div id="top-left-controls" style="display: none; position: fixed; top: 10px; left: 10px; z-index: 350; gap: 5px;">
-      <button id="back-to-menu-btn" class="r-btn btn-alert btn-small">⬅️ 포기</button>
-      <button id="mute-btn" class="r-btn btn-small">🔊 소리</button>
+    <div id="treasure-overlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.8); z-index:500; flex-direction:column; justify-content:center; align-items:center;">
+      <h2 style="color: #FFEB3B; font-size: 35px; margin-bottom: 20px;">🎁 행운의 보물상자 🎁</h2>
+      <div style="display: flex; gap: 10px;">
+        <button class="treasure-chest" style="font-size:60px; background:none; border:none; cursor:pointer;">📦</button>
+        <button class="treasure-chest" style="font-size:60px; background:none; border:none; cursor:pointer;">📦</button>
+        <button class="treasure-chest" style="font-size:60px; background:none; border:none; cursor:pointer;">📦</button>
+      </div>
     </div>
 
+    <div id="top-left-controls" style="display: none; position: fixed; top: 10px; left: 10px; z-index: 350; gap: 5px; flex-direction:column;">
+      <div style="display:flex; gap:5px;">
+        <button id="back-to-menu-btn" class="n-btn btn-small btn-gray">⬅️ 나가기</button>
+        <button id="mute-btn" class="n-btn btn-small btn-gray">🔊 소리</button>
+      </div>
+      <div id="inventory-bar" style="display:flex; gap:5px;">
+        <div id="pile-double_current"></div><div id="pile-half_current"></div><div id="pile-double_future"></div>
+      </div>
+    </div>
+
+    <div id="buff-msg-overlay" style="display:none; position:fixed; top:30%; left:50%; transform:translateX(-50%); z-index:600; padding:15px 30px; border-radius:15px; color:white; font-size:24px; font-weight:bold; text-align:center; box-shadow:0 10px 20px rgba(0,0,0,0.3); border:3px solid white;"></div>
+
     <div id="auth-screen" class="screen active">
-      <h1>> JURYE_OS_V13.0</h1>
-      <div class="r-panel">
-        <h3>LOGIN REQUIRED_</h3>
-        <input type="number" id="auth-id" class="r-input" placeholder="[학번]" />
-        <input type="text" id="auth-name" class="r-input" placeholder="[이름]" />
-        <button id="auth-btn" class="r-btn" style="width:100%" disabled>연결 중...⏳</button>
+      <h1>👾 주례여중 오락실 👾</h1>
+      <div class="n-box" style="margin-top: 20px;">
+        <h3 style="margin-bottom: 15px;">학번과 이름을 입력하세요</h3>
+        <input type="number" id="auth-id" class="n-input" placeholder="학번 (예: 3201)" />
+        <input type="text" id="auth-name" class="n-input" placeholder="이름" />
+        <button id="auth-btn" class="n-btn" disabled>서버 연결 중...⏳</button>
       </div>
     </div>
 
     <div id="login-screen" class="screen">
-      <h1>> PROFILE_SETUP</h1>
-      <div class="r-panel">
-        <input type="text" id="nickname" class="r-input" placeholder="[닉네임]" />
-        <h3>> SELECT_ICON</h3>
+      <h1>😎 프로필 설정</h1>
+      <div class="n-box">
+        <input type="text" id="nickname" class="n-input" placeholder="닉네임 입력" />
+        <h3>아이콘 선택!</h3>
         <div id="emoji-container"></div>
-        <button id="login-btn" class="r-btn btn-yellow" style="width:100%">[ENTER] 시작</button>
+        <button id="login-btn" class="n-btn btn-cyan">오락실 입장!</button>
       </div>
     </div> 
 
     <div id="hub-screen" class="screen">
-      <h1>> MAIN_SYSTEM</h1>
-      <div class="r-panel menu-grid">
-        <button id="btn-singleplayer" class="r-btn full">👤 혼자 연습하기</button>
-        <button id="btn-multiplayer" class="r-btn full btn-yellow">🌐 라이브 접속!</button>
+      <h1>어디로 갈까요?</h1>
+      <div class="n-box">
+        <button id="btn-singleplayer" class="n-btn btn-green">👤 혼자 연습하기</button>
+        <button id="btn-multiplayer" class="n-btn btn-orange">🌐 라이브 접속!</button>
       </div>
-      <button id="btn-hub-admin" class="r-btn btn-alert btn-small" style="margin-top:20px;">> ADMIN_MENU</button>
+      <button id="btn-hub-admin" class="n-btn btn-gray btn-small" style="margin-top:20px;">⚙️ 선생님 메뉴</button>
     </div>
 
     <div id="lobby-screen" class="screen">
-      <h2 style="color:#00E5FF;">> LIVE_LOBBY</h2>
-      <div class="r-panel" style="border-color:#FF003C; padding: 10px;">
-        <h3 style="color:#FF003C; margin:0;">[현재 방 설정]</h3>
-        <div id="lobby-game-info" style="font-size: 16px; color: #fff; margin-top:5px;">선생님이 방을 설정 중입니다...</div>
+      <h2>🌐 라이브 대기실</h2>
+      <div class="n-box" style="background-color: #FFF9C4; padding: 10px;">
+        <div id="lobby-game-info" style="font-size: 16px;">선생님이 방을 설정 중입니다...</div>
       </div>
-      <div class="r-panel" style="flex:1; display:flex; flex-direction:column; padding: 10px; overflow:hidden;">
-        <div style="font-size: 14px; text-align:left; border-bottom:1px solid #333; padding-bottom:5px; margin-bottom:5px;">접속자 (<span id="lobby-user-count">0</span>)</div>
-        <div id="lobby-chat-box" style="flex: 1; overflow-y: auto; text-align: left; display: flex; flex-direction: column;"></div>
+      <div class="n-box" style="padding: 10px;">
+        <div style="font-size:14px; margin-bottom:5px; color:#888;">우리반 접속자 (<span id="lobby-user-count">0</span>명)</div>
+        <div id="lobby-user-list" style="display: flex; flex-wrap: wrap; gap: 5px;"></div>
+      </div>
+      <div class="n-box flex-1" style="display:flex; flex-direction:column; overflow:hidden; padding: 10px;">
+        <div id="lobby-chat-box" style="flex: 1; overflow-y: auto; text-align: left; display: flex; flex-direction: column; gap: 5px;"></div>
         <div class="flex-row" style="margin-top: 10px;">
-          <input type="text" id="lobby-chat-input" class="r-input flex-1" style="margin:0; padding:8px;" placeholder="메시지..." autocomplete="off"/>
-          <button id="lobby-chat-send-btn" class="r-btn btn-yellow btn-small">전송</button>
+          <input type="text" id="lobby-chat-input" class="n-input flex-1" style="margin:0; font-size:16px; padding:8px;" placeholder="채팅 입력!" autocomplete="off"/>
+          <button id="lobby-chat-send-btn" class="n-btn btn-cyan btn-small" style="margin:0;">전송</button>
         </div>
       </div>
-      <button id="lobby-leave-btn" class="r-btn btn-alert">나가기</button>
     </div>
 
     <div id="admin-main-screen" class="screen">
-      <h2>> ADMIN_ROOT</h2>
-      <div class="r-panel menu-grid">
-        <button id="admin-go-live-btn" class="r-btn full btn-alert">🌐 라이브 통제실 열기</button>
-        <button id="admin-go-student-btn" class="r-btn">👥 학생 DB</button>
-        <button id="admin-go-set-btn" class="r-btn">📚 단어장 DB</button>
+      <h2>⚙️ 관리자 메뉴</h2>
+      <div class="n-box menu-grid">
+        <button id="admin-go-live-btn" class="n-btn full btn-pink">🌐 라이브 컨트롤 룸</button>
+        <button id="admin-go-student-btn" class="n-btn">👥 학생 DB</button>
+        <button id="admin-go-set-btn" class="n-btn">📚 단어장 DB</button>
       </div>
-      <button id="admin-main-close-btn" class="r-btn">돌아가기</button>
+      <button id="admin-main-close-btn" class="n-btn btn-gray">⬅️ 허브로</button>
     </div>
 
     <div id="admin-lobby-screen" class="screen">
-      <h2 style="color:#FF003C;">> LIVE_CONTROL</h2>
-      <div class="r-panel" style="padding: 10px;">
-        <div style="font-size:14px; color:#555; text-align:left; margin-bottom:5px;">[단어장 선택]</div>
-        <select id="admin-live-set" class="r-input" style="padding:5px; font-size:14px;"></select>
+      <h2>⚙️ 통제실</h2>
+      <div class="n-box" style="padding: 10px; text-align:center;">
+        <select id="admin-live-set" class="n-input" style="width:100%; font-size:16px; padding:5px;"></select>
         <div class="flex-row">
-          <select id="admin-live-mode" class="r-input flex-1" style="padding:5px; font-size:14px;"><option value="speed-match">스피드 짝맞추기</option></select>
-          <select id="admin-live-time" class="r-input flex-1" style="padding:5px; font-size:14px;"><option value="60">1분</option><option value="180" selected>3분</option></select>
+          <select id="admin-live-mode" class="n-input flex-1" style="font-size:16px; padding:5px;">
+             <option value="speed-match">스피드 짝맞추기</option>
+             <option value="chunk">문장해석(게임)</option>
+          </select>
+          <select id="admin-live-time" class="n-input flex-1" style="font-size:16px; padding:5px;"><option value="60">1분</option><option value="180" selected>3분</option></select>
         </div>
-        <button id="admin-live-start-btn" class="r-btn btn-alert" style="width:100%;">🚀 게임 쏘기!</button>
-      </div>
-      <div class="r-panel" style="flex:1; display:flex; flex-direction:column; padding:10px; overflow:hidden;">
-        <div id="admin-lobby-chat-box" style="flex: 1; overflow-y: auto; text-align:left;"></div>
-        <div class="flex-row" style="margin-top:10px;">
-          <input type="text" id="admin-lobby-chat-input" class="r-input flex-1" style="margin:0; padding:8px;" placeholder="공지 전송!" />
-          <button id="admin-lobby-chat-send-btn" class="r-btn btn-alert btn-small">공지</button>
+        <div class="flex-row">
+          <select id="admin-live-team" class="n-input flex-1" style="font-size:16px; padding:5px;"><option value="indiv">개인전</option></select>
+          <select id="admin-live-item" class="n-input flex-1" style="font-size:16px; padding:5px;"><option value="false">아이템 X</option><option value="true" selected>아이템 O</option></select>
         </div>
+        <button id="admin-live-start-btn" class="n-btn btn-pink" style="width:100%;">🚀 모든 학생 게임 강제시작!</button>
       </div>
-      <button id="admin-lobby-leave-btn" class="r-btn">⬅️ 방 폭파하고 닫기</button>
+      <button id="admin-lobby-leave-btn" class="n-btn btn-gray">⬅️ 방 폭파 후 나가기</button>
     </div>
 
     <div id="admin-live-monitor-screen" class="screen">
-      <h2>> LIVE_MONITOR</h2>
-      <h3 id="admin-live-status-text" style="color: var(--neon-alert);">상태: 대기 중...</h3>
-      <div id="admin-live-rank-container" class="live-rank-container"></div>
-      <button id="admin-live-end-btn" class="r-btn btn-alert" style="margin-top:15px;">⏹️ 게임 강제 종료</button>
+      <h2>📊 라이브 중계석</h2>
+      <h3 id="admin-live-status-text" style="color: #FF4081;">대기 중...</h3>
+      <div id="admin-live-rank-container" class="n-box" style="height: 50vh; position: relative; padding: 10px; overflow-x:hidden;"></div>
+      <button id="admin-live-end-btn" class="n-btn btn-pink">⏹️ 게임 강제 종료</button>
     </div>
 
     <div id="set-select-screen" class="screen">
-      <h2>> SELECT_DATASET</h2>
-      <div id="set-select-list" class="r-panel" style="display:flex; flex-direction:column; gap:10px; max-height:50vh; overflow-y:auto; padding:10px;"></div>
-      <button id="set-select-back-to-hub-btn" class="r-btn">뒤로 가기</button>
+      <h2>📚 단어장 선택</h2>
+      <div id="set-select-list" class="n-box" style="display:flex; flex-direction:column; gap:10px; max-height:50vh; overflow-y:auto; padding:10px;"></div>
+      <button id="set-select-back-to-hub-btn" class="n-btn btn-gray">⬅️ 허브로</button>
     </div>
 
     <div id="menu-screen" class="screen">
-      <h3 style="color:#fff;">USER: <span id="user-display" style="color:var(--neon-yellow);"></span></h3>
-      <div class="r-panel menu-grid">
-        <button id="menu-list-btn" class="r-btn full btn-yellow">📋 학습 목록 보기</button>
-        <button id="menu-chunk-btn" class="r-btn full btn-cyan">🧩 문장 해석 (직독직해)</button>
-        <button id="menu-exam-btn" class="r-btn full">📝 시험대비 모드</button>
-        <button id="menu-fc-btn" class="r-btn">🃏 깜빡이</button><button id="rank-fc-btn" class="r-btn btn-small">🏆</button>
-        <button id="menu-memory-btn" class="r-btn">🔠 메모리</button><button id="rank-memory-btn" class="r-btn btn-small">🏆</button>
-        <button id="menu-speed-match-btn" class="r-btn btn-alert">🧩 짝맞추기</button><button id="rank-speed-match-btn" class="r-btn btn-small">🏆</button>
-        <button id="menu-speed-btn" class="r-btn">⚡ 퀴즈</button><button id="rank-speed-btn" class="r-btn btn-small">🏆</button>
-        <button id="menu-fish-btn" class="r-btn">🎣 낚시</button><button id="rank-fish-btn" class="r-btn btn-small">🏆</button>
+      <h3 style="color:#FF4081;">내 이름은 <span id="user-display"></span></h3>
+      <div class="n-box menu-grid">
+        <button id="menu-list-btn" class="n-btn full btn-green">📋 학습 목록 보기</button>
+        <button id="menu-chunk-study-btn" class="n-btn full btn-cyan">📖 문장 해석 모드 (연습)</button>
+        
+        <button id="menu-chunk-game-btn" class="n-btn btn-pink">🧩 문장 해석 (게임)</button><button id="rank-chunk-btn" class="n-btn btn-small">🏆</button>
+        <button id="menu-fc-btn" class="n-btn">🃏 깜빡이</button><button id="rank-fc-btn" class="n-btn btn-small">🏆</button>
+        <button id="menu-memory-btn" class="n-btn">🔠 메모리</button><button id="rank-memory-btn" class="n-btn btn-small">🏆</button>
+        <button id="menu-speed-match-btn" class="n-btn btn-orange">🧩 짝맞추기</button><button id="rank-speed-match-btn" class="n-btn btn-small">🏆</button>
+        <button id="menu-speed-btn" class="n-btn">⚡ 퀴즈</button><button id="rank-speed-btn" class="n-btn btn-small">🏆</button>
+        <button id="menu-fish-btn" class="n-btn">🎣 낚시</button><button id="rank-fish-btn" class="n-btn btn-small">🏆</button>
       </div>
-      <button id="menu-go-back-set-btn" class="r-btn">단어장 다시 고르기</button>
+      <button id="menu-go-back-set-btn" class="n-btn btn-gray">⬅️ 단어장 변경</button>
     </div>
 
     <div id="list-screen" class="screen">
       <h2 id="list-title">학습 목록</h2>
-      <div class="flex-row" style="width:100%; max-width:450px; margin-bottom:10px;"><button id="toggle-word-btn" class="r-btn btn-small flex-1">영어 가리기</button><button id="toggle-mean-btn" class="r-btn btn-yellow btn-small flex-1">뜻 가리기</button></div>
-      <div id="word-list-container" class="r-panel" style="height:55vh; padding:5px; margin-bottom:15px; overflow-y:auto;"></div>
-      <button id="list-back-btn" class="r-btn">돌아가기</button>
+      <div class="flex-row" style="width:100%; max-width:450px; margin-bottom:10px;"><button id="toggle-word-btn" class="n-btn btn-small flex-1">영어 가리기</button><button id="toggle-mean-btn" class="n-btn btn-yellow btn-small flex-1">뜻 가리기</button></div>
+      <div id="word-list-container" class="n-box" style="height:55vh; padding:5px; margin-bottom:15px; overflow-y:auto;"></div>
+      <button id="list-back-btn" class="n-btn btn-gray">⬅️ 돌아가기</button>
     </div>
 
     <div id="chunk-screen" class="screen">
-      <div class="top-bar"><span id="chunk-progress" class="stat-text" style="color:#00E5FF">1/10</span><span id="chunk-score" class="stat-text">SCORE: 0</span></div>
+      <div class="top-bar">
+         <div id="live-chunk-banner" class="live-banner" style="display:none;">[라이브 모드]</div>
+         <span id="chunk-timer" class="stat-text" style="color:var(--neon-alert); display:none;">TIME: 03:00</span>
+         <span id="chunk-progress" class="stat-text" style="color:#00BCD4">1/10</span>
+         <span id="chunk-score" class="stat-text" style="display:none;">SCORE: 0</span>
+      </div>
       <div id="chunk-en" class="chunk-en-text">English Sentence</div>
       <div id="chunk-slots" class="chunk-slot-area"></div>
       <div id="chunk-pool" class="chunk-pool-area"></div>
-      <button id="chunk-submit-btn" class="r-btn btn-yellow" style="display:none; margin-top:15px; width:100%; max-width:400px;">정답 확인!</button>
-    </div>
-
-    <div id="exam-option-screen" class="screen">
-      <h2>> EXAM_MODE</h2>
-      <div class="r-panel menu-grid">
-        <button id="exam1-btn" class="r-btn">1. 순서맞추기</button><button id="rank-exam1-btn" class="r-btn btn-small">🏆</button>
-        <button id="exam2-btn" class="r-btn">2. 직접쓰기</button><button id="rank-exam2-btn" class="r-btn btn-small">🏆</button>
-      </div>
-      <button id="exam-option-back-btn" class="r-btn">돌아가기</button>
-    </div>
-
-    <div id="exam1-screen" class="screen">
-      <div class="top-bar"><span id="exam1-progress" class="stat-text" style="color:#00E5FF">1/10</span><span id="exam1-score" class="stat-text">SCORE: 0</span></div>
-      <div id="exam1-ko" class="chunk-en-text" style="color:#fff;">한글 문장</div>
-      <div id="exam1-slots" class="chunk-slot-area"></div>
-      <div id="exam1-pool" class="chunk-pool-area"></div>
-      <button id="exam1-submit-btn" class="r-btn btn-yellow" style="display:none; margin-top:15px; width:100%; max-width:400px;">정답 제출!</button>
-    </div>
-
-    <div id="exam2-screen" class="screen">
-      <div class="top-bar"><span id="exam2-progress" class="stat-text" style="color:#FF4081">1/10</span><span id="exam2-score" class="stat-text">SCORE: 0</span></div>
-      <div id="exam2-ko" class="chunk-en-text" style="color:#fff;">한글 문장</div>
-      <input type="text" id="exam2-input" class="r-input" style="max-width:400px;" placeholder="> 영어로 쓰세요!" autocomplete="off" spellcheck="false"/>
-      <button id="exam2-submit-btn" class="r-btn btn-yellow" style="width:100%; max-width:400px;">정답 제출!</button>
     </div>
 
     <div id="speed-match-screen" class="screen">
       <div class="top-bar">
          <div id="live-sm-banner" class="live-banner" style="display:none;">[라이브 모드]</div>
-         <span id="sm-timer" class="stat-text" style="color:var(--neon-alert);">TIME: 00</span>
+         <span id="sm-timer" class="stat-text" style="color:#FF4081">🕒 03:00</span>
          <span id="sm-score" class="stat-text">SCORE: 0</span>
       </div>
       <div style="height: 80%; width: 100%; max-width: 600px; display: flex; justify-content: center; gap: 8px;">
@@ -181,15 +176,15 @@
     </div>
     
     <div id="flashcard-screen" class="screen">
-      <div class="top-bar"><span id="fc-progress" class="stat-text" style="color:#00E5FF">1/10</span><span id="fc-score" class="stat-text">SCORE: 0</span></div>
+      <div class="top-bar"><span id="fc-progress" class="stat-text" style="color:#00BCD4">1/10</span><span id="fc-score" class="stat-text">SCORE: 0</span></div>
       <div id="card-container">
-        <div id="fc-card" class="flash-card"><div class="card-face card-front"><span id="fc-front">English</span></div><div class="card-face card-back"><span id="fc-back">한글</span></div></div>
+        <div id="fc-card" class="flash-card"><div class="card-face card-front"><div class="retry-badge" style="display:none;">💡복습 모드</div><span id="fc-front">English</span></div><div class="card-face card-back"><div class="retry-badge" style="display:none;">💡복습 모드</div><span id="fc-back">한글</span></div></div>
       </div>
-      <div class="flex-row" style="margin-top:20px; max-width:400px;"><button id="btn-dont-know" class="r-btn btn-alert flex-1">X 몰라</button><button id="btn-know" class="r-btn btn-green flex-1">O 알아</button></div>
+      <div class="flex-row" style="margin-top:20px; max-width:400px;"><button id="btn-dont-know" class="n-btn btn-alert flex-1">X 몰라</button><button id="btn-know" class="n-btn btn-green flex-1">O 알아</button></div>
     </div>
 
     <div id="memory-screen" class="screen">
-      <div class="top-bar"><span id="memory-timer" class="stat-text" style="color:var(--neon-alert);">TIME: 00</span><span id="memory-score" class="stat-text">SCORE: 0</span></div>
+      <div class="top-bar"><span id="memory-timer" class="stat-text" style="color:#FF4081;">TIME: 00</span><span id="memory-score" class="stat-text">SCORE: 0</span></div>
       <div style="height: 80%; width: 100%; max-width: 600px; display: flex; justify-content: center; gap: 8px;">
          <div id="memory-left-col" style="display: flex; flex-direction: column; gap: 4px; width: 49%;"></div>
          <div id="memory-right-col" style="display: flex; flex-direction: column; gap: 4px; width: 49%;"></div>
@@ -197,39 +192,39 @@
     </div>
 
     <div id="speed-screen" class="screen">
-      <div class="top-bar"><span id="speed-timer" class="stat-text" style="color:var(--neon-alert);">TIME: 00</span><span id="speed-score" class="stat-text">SCORE: 0</span></div>
-      <div class="r-panel" style="flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center; border:none; box-shadow:none; background:transparent;">
-         <div id="speed-word-card" style="font-size:35px; margin-bottom:40px; color:#fff;">English</div>
-         <button id="speed-opt-1" class="r-btn btn-yellow" style="width:100%; margin-bottom:15px; padding:20px;">Option 1</button>
-         <button id="speed-opt-2" class="r-btn btn-cyan" style="width:100%; padding:20px;">Option 2</button>
+      <div class="top-bar"><span id="speed-timer" class="stat-text" style="color:#FF4081;">TIME: 00</span><span id="speed-score" class="stat-text">SCORE: 0</span></div>
+      <div class="n-box" style="flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center; border:none; box-shadow:none; background:transparent;">
+         <div id="speed-word-card" class="sq-word-box">English</div>
+         <button id="speed-opt-1" class="n-btn btn-yellow" style="width:100%; margin-bottom:15px; padding:20px;">Option 1</button>
+         <button id="speed-opt-2" class="n-btn btn-cyan" style="width:100%; padding:20px;">Option 2</button>
       </div>
     </div>
 
     <div id="fishing-screen" class="screen">
-      <div class="top-bar" style="margin-bottom:0;"><span id="fish-timer" class="stat-text" style="color:var(--neon-alert);">TIME: 00</span><span id="fish-score" class="stat-text" style="color:var(--neon-yellow);">이모지: 0</span></div>
-      <div id="fish-bucket" style="width:100%; max-width:600px; height:60px; background:rgba(0,255,65,0.1); border-bottom:2px solid var(--neon-green); display:flex; align-items:center; padding:0 10px; font-size:30px; overflow-x:auto; white-space:nowrap;"></div>
-      <div id="fish-pond" style="flex:1; width:100%; position:relative; overflow:hidden; border:2px solid #333; margin-top:10px;"></div>
+      <div class="top-bar" style="margin-bottom:0;"><span id="fish-timer" class="stat-text" style="color:#FF4081;">TIME: 00</span><span id="fish-score" class="stat-text" style="color:#FF9800;">이모지: 0</span></div>
+      <div id="fish-bucket" style="width:100%; max-width:600px; height:60px; background:rgba(255,255,255,0.5); border:2px solid #333; display:flex; align-items:center; padding:0 10px; font-size:30px; overflow-x:auto; white-space:nowrap;"></div>
+      <div id="fish-pond" style="flex:1; width:100%; max-width:600px; position:relative; overflow:hidden; border:2px solid #333; border-radius:10px; margin-top:10px; background:#E0F7FA;"></div>
     </div>
 
     <div id="result-screen" class="screen">
-      <h1 class="pop-in">> MISSION_CLEAR</h1>
-      <h2 id="result-user" style="color:#fff;"></h2>
-      <div class="r-panel"><p style="font-size:20px; margin:0; color:#555;">최종 점수</p><p id="final-score" style="font-size:45px; color:var(--neon-green); margin:10px 0;">0</p></div>
-      <button id="go-ranking-btn" class="r-btn btn-yellow" style="margin-bottom:10px; width:100%; max-width:350px;">🏆 랭킹 보기</button>
-      <button id="home-btn" class="r-btn" style="width:100%; max-width:350px;">허브로</button>
+      <h1 class="pop-in">MISSION CLEAR!</h1>
+      <h2 id="result-user"></h2>
+      <div class="n-box"><p style="font-size:20px; margin:0; color:#555;">최종 점수</p><p id="final-score" style="font-size:45px; color:#00BCD4; margin:10px 0;">0</p></div>
+      <button id="go-ranking-btn" class="n-btn btn-yellow" style="margin-bottom:10px; width:100%; max-width:350px;">🏆 랭킹 보기</button>
+      <button id="home-btn" class="n-btn btn-gray" style="width:100%; max-width:350px;">허브로</button>
     </div>
 
     <div id="ranking-screen" class="screen">
-      <h2>> LEADERBOARD</h2>
-      <h3 id="ranking-mode-title" style="color: #fff; margin-bottom: 10px;"></h3>
-      <div class="flex-row" style="max-width:450px; margin-bottom:10px;"><button class="r-btn btn-yellow btn-small flex-1" id="tab-today">오늘</button><button class="r-btn btn-small flex-1" id="tab-class">우리반</button></div>
-      <div id="ranking-list" class="r-panel" style="height: 45vh; padding: 5px;"></div>
-      <button id="ranking-home-btn" class="r-btn">돌아가기</button>
+      <h2>🏆 순위표 🏆</h2>
+      <h3 id="ranking-mode-title" style="color: #333; margin-bottom: 10px;"></h3>
+      <div class="flex-row" style="max-width:450px; margin-bottom:10px;"><button class="n-btn btn-yellow btn-small flex-1" id="tab-today">오늘</button><button class="n-btn btn-gray btn-small flex-1" id="tab-class">우리반</button></div>
+      <div id="ranking-list" class="n-box" style="height: 45vh; overflow-y: auto; text-align: left; padding:5px;"></div>
+      <button id="ranking-home-btn" class="n-btn btn-green">⬅️ 허브로</button>
     </div>
 
-    <div id="admin-student-screen" class="screen"><h2>👥 학생 DB 수정</h2><textarea id="admin-student-textarea" class="r-input" style="height:150px; text-align:left;" placeholder="10101(탭)홍길동"></textarea><button id="admin-student-upload-btn" class="r-btn btn-yellow">업로드</button><div id="admin-student-list" class="r-panel" style="height:20vh; overflow-y:auto;"></div><button id="admin-student-back-btn" class="r-btn">뒤로</button></div>
-    <div id="admin-set-list-screen" class="screen"><h2>📚 단어장 DB 수정</h2><button id="admin-set-create-btn" class="r-btn btn-yellow">+ 새 단어장</button><div id="admin-set-list" class="r-panel" style="height:30vh; overflow-y:auto;"></div><button id="admin-set-list-back-btn" class="r-btn">뒤로</button></div>
-    <div id="admin-set-edit-screen" class="screen"><h2>세트 편집</h2><input type="text" id="admin-set-title" class="r-input" placeholder="이름" /><textarea id="admin-set-textarea" class="r-input" style="height:200px; text-align:left;" placeholder="I / have / a dog(탭)나는 / 가지고 있다 / 강아지를"></textarea><div class="flex-row"><button id="admin-set-save-btn" class="r-btn btn-green flex-1">저장</button><button id="admin-set-edit-cancel-btn" class="r-btn btn-alert flex-1">취소</button></div></div>
+    <div id="admin-student-screen" class="screen"><h2>👥 학생 DB 수정</h2><textarea id="admin-student-textarea" class="n-input" style="height:150px; text-align:left;" placeholder="10101(탭)홍길동"></textarea><button id="admin-student-upload-btn" class="n-btn btn-cyan">업로드</button><div id="admin-student-list" class="n-box" style="height:20vh; overflow-y:auto;"></div><button id="admin-student-back-btn" class="n-btn">뒤로</button></div>
+    <div id="admin-set-list-screen" class="screen"><h2>📚 단어장 DB 수정</h2><button id="admin-set-create-btn" class="n-btn btn-purple">+ 새 단어장</button><div id="admin-set-list" class="n-box" style="height:30vh; overflow-y:auto;"></div><button id="admin-set-list-back-btn" class="n-btn">뒤로</button></div>
+    <div id="admin-set-edit-screen" class="screen"><h2>세트 편집</h2><input type="text" id="admin-set-title" class="n-input" placeholder="이름" /><textarea id="admin-set-textarea" class="n-input" style="height:200px; text-align:left;" placeholder="I / have / a dog(탭)나는 / 가지고 있다 / 강아지를"></textarea><div class="flex-row"><button id="admin-set-save-btn" class="n-btn btn-green flex-1">저장</button><button id="admin-set-edit-cancel-btn" class="n-btn btn-alert flex-1">취소</button></div></div>
     
     <script type="module" src="index.mjs"></script>
   </body>
