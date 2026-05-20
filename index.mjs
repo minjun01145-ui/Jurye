@@ -1103,10 +1103,11 @@ currentChunkIndex = 0; // 👈 여기에 추가! 게임 시작 시 무조건 첫
 }
 
 function loadNextChunkQuiz(validChunkWords) {
-const wordObj = validChunkWords[currentChunkIndex]; 
+  const wordObj = validChunkWords[currentChunkIndex]; 
   
   let enParts = wordObj.en.split('/').map(s => s.trim());
-let koParts = wordObj.ko.split('/').map(s => s.trim());
+  let koParts = wordObj.ko.split('/').map(s => s.trim()); // 👈 빠져있던 핵심 코드 복구 완료!
+
   chunkLength = Math.min(enParts.length, koParts.length);
   enParts = enParts.slice(0, chunkLength);
   koParts = koParts.slice(0, chunkLength);
