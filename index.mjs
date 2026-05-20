@@ -153,16 +153,34 @@ bindClick("home-btn", () => { playSound("click"); showScreen("menu-screen"); });
 // ==========================================
 //6. 로그인, DB 로드
 // ==========================================
+let isDbLoaded = false; // 👈 데이터 로딩 완료 상태를 기억할 변수 추가
+
 async function loadAllFromDB() {
   try {
+    const authBtn = document.getElementById("auth-btn");
+    if(authBtn) authBtn.innerText = "데이터 로딩중⏳"; // 데이터 오는 동안 버튼 글자 변경
+
     const setSnap = await getDoc(doc(db, "gameData", "wordSets")); if (setSnap.exists()) wordSets = setSnap.data().sets || [];
     const stdSnap = await getDoc(doc(db, "gameData", "students")); if (stdSnap.exists()) studentList = stdSnap.data().students || [];
-  } catch (error) { console.error("DB 로딩 에러:", error); }
+    
+    isDbLoaded = true; // 👈 로딩이 완벽하게 끝남!
+    if(authBtn) authBtn.innerText = "인증하기"; // 버튼 글자 원래대로 복구
+
+  } catch (error) { 
+    console.error("DB 로딩 에러:", error); 
+    alert("데이터베이스 연결에 실패했습니다. 인터넷을 확인하고 새로고침 해주세요.");
+  }
 }
 loadAllFromDB(); 
 
 bindClick("auth-btn", () => {
   playSound("click");
+
+  // 👇 데이터를 다 불러오기 전에 버튼을 누르면 튕겨내는 방어벽 추가
+  if (!isDbLoaded) {
+    return alert("아직 학생 데이터를 불러오는 중입니다. 잠시만 기다려주세요!\n(네트워크가 느릴 때 자주 발생합니다)");
+  }
+
   const inputId = document.getElementById("auth-id").value.trim();
   const inputName = document.getElementById("auth-name").value.trim();
 
@@ -238,6 +256,9 @@ bindClick("menu-go-back-set-btn", () => { playSound("click"); showScreen("set-se
 // ==========================================
 bindClick("admin-main-open-btn", () => { 
   playSound("click"); 
+  if (!isDbLoaded) {
+    return alert("아직 서버에서 데이터를 불러오는 중입니다. 잠시 후 다시 눌러주세요!");
+  }
   const pwd = prompt("관리자 비밀번호 4자리를 입력하세요.", "");
   if (pwd === "1234") {
     showScreen("admin-main-screen");
