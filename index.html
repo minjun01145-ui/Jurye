@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>주례여중 펑키 오락실</title>
+    <title>주례여중 싱글 오락실</title>
     <link rel="stylesheet" href="styles.css" />
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -13,7 +13,7 @@
     </style>
   </head>
   <body>
-    <div id="roaming-emojis" style="position:fixed; bottom:0; left:0; width:100%; height:150px; pointer-events:none; z-index:900;"></div>
+    <div id="roaming-emojis" style="position:fixed; bottom:0; left:0; width:100%; height:200px; pointer-events:none; z-index:900;"></div>
 
     <div id="huge-countdown-overlay"><div id="huge-text" class="huge-text">5</div></div>
     
@@ -28,8 +28,8 @@
 
     <div id="top-left-controls" style="display: none; position: fixed; top: 10px; left: 10px; z-index: 350; gap: 5px; flex-direction:column;">
       <div style="display:flex; gap:5px;">
-        <button id="back-to-menu-btn" class="n-btn btn-small btn-gray">⬅️ 나가기</button>
-        <button id="mute-btn" class="n-btn btn-small btn-gray">🔊 소리</button>
+        <button id="back-to-menu-btn" class="n-btn btn-small btn-gray" style="margin:0;">⬅️ 나가기</button>
+        <button id="mute-btn" class="n-btn btn-small btn-gray" style="margin:0;">🔊 소리</button>
       </div>
       <div id="inventory-bar" style="display:flex; gap:5px;">
         <div id="pile-double_current"></div><div id="pile-half_current"></div><div id="pile-double_future"></div>
@@ -42,11 +42,12 @@
       <h1>👾 주례여중 오락실 👾</h1>
       <div class="n-box" style="margin-top: 20px;">
         <h3 style="margin-bottom: 5px;">학번과 이름을 입력하세요</h3>
-        <p id="db-status-msg" style="font-size:14px; color:#FF4081; margin-top:0; margin-bottom:15px;">데이터베이스 연결 중...⏳</p>
+        <p id="db-status-msg" style="font-size:14px; color:#FF4081; margin-top:0; margin-bottom:15px;">서버 연결 중...⏳</p>
         <input type="number" id="auth-id" class="n-input" placeholder="학번 (예: 3201)" />
         <input type="text" id="auth-name" class="n-input" placeholder="이름" />
-        <button id="auth-btn" class="n-btn btn-yellow" style="width:100%">[ENTER] 인증하기</button>
+        <button id="auth-btn" class="n-btn btn-gray" disabled style="width:100%">연결 중...</button>
       </div>
+      <button id="btn-admin-login" class="n-btn btn-small btn-gray" style="margin-top:20px;">⚙️ 관리자 모드</button>
     </div>
 
     <div id="login-screen" class="screen">
@@ -55,92 +56,28 @@
         <input type="text" id="nickname" class="n-input" placeholder="닉네임 입력" />
         <h3>아이콘 선택!</h3>
         <div id="emoji-container"></div>
-        <button id="login-btn" class="n-btn btn-cyan">오락실 입장!</button>
+        <button id="login-btn" class="n-btn btn-cyan" style="width:100%">입장하기!</button>
       </div>
     </div> 
-
-    <div id="hub-screen" class="screen">
-      <h1>어디로 갈까요?</h1>
-      <div class="n-box">
-        <button id="btn-singleplayer" class="n-btn btn-green">👤 혼자 연습하기</button>
-        <button id="btn-multiplayer" class="n-btn btn-orange">🌐 라이브 접속!</button>
-      </div>
-      <button id="btn-hub-admin" class="n-btn btn-gray btn-small" style="margin-top:20px;">⚙️ 선생님 메뉴</button>
-    </div>
-
-    <div id="lobby-screen" class="screen">
-      <h2>🌐 라이브 대기실</h2>
-      <div class="n-box" style="background-color: #FFF9C4; padding: 10px;">
-        <div id="lobby-game-info" style="font-size: 16px;">선생님이 방을 설정 중입니다...</div>
-      </div>
-      <div class="n-box" style="padding: 10px;">
-        <div style="font-size:14px; margin-bottom:5px; color:#888;">우리반 접속자 (<span id="lobby-user-count">0</span>명)</div>
-        <div id="lobby-user-list" style="display: flex; flex-wrap: wrap; gap: 5px;"></div>
-      </div>
-      <div class="n-box flex-1" style="display:flex; flex-direction:column; overflow:hidden; padding: 10px;">
-        <div id="lobby-chat-box" style="flex: 1; overflow-y: auto; text-align: left; display: flex; flex-direction: column; gap: 5px;"></div>
-        <div class="flex-row" style="margin-top: 10px;">
-          <input type="text" id="lobby-chat-input" class="n-input flex-1" style="margin:0; font-size:16px; padding:8px;" placeholder="채팅 입력!" autocomplete="off"/>
-          <button id="lobby-chat-send-btn" class="n-btn btn-cyan btn-small" style="margin:0;">전송</button>
-        </div>
-      </div>
-    </div>
-
-    <div id="admin-main-screen" class="screen">
-      <h2>⚙️ 관리자 메뉴</h2>
-      <div class="n-box menu-grid">
-        <button id="admin-go-live-btn" class="n-btn full btn-pink">🌐 라이브 컨트롤 룸</button>
-        <button id="admin-go-student-btn" class="n-btn">👥 학생 DB</button>
-        <button id="admin-go-set-btn" class="n-btn">📚 단어장 DB</button>
-      </div>
-      <button id="admin-main-close-btn" class="n-btn btn-gray">⬅️ 허브로</button>
-    </div>
-
-    <div id="admin-lobby-screen" class="screen">
-      <h2>⚙️ 통제실</h2>
-      <div class="n-box" style="padding: 10px; text-align:center;">
-        <select id="admin-live-set" class="n-input" style="width:100%; font-size:16px; padding:5px;"></select>
-        <div class="flex-row">
-          <select id="admin-live-mode" class="n-input flex-1" style="font-size:16px; padding:5px;">
-             <option value="speed-match">스피드 짝맞추기</option>
-             <option value="chunk">문장해석(게임)</option>
-          </select>
-          <select id="admin-live-time" class="n-input flex-1" style="font-size:16px; padding:5px;"><option value="60">1분</option><option value="180" selected>3분</option></select>
-        </div>
-        <div class="flex-row">
-          <select id="admin-live-team" class="n-input flex-1" style="font-size:16px; padding:5px;"><option value="indiv">개인전</option></select>
-          <select id="admin-live-item" class="n-input flex-1" style="font-size:16px; padding:5px;"><option value="false">아이템 X</option><option value="true" selected>아이템 O</option></select>
-        </div>
-        <button id="admin-live-start-btn" class="n-btn btn-pink" style="width:100%;">🚀 모든 학생 게임 강제시작!</button>
-      </div>
-      <button id="admin-lobby-leave-btn" class="n-btn btn-gray">⬅️ 방 폭파 후 나가기</button>
-    </div>
-
-    <div id="admin-live-monitor-screen" class="screen">
-      <h2>📊 라이브 중계석</h2>
-      <h3 id="admin-live-status-text" style="color: #FF4081;">대기 중...</h3>
-      <div id="admin-live-rank-container" class="n-box" style="height: 50vh; position: relative; padding: 10px; overflow-x:hidden;"></div>
-      <button id="admin-live-end-btn" class="n-btn btn-pink">⏹️ 게임 강제 종료</button>
-    </div>
 
     <div id="set-select-screen" class="screen">
       <h2>📚 단어장 선택</h2>
       <div id="set-select-list" class="n-box" style="display:flex; flex-direction:column; gap:10px; max-height:50vh; overflow-y:auto; padding:10px;"></div>
-      <button id="set-select-back-to-hub-btn" class="n-btn btn-gray">⬅️ 허브로</button>
+      <button id="set-select-back-btn" class="n-btn btn-gray">⬅️ 처음으로</button>
     </div>
 
     <div id="menu-screen" class="screen">
       <h3 style="color:#FF4081;">내 이름은 <span id="user-display"></span></h3>
       <div class="n-box menu-grid">
         <button id="menu-list-btn" class="n-btn full btn-green">📋 학습 목록 보기</button>
-        <button id="menu-chunk-study-btn" class="n-btn full btn-cyan">📖 문장 해석 모드 (무제한 연습)</button>
+        <button id="menu-chunk-study-btn" class="n-btn full btn-cyan">📖 문장 해석 (연습 모드)</button>
         
         <div class="flex-row full"><button id="menu-chunk-game-btn" class="n-btn btn-pink flex-1">🧩 문장 해석 (게임)</button><button id="rank-chunk-btn" class="n-btn btn-small">🏆</button></div>
-        <div class="flex-row full"><button id="menu-fc-btn" class="n-btn flex-1">🃏 깜빡이</button><button id="rank-fc-btn" class="n-btn btn-small">🏆</button></div>
-        <div class="flex-row full"><button id="menu-memory-btn" class="n-btn flex-1">🔠 메모리</button><button id="rank-memory-btn" class="n-btn btn-small">🏆</button></div>
-        <div class="flex-row full"><button id="menu-speed-match-btn" class="n-btn btn-orange flex-1">🧩 짝맞추기</button><button id="rank-speed-match-btn" class="n-btn btn-small">🏆</button></div>
-        <div class="flex-row full"><button id="menu-speed-btn" class="n-btn flex-1">⚡ 퀴즈</button><button id="rank-speed-btn" class="n-btn btn-small">🏆</button></div>
-        <div class="flex-row full"><button id="menu-fish-btn" class="n-btn flex-1">🎣 낚시</button><button id="rank-fish-btn" class="n-btn btn-small">🏆</button></div>
+        <div class="flex-row full"><button id="menu-fc-btn" class="n-btn flex-1">🃏 깜빡이 학습</button><button id="rank-fc-btn" class="n-btn btn-small">🏆</button></div>
+        <div class="flex-row full"><button id="menu-memory-btn" class="n-btn flex-1">🔠 메모리 게임</button><button id="rank-memory-btn" class="n-btn btn-small">🏆</button></div>
+        <div class="flex-row full"><button id="menu-speed-match-btn" class="n-btn btn-orange flex-1">🧩 스피드 짝맞추기</button><button id="rank-speed-match-btn" class="n-btn btn-small">🏆</button></div>
+        <div class="flex-row full"><button id="menu-speed-btn" class="n-btn flex-1">⚡ 심플 스피드퀴즈</button><button id="rank-speed-btn" class="n-btn btn-small">🏆</button></div>
+        <div class="flex-row full"><button id="menu-fish-btn" class="n-btn flex-1">🎣 이모지 낚시</button><button id="rank-fish-btn" class="n-btn btn-small">🏆</button></div>
       </div>
       <button id="menu-go-back-set-btn" class="n-btn btn-gray">⬅️ 단어장 변경</button>
     </div>
@@ -154,8 +91,7 @@
 
     <div id="chunk-screen" class="screen">
       <div class="top-bar">
-         <div id="live-chunk-banner" class="live-banner" style="display:none;">[라이브 모드]</div>
-         <span id="chunk-timer" class="stat-text" style="color:#FF4081; display:none;">TIME: 03:00</span>
+         <span id="chunk-timer" class="stat-text" style="color:#FF4081; display:none;">TIME: 180</span>
          <span id="chunk-progress" class="stat-text" style="color:#00BCD4">1/10</span>
          <span id="chunk-score" class="stat-text" style="display:none;">SCORE: 0</span>
       </div>
@@ -165,11 +101,7 @@
     </div>
 
     <div id="speed-match-screen" class="screen">
-      <div class="top-bar">
-         <div id="live-sm-banner" class="live-banner" style="display:none;">[라이브 모드]</div>
-         <span id="sm-timer" class="stat-text" style="color:#FF4081">🕒 03:00</span>
-         <span id="sm-score" class="stat-text">SCORE: 0</span>
-      </div>
+      <div class="top-bar"><span id="sm-timer" class="stat-text" style="color:#FF4081">TIME: 180</span><span id="sm-score" class="stat-text">SCORE: 0</span></div>
       <div style="height: 80%; width: 100%; max-width: 600px; display: flex; justify-content: center; gap: 8px;">
          <div id="sm-left-col" style="display: flex; flex-direction: column; gap: 4px; width: 49%;"></div>
          <div id="sm-right-col" style="display: flex; flex-direction: column; gap: 4px; width: 49%;"></div>
@@ -185,7 +117,7 @@
     </div>
 
     <div id="memory-screen" class="screen">
-      <div class="top-bar"><span id="memory-timer" class="stat-text" style="color:#FF4081;">TIME: 00</span><span id="memory-score" class="stat-text">SCORE: 0</span></div>
+      <div class="top-bar"><span id="memory-timer" class="stat-text" style="color:#FF4081;">TIME: 180</span><span id="memory-score" class="stat-text">SCORE: 0</span></div>
       <div style="height: 80%; width: 100%; max-width: 600px; display: flex; justify-content: center; gap: 8px;">
          <div id="memory-left-col" style="display: flex; flex-direction: column; gap: 4px; width: 49%;"></div>
          <div id="memory-right-col" style="display: flex; flex-direction: column; gap: 4px; width: 49%;"></div>
@@ -193,7 +125,7 @@
     </div>
 
     <div id="speed-screen" class="screen">
-      <div class="top-bar"><span id="speed-timer" class="stat-text" style="color:#FF4081;">TIME: 00</span><span id="speed-score" class="stat-text">SCORE: 0</span></div>
+      <div class="top-bar"><span id="speed-timer" class="stat-text" style="color:#FF4081;">TIME: 180</span><span id="speed-score" class="stat-text">SCORE: 0</span></div>
       <div class="n-box" style="flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center; border:none; box-shadow:none; background:transparent;">
          <div id="speed-word-card" class="sq-word-box">English</div>
          <button id="speed-opt-1" class="n-btn btn-yellow" style="width:100%; margin-bottom:15px; padding:20px;">Option 1</button>
@@ -202,7 +134,7 @@
     </div>
 
     <div id="fishing-screen" class="screen">
-      <div class="top-bar" style="margin-bottom:0;"><span id="fish-timer" class="stat-text" style="color:#FF4081;">TIME: 00</span><span id="fish-score" class="stat-text" style="color:#FF9800;">이모지: 0</span></div>
+      <div class="top-bar" style="margin-bottom:0;"><span id="fish-timer" class="stat-text" style="color:#FF4081;">TIME: 180</span><span id="fish-score" class="stat-text" style="color:#FF9800;">이모지: 0</span></div>
       <div id="fish-bucket" style="width:100%; max-width:600px; height:60px; background:rgba(255,255,255,0.5); border:2px solid #333; display:flex; align-items:center; padding:0 10px; font-size:30px; overflow-x:auto; white-space:nowrap;"></div>
       <div id="fish-pond" style="flex:1; width:100%; max-width:600px; position:relative; overflow:hidden; border:2px solid #333; border-radius:10px; margin-top:10px; background:#E0F7FA;"></div>
     </div>
@@ -212,7 +144,7 @@
       <h2 id="result-user"></h2>
       <div class="n-box"><p style="font-size:20px; margin:0; color:#555;">최종 점수</p><p id="final-score" style="font-size:45px; color:#00BCD4; margin:10px 0;">0</p></div>
       <button id="go-ranking-btn" class="n-btn btn-yellow" style="margin-bottom:10px; width:100%; max-width:350px;">🏆 랭킹 보기</button>
-      <button id="home-btn" class="n-btn btn-gray" style="width:100%; max-width:350px;">허브로</button>
+      <button id="home-btn" class="n-btn btn-gray" style="width:100%; max-width:350px;">메뉴로</button>
     </div>
 
     <div id="ranking-screen" class="screen">
@@ -220,12 +152,20 @@
       <h3 id="ranking-mode-title" style="color: #333; margin-bottom: 10px;"></h3>
       <div class="flex-row" style="max-width:450px; margin-bottom:10px;"><button class="n-btn btn-yellow btn-small flex-1" id="tab-today">오늘</button><button class="n-btn btn-gray btn-small flex-1" id="tab-class">우리반</button></div>
       <div id="ranking-list" class="n-box" style="height: 45vh; overflow-y: auto; text-align: left; padding:5px;"></div>
-      <button id="ranking-home-btn" class="n-btn btn-green">⬅️ 허브로</button>
+      <button id="ranking-home-btn" class="n-btn btn-green">⬅️ 돌아가기</button>
     </div>
 
+    <div id="admin-main-screen" class="screen">
+      <h2>⚙️ 관리자 메뉴</h2>
+      <div class="n-box menu-grid">
+        <button id="admin-go-student-btn" class="n-btn full btn-cyan">👥 학생 DB 관리</button>
+        <button id="admin-go-set-btn" class="n-btn full btn-purple">📚 단어장 관리</button>
+      </div>
+      <button id="admin-main-close-btn" class="n-btn btn-gray">⬅️ 로그인 화면으로</button>
+    </div>
     <div id="admin-student-screen" class="screen"><h2>👥 학생 DB 수정</h2><textarea id="admin-student-textarea" class="n-input" style="height:150px; text-align:left;" placeholder="10101(탭)홍길동"></textarea><button id="admin-student-upload-btn" class="n-btn btn-cyan">업로드</button><div id="admin-student-list" class="n-box" style="height:20vh; overflow-y:auto;"></div><button id="admin-student-back-btn" class="n-btn">뒤로</button></div>
     <div id="admin-set-list-screen" class="screen"><h2>📚 단어장 DB 수정</h2><button id="admin-set-create-btn" class="n-btn btn-purple">+ 새 단어장</button><div id="admin-set-list" class="n-box" style="height:30vh; overflow-y:auto;"></div><button id="admin-set-list-back-btn" class="n-btn">뒤로</button></div>
-    <div id="admin-set-edit-screen" class="screen"><h2>세트 편집</h2><input type="text" id="admin-set-title" class="n-input" placeholder="이름" /><textarea id="admin-set-textarea" class="n-input" style="height:200px; text-align:left;" placeholder="I / have / a dog(탭)나는 / 가지고 있다 / 강아지를"></textarea><div class="flex-row"><button id="admin-set-save-btn" class="n-btn btn-green flex-1">저장</button><button id="admin-set-edit-cancel-btn" class="n-btn btn-alert flex-1">취소</button></div></div>
+    <div id="admin-set-edit-screen" class="screen"><h2>세트 편집</h2><input type="text" id="admin-set-title" class="n-input" placeholder="단어장 이름" /><textarea id="admin-set-textarea" class="n-input" style="height:200px; text-align:left;" placeholder="I / have / a dog(탭)나는 / 가지고 있다 / 강아지를"></textarea><div class="flex-row"><button id="admin-set-save-btn" class="n-btn btn-green flex-1">저장</button><button id="admin-set-edit-cancel-btn" class="n-btn btn-alert flex-1">취소</button></div></div>
     
     <script type="module" src="index.mjs"></script>
   </body>
