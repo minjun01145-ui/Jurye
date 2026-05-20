@@ -153,34 +153,29 @@ bindClick("home-btn", () => { playSound("click"); showScreen("menu-screen"); });
 // ==========================================
 //6. 로그인, DB 로드
 // ==========================================
-let isDbLoaded = false; // 👈 데이터 로딩 완료 상태를 기억할 변수 추가
-
 async function loadAllFromDB() {
   try {
-    const authBtn = document.getElementById("auth-btn");
-    if(authBtn) authBtn.innerText = "데이터 로딩중⏳"; // 데이터 오는 동안 버튼 글자 변경
-
-    const setSnap = await getDoc(doc(db, "gameData", "wordSets")); if (setSnap.exists()) wordSets = setSnap.data().sets || [];
-    const stdSnap = await getDoc(doc(db, "gameData", "students")); if (stdSnap.exists()) studentList = stdSnap.data().students || [];
+    // 1. 파이어베이스에서 세트와 학생 명단 가져오기 완료 대기
+    const setSnap = await getDoc(doc(db, "gameData", "wordSets")); 
+    if (setSnap.exists()) wordSets = setSnap.data().sets || [];
     
-    isDbLoaded = true; // 👈 로딩이 완벽하게 끝남!
-    if(authBtn) authBtn.innerText = "인증하기"; // 버튼 글자 원래대로 복구
+    const stdSnap = await getDoc(doc(db, "gameData", "students")); 
+    if (stdSnap.exists()) studentList = stdSnap.data().students || [];
+    
+    // 2. 🌟 데이터를 완벽하게 다 불러왔다면? 인증 화면으로 넘겨버리기!
+    showScreen("auth-screen"); 
 
   } catch (error) { 
     console.error("DB 로딩 에러:", error); 
-    alert("데이터베이스 연결에 실패했습니다. 인터넷을 확인하고 새로고침 해주세요.");
+    // 만약 인터넷이 끊겨서 데이터를 못 가져오면 로딩 화면에 에러 메시지 띄우기
+    const loadingScreen = document.getElementById("loading-screen");
+    if(loadingScreen) loadingScreen.innerHTML = `<h2 style="color:#f44336;">서버 연결 실패 ㅠㅠ</h2><p style="color:#fff;">인터넷 연결을 확인하고 새로고침을 눌러주세요.</p>`;
   }
 }
 loadAllFromDB(); 
 
 bindClick("auth-btn", () => {
   playSound("click");
-
-  // 👇 데이터를 다 불러오기 전에 버튼을 누르면 튕겨내는 방어벽 추가
-  if (!isDbLoaded) {
-    return alert("아직 학생 데이터를 불러오는 중입니다. 잠시만 기다려주세요!\n(네트워크가 느릴 때 자주 발생합니다)");
-  }
-
   const inputId = document.getElementById("auth-id").value.trim();
   const inputName = document.getElementById("auth-name").value.trim();
 
