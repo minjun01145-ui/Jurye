@@ -11,7 +11,7 @@ html, body {
 }
 
 .screen {
-  position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
   display: none; flex-direction: column; align-items: center; justify-content: flex-start;
   padding: 40px 15px; box-sizing: border-box; overflow-y: auto; text-align: center;
 }
@@ -21,7 +21,7 @@ h1 { font-size: 40px; color: #FF4081; text-shadow: 2px 2px 0 #fff, 3px 3px 0 #33
 h2 { font-size: 28px; color: #00BCD4; text-shadow: 1px 1px 0 #333; margin-bottom: 15px; }
 h3 { font-size: 20px; color: #555; margin-bottom: 10px; }
 
-/* 🌟 네오-브루탈리즘 박스 (부드러운 버전) */
+/* 🌟 네오-브루탈리즘 박스 (부드러운 테두리) */
 .n-box {
   background-color: #fff; border: 2px solid #333; border-radius: 12px;
   box-shadow: 3px 3px 0px #333; padding: 15px; margin-bottom: 15px;
@@ -60,7 +60,7 @@ h3 { font-size: 20px; color: #555; margin-bottom: 10px; }
 .flex-row { display: flex; gap: 10px; justify-content: center; width: 100%; align-items: stretch; }
 .flex-1 { flex: 1; margin: 0; }
 
-/* 🌟 게임 카드 디자인 */
+/* 🌟 게임 공통 카드 */
 .game-card { 
   flex: 1; background: #fff; border: 2px solid #333; border-radius: 10px; 
   display: flex; justify-content: center; align-items: center; 
@@ -73,6 +73,7 @@ h3 { font-size: 20px; color: #555; margin-bottom: 10px; }
 .game-card.matched { opacity: 0; pointer-events: none; }
 .game-card.wrong { animation: shake 0.4s; background: #FFCDD2; border-color: #F44336; }
 
+/* 스피드 짝맞추기 꽉 찬 레이아웃 */
 .sm-card-wrapper { flex: 1; display: flex; width: 100%; margin-bottom: 2px;}
 .sm-card { width: 100%; height: 100%; font-size: clamp(14px, 4vw, 20px); }
 
@@ -82,13 +83,14 @@ h3 { font-size: 20px; color: #555; margin-bottom: 10px; }
 .chunk-pool-area { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px; background: #E3F2FD; width: 100%; max-width: 600px; box-sizing: border-box; justify-content: center; border-radius: 10px; border: 2px solid #2196F3;}
 .chunk-piece { font-size: 18px; padding: 8px 12px; flex: none; width: auto; }
 
-/* 🌟 플래시카드 & 기타 게임 CSS */
+/* 🌟 기타 게임 CSS */
 #card-container { perspective: 1000px; width: 90%; max-width: 400px; height: 250px; margin: 10px auto; position: relative; }
 .flash-card { width: 100%; height: 100%; position: absolute; transform-style: preserve-3d; transition: transform 0.4s; cursor: pointer; }
 .card-face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; display: flex; justify-content: center; align-items: center; border: 2px solid #333; border-radius: 12px; background: #fff; padding: 15px; box-sizing: border-box; font-size: 30px; text-align: center; word-break: keep-all; box-shadow: 4px 4px 0 #333;}
 .card-back { background: #FFF9C4; transform: rotateY(180deg); border-color: #FF9800; }
 .flash-card.is-flipped { transform: rotateY(180deg); }
 .flash-card.fly-left { transform: translateX(-150vw) rotate(-20deg); opacity: 0; }
+.retry-badge { position: absolute; top: 10px; font-size: 14px; color: #FF4081; font-weight: bold; width: 100%; text-align: center; }
 
 .memory-card-wrapper { flex: 1; display:flex; perspective: 1000px; cursor: pointer; width: 100%; margin-bottom:2px;}
 .memory-card { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform 0.5s; }
@@ -104,23 +106,19 @@ h3 { font-size: 20px; color: #555; margin-bottom: 10px; }
 .fish-emoji { font-size: 26px; margin-bottom: 2px; }
 .fish-text { font-size: 14px; font-weight: bold; color: #333; }
 
-/* 🌟 상단 정보바 */
-.top-bar { width: 100%; max-width: 600px; display: flex; justify-content: space-between; padding: 10px 15px; background: #fff; border: 2px solid #333; border-radius: 10px; box-shadow: 2px 2px 0 #333; margin-bottom: 10px; box-sizing: border-box; position: relative;}
+/* 상단 정보바 */
+.top-bar { width: 100%; max-width: 600px; display: flex; justify-content: space-between; padding: 10px 15px; background: #fff; border: 2px solid #333; border-radius: 10px; box-shadow: 2px 2px 0 #333; margin-bottom: 10px; box-sizing: border-box; }
 .stat-text { font-size: 20px; color: #D500F9; font-weight: bold;}
-.live-banner { position: absolute; top: -14px; left: 15px; background: #FF5722; color: #fff; padding: 2px 10px; font-size: 14px; font-weight: bold; animation: blink 1s infinite; border-radius: 5px; border: 1px solid #333;}
-@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
-/* 🌟 별표 이펙트 & 뜻 가리기 완벽 복구 */
+/* 별표 이펙트 & 뜻 가리기 완벽 복구 */
 .word-list-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 5px; border-bottom: 1px dashed #ccc; }
 .word-text-col { flex: 1; text-align: left; font-size: 18px; color: #333; font-weight: bold; word-break: keep-all; }
 .mean-text-col { flex: 1; text-align: left; font-size: 16px; color: #555; word-break: keep-all; }
 .star-col { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 40px; }
 .star-count { font-size: 14px; font-weight: bold; color: #999; margin-top: 2px; }
+.hidden-text { background-color: #555 !important; color: transparent !important; border-radius: 4px; user-select: none; }
 
-/* 완벽한 까만 블록 가리기 */
-.hidden-text { background-color: #555 !important; color: #555 !important; border-radius: 4px; user-select: none; }
-
-.star-btn { font-size: 28px; background: none; border: none; padding: 0; cursor: pointer; outline: none; transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); -webkit-tap-highlight-color: transparent; }
+.star-btn { font-size: 28px; background: none; border: none; padding: 0; cursor: pointer; outline: none; transition: 0.3s; }
 .fire-0 { filter: grayscale(100%); opacity: 0.4; transform: scale(0.9); }
 .fire-1 { filter: grayscale(0%); color: #FFEB3B; text-shadow: 0 0 5px rgba(255,235,59,0.5); transform: scale(1.05); }
 .fire-2 { color: #FFC107; text-shadow: 0 0 10px #FF9800; transform: scale(1.15); }
@@ -128,6 +126,10 @@ h3 { font-size: 20px; color: #555; margin-bottom: 10px; }
 .fire-4 { color: #F44336; text-shadow: 0 -5px 15px #FF0000, 0 -12px 20px #FF9800, 0 -18px 25px #FFEB3B; transform: scale(1.35); animation: flame-shake 0.4s infinite alternate; }
 .fire-max { color: #fff; text-shadow: 0 0 8px #fff, 0 -8px 20px #FF0000, 0 -18px 30px #FF9800, 0 -28px 40px #FFEB3B; transform: scale(1.5); animation: flame-shake 0.2s infinite alternate; }
 @keyframes flame-shake { 0% { transform: scale(1.3) rotate(-3deg); } 100% { transform: scale(1.4) rotate(3deg); } }
+
+/* 랭킹 리스트 */
+.rank-item { display: flex; justify-content: space-between; padding: 8px; border-bottom: 2px dashed #ddd; font-size: 18px;}
+.rank-item:last-child { border-bottom: none; }
 
 /* 애니메이션 및 오버레이 */
 @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-5px); } 50% { transform: translateX(5px); } 75% { transform: translateX(-5px); } 100% { transform: translateX(0); } }
@@ -138,7 +140,7 @@ h3 { font-size: 20px; color: #555; margin-bottom: 10px; }
 .huge-text { font-size: 40vw; color: #FFEB3B; text-shadow: 5px 5px 0 #FF4081; animation: popScale 1s infinite; }
 @keyframes popScale { 0% { transform: scale(0.8); opacity: 0; } 50% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
 
-.user-badge { background: #E0F7FA; color: #00838F; padding: 4px 10px; border-radius: 20px; font-size: 14px; border: 1px solid #80DEEA; display: inline-block; box-shadow: 1px 1px 0 rgba(0,0,0,0.1); }
-.live-rank-row { position: absolute; left: 10px; right: 10px; height: 50px; background: #fff; border: 2px solid #333; border-radius: 10px; display: flex; align-items: center; padding: 0 15px; box-shadow: 2px 2px 0 #333; transition: top 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); box-sizing: border-box;}
-.rank-item { display: flex; justify-content: space-between; padding: 8px; border-bottom: 2px dashed #ddd; font-size: 18px;}
-.rank-item:last-child { border-bottom: none; }
+@media screen and (max-height: 750px), screen and (max-width: 500px) {
+  h1 { font-size: 30px; margin-top: 20px; } h2 { font-size: 24px; }
+  .n-input { font-size: 16px; padding: 8px; } .n-btn { font-size: 18px; padding: 10px; }
+}
