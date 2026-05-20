@@ -1066,6 +1066,7 @@ function renderConfetti() {
 // ==========================================
 let chunkAnswers = [];
 let chunkLength = 0;
+let currentChunkIndex = 0;
 
 function updateChunkUI() {
   const m = String(Math.floor(gameTimeRemaining / 60)).padStart(2, "0"); 
@@ -1084,7 +1085,7 @@ function startChunkLogic() {
     showScreen("menu-screen");
     return;
   }
-
+currentChunkIndex = 0; // 👈 여기에 추가! 게임 시작 시 무조건 첫 번째 문장부터 시작
   updateChunkUI();
   gameTimerInterval = setInterval(() => {
     if (!isGamePaused) { 
@@ -1102,9 +1103,9 @@ function startChunkLogic() {
 }
 
 function loadNextChunkQuiz(validChunkWords) {
-  const wordObj = validChunkWords[Math.floor(Math.random() * validChunkWords.length)];
+const wordObj = validChunkWords[currentChunkIndex]; 
+  
   let enParts = wordObj.en.split('/').map(s => s.trim());
-  let koParts = wordObj.ko.split('/').map(s => s.trim());
 
   chunkLength = Math.min(enParts.length, koParts.length);
   enParts = enParts.slice(0, chunkLength);
@@ -1199,6 +1200,11 @@ function checkChunkAnswer(validChunkWords) {
     gameScore += earned;
     updateChunkUI();
     showGamePraise(earned, "Perfect Match!", "#3F51B5");
+
+    currentChunkIndex++;
+    if (currentChunkIndex >= validChunkWords.length) {
+      currentChunkIndex = 0; 
+    }
     
     if (Math.random() < 0.3) {
       triggerTreasureEvent(() => { isGamePaused = false; loadNextChunkQuiz(validChunkWords); });
