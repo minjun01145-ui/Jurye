@@ -151,28 +151,83 @@ bindClick("back-to-menu-btn", () => { playSound("click"); document.getElementByI
 bindClick("home-btn", () => { playSound("click"); showScreen("menu-screen"); });
 
 // ==========================================
-//6. 로그인, DB 로드
+// 6. 로그인, DB 로드 (강력한 안정성 패치!)
 // ==========================================
 async function loadAllFromDB() {
-  try {
-    // 1. 파이어베이스에서 세트와 학생 명단 가져오기 완료 대기
-    const setSnap = await getDoc(doc(db, "gameData", "wordSets")); 
-    if (setSnap.exists()) wordSets = setSnap.data().sets || [];
-    
-    const stdSnap = await getDoc(doc(db, "gameData", "students")); 
-    if (stdSnap.exists()) studentList = stdSnap.data().students || [];
-    
-    // 2. 🌟 데이터를 완벽하게 다 불러왔다면? 인증 화면으로 넘겨버리기!
-    showScreen("auth-screen"); 
+  let maxRetries = 3; // 최대 3번까지 끈질기게 재시도
+  let success = false;
 
-  } catch (error) { 
-    console.error("DB 로딩 에러:", error); 
-    // 만약 인터넷이 끊겨서 데이터를 못 가져오면 로딩 화면에 에러 메시지 띄우기
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      // 1. 파이어베이스에서 데이터 가져오기 시도
+      const setSnap = await getDoc(doc(db, "gameData", "wordSets")); 
+      if (setSnap.exists()) {
+        wordSets = setSnap.data().sets || [];
+        // 성공 시 폰 내부에 몰래 백업 (로컬 캐시)
+        localStorage.setItem("backup_wordSets", JSON.stringify(wordSets)); 
+      }
+      
+      const stdSnap = await getDoc(doc(db, "gameData", "students")); 
+      if (stdSnap.exists()) {
+        studentList = stdSnap.data().students || [];
+        // 성공 시 폰 내부에 명단 백업
+        localStorage.setItem("backup_studentList", JSON.stringify(studentList)); 
+      }
+      
+      success = true; // 성공!
+      break; // 성공했으니 재시도 루프(for문) 탈출
+
+    } catch (error) { 
+      console.warn(`DB 연결 실패 (재시도 ${i+1}/${maxRetries}):`, error);
+      // 실패하면 1초 기다렸다가 다시 시도합니다.
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  }
+
+  // 2. 3번 다 실패했을 경우의 최후의 수단 (오프라인 백업본 사용)
+  if (!success) {
+    console.error("서버 통신 완전 실패, 내장 백업 데이터를 확인합니다.");
+    const backupSets = localStorage.getItem("backup_wordSets");
+    const backupStds = localStorage.getItem("backup_studentList");
+
+    if (backupSets && backupStds) {
+      // 예전에 한 번이라도 접속했던 폰이면 저장된 데이터로 억지로 입장시킴!
+      wordSets = JSON.parse(backupSets);
+      studentList = JSON.parse(backupStds);
+      success = true; // 백업으로 복구 성공
+      // (선택사항) 학생에게 알림을 띄우려면 아래 주석을 해제하세요.
+      // alert("네트워크가 불안정하여 임시 모드로 접속되었습니다. (일부 데이터가 최신이 아닐 수 있습니다)");
+    }
+  }
+
+  // 3. 최종 결과에 따라 화면 넘기기
+  if (success) {
+    showScreen("auth-screen"); 
+  } else {
+    // 캐시 백업도 없고 서버 연결도 죽었을 때만 진짜 에러창과 새로고침 버튼 띄움
     const loadingScreen = document.getElementById("loading-screen");
-    if(loadingScreen) loadingScreen.innerHTML = `<h2 style="color:#f44336;">서버 연결 실패 ㅠㅠ</h2><p style="color:#fff;">인터넷 연결을 확인하고 새로고침을 눌러주세요.</p>`;
+    if(loadingScreen) loadingScreen.innerHTML = `
+      <h2 style="color:#f44336;">서버 연결 실패 ㅠㅠ</h2>
+      <p style="color:#fff;">학교 네트워크 접속이 원활하지 않습니다.</p>
+      <button onclick="location.reload()" style="padding: 12px 25px; font-size: 20px; font-weight: bold; background-color: #FFC107; border: none; border-radius: 10px; cursor: pointer; margin-top: 20px;">🔄 다시 시도하기</button>
+    `;
   }
 }
 loadAllFromDB(); 
+
+bindClick("auth-btn", () => {
+  playSound("click");
+  const inputId = document.getElementById("auth-id").value.trim();
+  const inputName = document.getElementById("auth-name").value.trim();
+
+  if(!inputId || !inputName) return alert("학번과 이름을 모두 적어주세요!");
+  const matchedStudent = studentList.find(s => s.stdId === inputId && s.name === inputName);
+  
+  if (matchedStudent) {
+    currentUser.stdId = inputId; currentUser.realName = inputName; currentUser.classId = inputId.substring(0, 2); 
+    showScreen("login-screen");
+  } else { alert("데이터베이스에 없는 학번이거나 이름이 틀렸습니다! 선생님께 문의하세요."); }
+});
 
 bindClick("auth-btn", () => {
   playSound("click");
