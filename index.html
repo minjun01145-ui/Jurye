@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>주례여중 게임기</title>
     <link rel="stylesheet" href="styles.css" />
-
+<link rel="icon" href="data:,">
     <style>
       body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
       .screen { position: fixed !important; top: 0; left: 0; width: 100vw !important; height: 100dvh !important; overflow: hidden !important; display: none; flex-direction: column; align-items: center; justify-content: center; box-sizing: border-box; }
@@ -144,7 +144,7 @@
       <button id="close-modal-btn" style="background: #888; color: white; width: 100%; border: none; padding: 10px; border-radius: 10px; cursor: pointer; font-size: 18px;">닫기</button>
     </div>
 
-      <div id="loading-screen" class="screen active" style="background-color: #222; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+    <div id="loading-screen" class="screen active" style="background-color: #222; display: flex; flex-direction: column; align-items: center; justify-content: center;">
       <h1 class="bounce" style="font-size: 50px; margin-bottom: 20px;">🚀</h1>
       <h2 style="color: #00bcd4;">데이터를 불러오는 중입니다...</h2>
       <p style="color: #aaa; font-size: 16px;">잠시만 기다려주세요 (인터넷 환경에 따라 1~3초 소요)</p>
@@ -173,25 +173,48 @@
         </div>
       </div>
     </div>
-    ```
-
 
     <div id="login-screen" class="screen">
-      <h1>익명 프로필 설정</h1>
-      <p style="text-align: center; font-size: 18px">나만의 닉네임과 이모지를 골라주세요!<br />(랭킹에는 본명 대신 이것만 표시됩니다)</p>
+      <h1>캐릭터 프로필 설정</h1>
+      <p style="text-align: center; font-size: 18px">나만의 닉네임을 입력하고 프로필을 확인하세요!</p>
+      <p style="font-size: 22px; color: #ff4081; margin-bottom: 15px;">현재 돈은 <span id="user-jr-display" style="font-weight: bold; text-decoration: underline; letter-spacing: 2px;">0</span> JR 입니다.</p>
       <input type="text" id="nickname" placeholder="나만의 닉네임 입력!" style="width: 200px; font-size: 20px; padding: 10px;" />
-      <div id="emoji-container"></div>
-      <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
-        <button id="login-btn" style="margin: 0;">게임 시작!</button>
+      
+<div id="main-character-display" style="height: 160px; margin-bottom: 15px; display: flex; justify-content: center; align-items: center;">
+      </div>
+      
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%;">
+        <button id="go-char-shop-btn" style="margin: 0; background-color: #9C27B0; box-shadow: 0 6px 0 #7B1FA2; font-size: 18px; padding: 10px 25px;">🛒 캐릭터 구매하기</button>
+        <button id="login-btn" style="margin: 10px 0 0 0; background-color: #4CAF50; box-shadow: 0 6px 0 #388E3C;">게임 시작!</button>
       </div>
     </div> 
+
+<div id="char-shop-screen" class="screen" style="padding: 20px; justify-content: flex-start;">
+      <h1>🛒 캐릭터 상점</h1>
+      <p style="margin-bottom: 15px;">수업에서 획득한 JR 코인으로 새로운 캐릭터를 획득해 보세요!</p>
+      
+      <div id="shop-character-list" style="display: flex; flex-direction: column; width: 100%; max-width: 400px; gap: 15px; margin-bottom: 25px; background: rgba(255,255,255,0.5); padding: 15px; border-radius: 24px; border: 2px solid rgba(255,255,255,0.3); overflow-y: auto; max-height: 60vh; box-sizing: border-box;">
+        </div>
+      
+      <button id="char-shop-back-btn" style="background-color: #9e9e9e; box-shadow: 0 6px 0 #616161; padding: 12px 30px; font-size: 18px; margin: 0; width: auto;">⬅️ 뒤로 가기</button>
+    </div>
 
     <div id="admin-main-screen" class="screen">
       <h2 style="margin-bottom: 20px;">⚙️관리자 메뉴</h2>
       <button id="admin-go-student-btn" class="menu-btn" style="background-color: #2196F3; box-shadow: 0 6px 0 #1976D2">학생 DB 수정</button>
       <button id="admin-go-set-btn" class="menu-btn" style="background-color: #9C27B0; box-shadow: 0 6px 0 #7B1FA2">세트 DB 수정</button>
       <button id="admin-go-feedback-btn" class="menu-btn" style="background-color: #FF9800; box-shadow: 0 6px 0 #F57C00;">💡 학생 의견 보기</button>
-      <button id="admin-main-close-btn" class="menu-btn" style="background-color: #9e9e9e; box-shadow: 0 6px 0 #616161; margin-top: 30px;">닫기</button>
+      
+      <div style="border: 3px dashed #607D8B; padding: 15px; border-radius: 15px; margin-top: 15px; background: rgba(236, 239, 241, 0.9); width: 90%; max-width: 350px;">
+        <h3 style="margin-top: 0; color: #455A64; font-size: 18px;">🧪 빠른 테스트 (원클릭 입장)</h3>
+        <div style="display: flex; gap: 5px; justify-content: center;">
+          <button id="dev-t-btn" style="background: #9C27B0; box-shadow: 0 4px 0 #7B1FA2; padding: 10px; font-size: 15px; margin: 0; flex: 1;">👨‍🏫 교사</button>
+          <button id="dev-s1-btn" style="background: #2196F3; box-shadow: 0 4px 0 #1976D2; padding: 10px; font-size: 15px; margin: 0; flex: 1;">👦 학생1</button>
+          <button id="dev-s2-btn" style="background: #4CAF50; box-shadow: 0 4px 0 #388E3C; padding: 10px; font-size: 15px; margin: 0; flex: 1;">👧 학생2</button>
+        </div>
+      </div>
+
+      <button id="admin-main-close-btn" class="menu-btn" style="background-color: #9e9e9e; box-shadow: 0 6px 0 #616161; margin-top: 15px;">닫기</button>
     </div>
 
     <div id="admin-feedback-screen" class="screen">
@@ -232,7 +255,8 @@
       <div id="set-select-list" style="display:flex; flex-direction:column; gap:15px; width: 90%; max-width: 400px; overflow-y: auto; max-height: 50vh; padding: 10px;"></div>
       <button id="set-select-back-btn" class="menu-btn" style="background-color: #9e9e9e; box-shadow: 0 6px 0 #616161; margin-top: 20px;">⬅️ 뒤로 가기</button>
     </div>
-<div id="lobby-mode-screen" class="screen">
+
+    <div id="lobby-mode-screen" class="screen">
       <h1>🎮 게임 모드 선택</h1>
       <p>어떤 방식으로 게임을 진행할까요?</p>
       <div style="display: flex; flex-direction: column; gap: 15px; width: 90%; max-width: 320px;">
@@ -243,73 +267,134 @@
       <button id="lobby-mode-back-btn" class="small-text" style="margin-top: 20px; background: none; border: none; color: #666; cursor: pointer; text-decoration: underline;">뒤로가기</button>
     </div>
 
-    <div id="multi-lobby-screen" class="screen" style="padding: 20px; justify-content: flex-start; gap: 15px;">
-      <h2 style="color: #2196F3; margin: 10px 0 5px 0;">🚀 실시간 대기실</h2>
+<div id="multi-lobby-screen" class="screen" style="padding: 20px; justify-content: flex-start; gap: 15px;">
+      <h2 id="student-lobby-title" style="color: #2196F3; margin: 10px 0 5px 0;">🚀 실시간 대기실</h2>
       <p style="margin: 0; font-size: 14px; color: #555;">선생님이 게임을 시작하실 때까지 대기하며 채팅을 나눠보세요!</p>
       
-      <div style="width: 100%; max-width: 400px; background: white; border: 3px solid #2196F3; border-radius: 12px; padding: 10px; box-sizing: border-box;">
-        <div style="font-weight: bold; margin-bottom: 8px; text-align: left; color: #1976D2;">👥 대기 중인 친구들 (<span id="lobby-user-count">0</span>명)</div>
-        <div id="lobby-user-list" style="display: flex; flex-wrap: wrap; gap: 8px; max-height: 120px; overflow-y: auto; padding: 5px; background: #f5f5f5; border-radius: 8px;"></div>
+      <div style="width: 100%; max-width: 600px; background: rgba(255,255,255,0.7); border: 3px solid #2196F3; border-radius: 12px; padding: 15px; box-sizing: border-box; flex: 1; overflow-y: auto;">
+        <div style="font-weight: bold; margin-bottom: 10px; text-align: left; color: #1976D2;">👥 대기 중인 친구들 (<span id="lobby-user-count">0</span>명)</div>
+        
+        <div id="lobby-grid-container" style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 15px; width: 100%;"></div>
       </div>
 
-      <div style="width: 100%; max-width: 400px; flex: 1; display: flex; flex-direction: column; background: white; border: 3px solid #2196F3; border-radius: 12px; padding: 10px; box-sizing: border-box; min-height: 200px; max-height: 350px;">
-        <div id="lobby-chat-window" style="flex: 1; overflow-y: auto; background: #fafafa; border-radius: 8px; padding: 8px; display: flex; flex-direction: column; gap: 6px; text-align: left; font-size: 14px;"></div>
-        <div style="display: flex; gap: 6px; margin-top: 8px;">
-          <input type="text" id="lobby-chat-input" placeholder="메시지를 입력하세요..." style="flex: 1; font-size: 15px; padding: 8px; margin: 0; border: 2px solid #ccc; border-radius: 8px;" />
-          <button id="lobby-chat-send-btn" style="margin: 0; padding: 8px 15px; font-size: 15px; background-color: #2196F3; box-shadow: 0 3px 0 #1976D2; width: auto;">전송</button>
-        </div>
+      <div style="display: flex; gap: 6px; width: 100%; max-width: 600px; margin-top: 10px;">
+        <input type="text" id="lobby-chat-input" placeholder="메시지를 입력하세요..." style="flex: 1; font-size: 15px; padding: 12px; margin: 0; border: 2px solid #ccc; border-radius: 8px;" />
+        <button id="lobby-chat-send-btn" style="margin: 0; padding: 10px 20px; font-size: 16px; background-color: #2196F3; box-shadow: 0 4px 0 #1976D2; width: auto;">전송</button>
       </div>
       
-      <button id="lobby-exit-btn" style="background-color: #e0e0e0; box-shadow: 0 4px 0 #bcbcbc; color: #333; font-size: 16px; padding: 8px 20px; margin: 0;">🚪 대기실 나가기</button>
+      <button id="lobby-exit-btn" style="background-color: #e0e0e0; box-shadow: 0 4px 0 #bcbcbc; color: #333; font-size: 16px; padding: 8px 20px; margin: 10px 0 0 0;">🚪 대기실 나가기</button>
     </div>
+  
 
-    <div id="teacher-lobby-screen" class="screen" style="padding: 20px; justify-content: flex-start; gap: 15px;">
-      <h2 style="color: #9C27B0; margin: 10px 0 5px 0;">👑 교사용 대기실 및 중계화면</h2>
-      <p style="margin: 0; font-size: 14px; color: #555;">학생들이 모두 입장하면 게임 모드를 선택하고 시작해 주세요.</p>
+    <div id="teacher-lobby-screen" class="screen" style="flex-direction: row; padding: 20px; align-items: flex-start; gap: 20px;">
       
-      <div style="width: 100%; max-width: 500px; background: white; border: 3px solid #9C27B0; border-radius: 12px; padding: 15px; box-sizing: border-box;">
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-          <div style="font-weight: bold; color: #7B1FA2; font-size: 18px;">👥 실시간 입장 (<span id="teacher-user-count">0</span>명)</div>
-          <button id="teacher-clear-ghosts-btn" style="font-size: 14px; padding: 6px 12px; margin: 0; background-color: #f44336; box-shadow: 0 4px 0 #d32f2f; color: white; width: auto; border-radius: 8px;">🧹 전체 강제퇴장</button>
-        </div>        <div id="teacher-user-list" style="display: flex; flex-wrap: wrap; gap: 10px; min-height: 150px; max-height: 250px; overflow-y: auto; padding: 10px; background: #fcf8ff; border-radius: 8px; align-content: flex-start;"></div>
-      </div>
-
-      <div style="width: 100%; max-width: 500px; background: #fff3ff; border: 2px dashed #9C27B0; border-radius: 12px; padding: 15px; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; align-items: center;">
+      <div style="width: 380px; display: flex; flex-direction: column; gap: 15px; height: 100%; overflow-y: auto; background: rgba(255,255,255,0.95); padding: 20px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); border: 3px solid #7B1FA2;">
+        <h2 style="margin-top: 0; color: #7B1FA2; font-size: 28px;">🛠️ 교사 제어판</h2>
+        
         <div style="width: 100%; text-align: left; display: flex; flex-direction: column; gap: 10px;">
           <div>
             <label style="font-weight: bold; color: #7B1FA2; display: block; margin-bottom: 5px;">🎯 진행할 게임 모드 선택</label>
             <select id="teacher-game-mode-select" style="width: 100%; font-size: 16px; padding: 8px; border-radius: 8px; border: 2px solid #9C27B0; font-family: inherit;">
               <option value="speed">⚡ 심플 스피드퀴즈 (멀티 대전 지원)</option>
               <option value="chunk">🧩 문장 해석 게임 (멀티 대전 지원)</option>
-              <option value="memory" disabled>🔠 메모 게임 (준비중)</option>
-              <option value="speed-match" disabled>🧩 스피드 짝맞추기 (준비중)</option>
-              <option value="fish" disabled>🎣 이모지 낚시하기 (준비중)</option>
+              <option value="highfive">✋ 하이파이브 조편성 (팀 짜기)</option>
+              <option value="create">📝 문제 만들기 (학생 출제 모드)</option>
             </select>
           </div>
-          <div>
+          
+          <!-- 하이파이브 조편성용 설정창 -->
+          <div id="teacher-group-count-container" style="display: none;">
+            <label style="font-weight: bold; color: #FF9800; display: block; margin-bottom: 5px;">👥 몇 개 조로 나눌까요?</label>
+            <select id="teacher-group-count-select" style="width: 100%; font-size: 16px; padding: 8px; border-radius: 8px; border: 2px solid #FF9800; font-family: inherit;">
+              <option value="2">2개 조</option><option value="3">3개 조</option><option value="4">4개 조</option>
+              <option value="5">5개 조</option><option value="6">6개 조</option><option value="7">7개 조</option><option value="8">8개 조</option>
+            </select>
+          </div>
+
+          <!-- 🚀 조편성 활성화 시에만 등장하는 '조별 게임 방식' 설정창 -->
+          <div id="teacher-group-play-mode-container" style="display: none;">
+            <label style="font-weight: bold; color: #E91E63; display: block; margin-bottom: 5px;">👥 조별 게임 방식</label>
+            <select id="teacher-group-play-mode-select" style="width: 100%; font-size: 16px; padding: 8px; border-radius: 8px; border: 2px solid #E91E63; font-family: inherit;">
+              <option value="one-player">👤 한 명만 플레이 (나머지는 관전)</option>
+              <option value="all-sum">👨‍👩‍👧‍👦 다 같이 플레이 (조별 점수 합산)</option>
+            </select>
+          </div>
+          <!-- 🚀 문제 만들기 전용 옵션 컨테이너 -->
+          <div id="teacher-create-time-container" style="display: none;">
+            <label style="font-weight: bold; color: #4CAF50; display: block; margin-bottom: 5px;">🕒 출제 제한 시간</label>
+            <select id="teacher-create-time-select" style="width: 100%; font-size: 16px; padding: 8px; border-radius: 8px; border: 2px solid #388E3C; font-family: inherit;">
+              <option value="5">5분</option><option value="6">6분</option><option value="7">7분</option>
+              <option value="8">8분</option><option value="9">9분</option><option value="10" selected>10분</option>
+            </select>
+          </div>
+
+          <div id="teacher-create-count-container" style="display: none;">
+            <label style="font-weight: bold; color: #4CAF50; display: block; margin-bottom: 5px;">🔢 만들 문제 개수</label>
+            <select id="teacher-create-count-select" style="width: 100%; font-size: 16px; padding: 8px; border-radius: 8px; border: 2px solid #388E3C; font-family: inherit;">
+              <option value="1">1문제</option><option value="2">2문제</option><option value="3" selected>3문제</option>
+              <option value="4">4문제</option><option value="5">5문제</option>
+            </select>
+          </div>
+
+          <div id="teacher-create-type-container" style="display: none; background: rgba(255,255,255,0.7); padding: 10px; border-radius: 8px; border: 2px solid #4CAF50;">
+            <label style="font-weight: bold; color: #4CAF50; display: block; margin-bottom: 8px;">✅ 허용할 출제 유형 (복수 선택 가능)</label>
+            <div style="display: flex; flex-direction: column; gap: 5px; font-size: 14px; text-align: left;">
+              <label><input type="checkbox" class="create-type-cb" value="multiple" checked> 📝 객관식 (5지선다)</label>
+              <label><input type="checkbox" class="create-type-cb" value="short" checked> ✍️ 단답형 (대소문자 구별 안함)</label>
+              <label><input type="checkbox" class="create-type-cb" value="order" checked> 🔄 순서 맞추기 (최대 5개 단어)</label>
+              <label><input type="checkbox" class="create-type-cb" value="match" checked> 🧩 짝짓기 (4개 짝 맞추기)</label>
+            </div>
+          </div>
+
+          <div id="teacher-time-container">
             <label style="font-weight: bold; color: #7B1FA2; display: block; margin-bottom: 5px;">🕒 제한 시간 선택</label>
             <select id="teacher-game-time-select" style="width: 100%; font-size: 16px; padding: 8px; border-radius: 8px; border: 2px solid #9C27B0; font-family: inherit;">
-              <option value="3">3분</option>
-              <option value="5">5분</option>
+              <option value="3">3분</option><option value="5">5분</option>
             </select>
           </div>
-          <div>
+          
+          <div id="teacher-item-container">
             <label style="font-weight: bold; color: #7B1FA2; display: block; margin-bottom: 5px;">🔥 멀티플레이 특수 아이템 세팅</label>
             <select id="teacher-game-item-select" style="width: 100%; font-size: 16px; padding: 8px; border-radius: 8px; border: 2px solid #9C27B0; font-family: inherit;">
               <option value="on">⭕ 특수 경쟁 아이템 사용 (서로 공격 가능)</option>
               <option value="off">❌ 사용 안 함 (평화로운 기존 방식)</option>
             </select>
           </div>
-          <div>
+          
+          <div id="teacher-set-container">
             <label style="font-weight: bold; color: #7B1FA2; display: block; margin-bottom: 5px;">📚 플레이할 학습 세트 선택</label>
-            <select id="teacher-game-set-select" style="width: 100%; font-size: 16px; padding: 8px; border-radius: 8px; border: 2px solid #9C27B0; font-family: inherit;">
-            </select>
+            <select id="teacher-game-set-select" style="width: 100%; font-size: 16px; padding: 8px; border-radius: 8px; border: 2px solid #9C27B0; font-family: inherit;"></select>
           </div>
         </div>
-        <button id="teacher-game-start-btn" style="background-color: #4CAF50; box-shadow: 0 6px 0 #388E3C; font-size: 20px; padding: 12px 40px; margin: 10px 0 0 0; width: 100%;">🏁 멀티플레이 게임 시작!</button>
+        
+<button id="teacher-game-start-btn" style="font-size: 20px; padding: 15px; background-color: #4CAF50; box-shadow: 0 6px 0 #388E3C; width: 100%; margin-top: 10px;">🚀 선택한 모드로 시작</button>
+        <button id="teacher-clear-ghosts-btn" style="font-size: 14px; padding: 8px; background-color: #f44336; box-shadow: 0 4px 0 #d32f2f; width: 100%;">🧹 전체 유저 강제 퇴장(초기화)</button>
+        
+        <button id="teacher-toggle-name-btn" style="font-size: 14px; padding: 8px; background-color: #607D8B; box-shadow: 0 4px 0 #455A64; color: white; width: 100%; margin-top: 5px; border: none; border-radius: 24px; cursor: pointer;">🙈 학번/이름 숨기기</button>
+        
+        <div style="margin-top: auto; padding-top: 15px; border-top: 2px dashed #ccc;">
+            <p style="font-size: 16px; font-weight: bold; margin:0;">현재 접속자: <span id="teacher-user-count" style="color:#E91E63; font-size: 22px;">0</span>명</p>
+        </div>
       </div>
 
-      <button id="teacher-lobby-exit-btn" style="background-color: #e0e0e0; box-shadow: 0 4px 0 #bcbcbc; color: #333; font-size: 16px; padding: 8px 20px; margin: 0;">🚪 나가기</button>
+      <div style="flex: 1; height: 100%; display: flex; flex-direction: column; background: rgba(255,255,255,0.9); border-radius: 15px; padding: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); border: 3px solid #2196F3; overflow-y: auto;">
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 3px dashed #BBDEFB; padding-bottom: 10px;">
+           <h2 id="teacher-viewer-title" style="margin: 0; color: #1976D2; font-size: 28px;">👀 학생 대기실 모니터링</h2>
+           <span id="teacher-match-timer" style="display: none; font-size: 24px; font-weight: bold; color: #f44336; background: #ffebee; padding: 5px 15px; border-radius: 10px;">🕒 00:00</span>
+        </div>
+        
+        <div id="teacher-visual-lobby-grid" style="display:flex; flex-direction:column; gap:15px; width:100%; margin-top: 10px; align-items: flex-start;">
+           <p style="color: #999; font-size: 16px;">학생들이 접속하면 여기에 나타납니다...</p>
+        </div>
+        
+        <div id="teacher-live-leaderboard" style="display:none; position:relative; width:100%; flex:1; margin-top:10px; overflow-y:auto; overflow-x:hidden;"></div>
+        
+        <div style="display:flex; justify-content:center; margin-top:15px;">
+           <button id="teacher-match-abort-btn" style="display:none; background-color: #f44336; box-shadow: 0 4px 0 #d32f2f; color: white; font-size: 18px; padding: 10px 30px; margin: 0;">⏹️ 진행 중인 게임 강제 종료</button>
+        </div>
+
+      </div>
     </div>
 
     <div id="teacher-match-screen" class="screen" style="padding: 20px; justify-content: flex-start; gap: 15px; background-color: #222 !important;">
@@ -325,8 +410,12 @@
         <button id="teacher-match-exit-btn" style="background-color: #9C27B0; box-shadow: 0 4px 0 #7B1FA2; color: white; font-size: 18px; padding: 10px 30px; margin: 0; display: none; width: auto;">🚪 대기실로 돌아가기</button>
       </div>
     </div>
+
     <div id="menu-screen" class="screen">
-      <h2 style="text-align: center; margin-bottom:10px;">당신의 닉네임은<br /><span id="user-display" style="color: #ff4081"></span>입니다.</h2>
+      <h2 style="text-align: center; margin-bottom:10px;">
+        <div id="user-avatar-display" style="height: 80px; margin-bottom: 10px; display: flex; justify-content: center; align-items: center;"></div>
+        당신의 닉네임은<br /><span id="user-display" style="color: #ff4081"></span>입니다.
+      </h2>
       <p style="margin-bottom:10px;">어떤 학습을 시작할까요?</p>
 
       <div style="display: flex; gap: 10px; width: 90%; max-width: 350px; margin-bottom: 12px; align-items: stretch;">
@@ -358,7 +447,7 @@
         <button id="rank-fish-btn" class="menu-btn-rank">🏆</button>
       </div>
 
-<div style="display: flex; gap: 10px; width: 90%; max-width: 350px; margin-bottom: 12px; align-items: stretch;">
+      <div style="display: flex; gap: 10px; width: 90%; max-width: 350px; margin-bottom: 12px; align-items: stretch;">
         <button id="menu-chunk-btn" class="menu-btn" style="flex: 1; margin: 0; width: auto; background-color: #3F51B5; box-shadow: 0 6px 0 #303F9F">🧩문장 해석</button>
         <button id="rank-chunk-btn" class="menu-btn-rank">🏆</button>
       </div>
@@ -424,7 +513,7 @@
          <span id="sm-score" style="font-size: 26px; font-weight: bold; color: #FF5722;">점수: 0</span>
       </div>
       <div style="height: 85%; width: 100%; max-width: 600px; display: flex; justify-content: center; gap: 10px; padding: 5px; box-sizing: border-box; overflow: hidden;">
-         <div id="sm-left-ol" style="display: flex; flex-direction: column; gap: 5px; width: 48%; height: 100%;"></div>
+         <div id="sm-left-col" style="display: flex; flex-direction: column; gap: 5px; width: 48%; height: 100%;"></div>
          <div id="sm-right-col" style="display: flex; flex-direction: column; gap: 5px; width: 48%; height: 100%;"></div>
       </div>
     </div>
@@ -453,7 +542,8 @@
       </div>
       <div id="fish-pond" style="height: 65%; width: 100%; position: relative; overflow: hidden; background: rgba(224, 247, 250, 0.4);"></div>
     </div>
-<div id="chunk-screen" class="screen" style="padding: 0; background: transparent;">
+
+    <div id="chunk-screen" class="screen" style="padding: 0; background: transparent;">
       <div style="height: 15%; width: 100%; display: flex; flex-direction: column; align-items: flex-end; padding: 15px 20px 0 0; box-sizing: border-box; background: rgba(255,255,255,0.8); border-bottom: 4px dashed #00bcd4; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
          <span id="chunk-timer" style="font-size: 26px; font-weight: bold; color: #f44336; margin-bottom: 5px;">🕒 03:00</span>
          <span id="chunk-score" style="font-size: 26px; font-weight: bold; color: #3F51B5;">점수: 0</span>
@@ -474,7 +564,6 @@
       <div id="result-caught-emojis" style="max-height: 100px; overflow-y: auto; font-size: 24px; margin-bottom: 10px; background: rgba(255,255,255,0.7); padding: 10px; border-radius: 10px; width: 85%; display: none; line-height: 1.4; word-break: break-all; border: 2px dashed #00BCD4;"></div>
       
       <button id="go-feedback-btn" style="background-color: #9C27B0; box-shadow: 0 6px 0 #7B1FA2; margin-top: 5px; width: 250px;">💡 의견 남기기</button>
-      
       <button id="go-ranking-btn" style="background-color: #FF9800; box-shadow: 0 6px 0 #F57C00; margin-top: 5px; width: 250px;">🏆 명예의 전당</button>
       <button id="home-btn" style="background-color: #9e9e9e; box-shadow: 0 6px 0 #616161; margin-top: 5px; width: 250px;">돌아가기</button>
     </div>
@@ -505,14 +594,11 @@
       <button id="ranking-home-btn" style="margin-top: 20px; background-color: #4CAF50; box-shadow: 0 6px 0 #388E3C;">메뉴로 돌아가기</button>
     </div>
 
-    <script type="module" src="index.mjs"></script>
-  </body>
-  <div id="multi-target-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; flex-direction: column; align-items: center; justify-content: center; font-family: 'Paperlogy-4Regular', sans-serif; padding: 20px; box-sizing: border-box;">
+    <div id="multi-target-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; flex-direction: column; align-items: center; justify-content: center; font-family: 'Paperlogy-4Regular', sans-serif; padding: 20px; box-sizing: border-box;">
       <div style="background: white; border: 4px solid #FF9800; border-radius: 20px; width: 100%; max-width: 400px; padding: 20px; box-sizing: border-box; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.3);">
         <h3 id="multi-target-title" style="color: #FF5722; margin-top: 0; font-size: 24px;">💥 아이템 공격 대상을 고르세요!</h3>
         <p id="multi-target-desc" style="font-size: 14px; color: #666; margin-bottom: 15px;">누구를 타겟으로 삼을까요?</p>
-        <div id="multi-target-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 250px; overflow-y: auto; margin-bottom: 15px; padding: 5px; background: #f9f9f9; border-radius: 10px;">
-          </div>
+        <div id="multi-target-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 250px; overflow-y: auto; margin-bottom: 15px; padding: 5px; background: #f9f9f9; border-radius: 10px;"></div>
         <button id="multi-target-cancel-btn" style="font-size: 16px; padding: 8px 20px; background: #9e9e9e; box-shadow: 0 4px 0 #616161; width: 100%; margin: 0;">공격 취소하기</button>
       </div>
     </div>
@@ -522,4 +608,40 @@
       <h2 style="color: #ff4081; margin: 20px 0 10px 0; font-size: 30px;">화면이 가려졌습니다!</h2>
       <p id="multi-blind-msg" style="color: #aaa; font-size: 18px;">XXX님의 공격! 3초 후 해제됩니다.</p>
     </div>
+<div id="highfive-screen" class="screen">
+      <h2 style="font-size: 40px; color: #FF9800; margin-bottom: 10px;">✋ 하이파이브 조편성</h2>
+      <p style="font-size: 18px; color: #555; word-break: keep-all; max-width: 80%;">
+        15초 카운트다운 중 마음에 드는 타이밍에 하이파이브 버튼을 누르세요!<br>비슷한 타이밍에 누른 친구들과 한 조가 됩니다!
+      </p>
+      <div id="hf-timer" style="font-size: 100px; font-weight: bold; color: #ff4081; margin: 20px 0; text-shadow: 2px 2px 10px rgba(0,0,0,0.1);">15</div>
+      
+      <button id="hf-btn" style="font-size: 45px; font-weight: 900; padding: 0; border-radius: 50%; width: 220px; height: 220px; background: #FF9800; box-shadow: 0 15px 0 #F57C00, 0 20px 25px rgba(0,0,0,0.2); margin: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; line-height: 1.2;">
+        🖐️<br><span style="font-size: 28px;">터치!</span>
+      </button>
+      
+      <p id="hf-status" style="font-size: 22px; font-weight: bold; color: #4CAF50; display: none; margin-top: 20px; background: rgba(255,255,255,0.8); padding: 15px 25px; border-radius: 15px; border: 3px solid #4CAF50;">
+        하이파이브 완료! 결과를 기다리는 중...
+      </p>
+    </div>
+
+    <div id="highfive-result-screen" class="screen">
+      <h2 style="font-size: 40px; color: #4CAF50; margin-bottom: 15px;">🎉 조편성 결과</h2>
+      <p style="font-size: 18px; color: #666; margin-bottom: 20px;">타이밍이 맞은 친구들끼리 뭉쳤습니다!</p>
+      
+      <div id="hf-result-container" style="display:flex; flex-wrap:wrap; gap:15px; width:100%; max-width:1000px; justify-content:center; overflow-y:auto; max-height:60vh; padding: 10px; align-items: flex-start;"></div>
+      
+      <div style="margin-top:20px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+        <button id="hf-result-home-btn" style="background-color: #9e9e9e; box-shadow: 0 6px 0 #616161; font-size: 18px; padding: 15px 25px;">⬅️ 취소 및 돌아가기</button>
+        <button id="hf-result-play-btn" style="background-color: #FF9800; box-shadow: 0 6px 0 #F57C00; font-size: 18px; padding: 15px 25px; display: none;">🎮 이 조로 게임하기</button>
+      </div>
+    </div>
+    <!-- 🚀 대표자 1인 모드 시 관전자들의 화면을 가려주는 블라인드 창 -->
+    <div id="group-blocker-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); z-index: 9999; flex-direction: column; align-items: center; justify-content: center; color: white; text-align: center; padding: 20px; box-sizing: border-box; font-family: 'Paperlogy-4Regular', sans-serif;">
+      <span style="font-size: 80px; margin-bottom: 10px;">👀</span>
+      <h2 style="color: #FF9800; font-size: 35px; margin-bottom: 15px;">우리는 한 팀!</h2>
+      <p id="group-blocker-msg" style="font-size: 22px; color: #ddd; line-height: 1.6; word-break: keep-all;"></p>
+      <div style="margin-top: 20px; font-size: 16px; color: #888;">타이머가 종료되면 자동으로 결과창으로 이동합니다.</div>
+    </div>
+    <script type="module" src="index.mjs"></script>
+  </body>
 </html>
