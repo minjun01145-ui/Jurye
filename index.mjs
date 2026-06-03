@@ -1869,22 +1869,15 @@ function updateTeacherMenuVisibility() {
     if(!modeSelect) return;
     const mode = modeSelect.value;
     const isHf = (mode === "highfive");
-    const isCreate = (mode === "create");
     
-    // 일반 게임용
-    document.getElementById("teacher-time-container").style.display = (isHf || isCreate) ? "none" : "block";
-    document.getElementById("teacher-item-container").style.display = (isHf || isCreate) ? "none" : "block";
-    document.getElementById("teacher-set-container").style.display = (isHf) ? "none" : "block";
-    
-    // 조편성용
+    document.getElementById("teacher-time-container").style.display = isHf ? "none" : "block";
+    document.getElementById("teacher-item-container").style.display = isHf ? "none" : "block";
+    document.getElementById("teacher-set-container").style.display = isHf ? "none" : "block";
     document.getElementById("teacher-group-count-container").style.display = isHf ? "block" : "none";
+    
+    // 🚀 조편성이 활성화된 상태이고 하이파이브가 아닐 때만 "조별 게임 방식" 노출!
     const playModeContainer = document.getElementById("teacher-group-play-mode-container");
     if(playModeContainer) playModeContainer.style.display = (currentGroupingActive && !isHf) ? "block" : "none";
-
-    // 문제만들기용
-    document.getElementById("teacher-create-time-container").style.display = isCreate ? "block" : "none";
-    document.getElementById("teacher-create-count-container").style.display = isCreate ? "block" : "none";
-    document.getElementById("teacher-create-type-container").style.display = isCreate ? "block" : "none";
 }
 
 // 🚀 모드 선택 시 메뉴 변경
@@ -1908,28 +1901,7 @@ bindClick("teacher-game-start-btn", async () => {
      startHighFiveLogic(targetEndTime); 
      return;
   }
-// 🚀 문제 만들기 모드일 경우 통신 로직
-  if (mode === "create") {
-      const cTime = parseInt(document.getElementById("teacher-create-time-select").value);
-      const cCount = parseInt(document.getElementById("teacher-create-count-select").value);
-      
-      let allowedTypes = [];
-      document.querySelectorAll(".create-type-cb:checked").forEach(cb => allowedTypes.push(cb.value));
-      if(allowedTypes.length === 0) return alert("최소 1개 이상의 문제 유형을 선택해 주세요!");
 
-      const setSelect = document.getElementById("teacher-game-set-select");
-      const setId = setSelect ? setSelect.value : null;
-      if (!setId) return alert("참고할 학습 세트를 선택해 주세요!");
-      const selectedSet = wordSets.find(s => s.id === setId);
-
-      const targetEndTime = Date.now() + (cTime * 60 * 1000); // 카운트다운 없이 바로 시작
-
-      await setDoc(doc(db, "gameData", "multiRoom"), { 
-          status: "playing", gameMode: mode, duration: cTime, targetProblemCount: cCount, allowedTypes: allowedTypes,
-          setId: setId, setTitle: selectedSet.title, endTime: targetEndTime 
-      }, { merge: true });
-      return;
-  }
   const timeSelect = document.getElementById("teacher-game-time-select");
   const duration = timeSelect ? parseInt(timeSelect.value) : 3;
   const setSelect = document.getElementById("teacher-game-set-select");
