@@ -27,12 +27,11 @@ body {
   color: #2c3e50;
 }
 
-/* 🌟 화면 덮개: 반투명 글래스모피즘(유리) 효과 */
+/* 🌟 화면 덮개: 반투명 글래스모피즘(유리) 효과 (렉 유발 블러 제거 완료!) */
 .screen {
   position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
   overflow-y: auto; 
-  background-color: rgba(255, 255, 255, 0.45);
-  backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+  background-color: rgba(255, 255, 255, 0.7); /* 블러를 없앤 대신 배경을 살짝 더 불투명하게(0.45 -> 0.7) 조정해 글씨가 잘 보이게 합니다 */
   display: none; flex-direction: column; align-items: center;
   padding: 50px 20px; box-sizing: border-box; z-index: 10; text-align: center;
 }
@@ -86,8 +85,9 @@ button:active { transform: translateY(8px); box-shadow: 0 0px 0 #c51162, 0 5px 5
 .rank-tab.active { background-color: #00bcd4; color: white; box-shadow: 0 5px 0 #00838f; transform: translateY(2px); }
 
 /* 🌟 게임 내 아이템 (스피드 짝맞추기 등) */
-.sm-card-wrapper { flex: 1; cursor: pointer; width: 100%; display: flex; overflow: hidden; margin-bottom: 2px;}
-.sm-card { flex: 1; background: white; border: 4px solid #e2e8f0; border-radius: 16px; display: flex; justify-content: center; align-items: center; text-align: center; font-weight: 800; padding: 5px; box-shadow: 0 6px 12px rgba(0,0,0,0.08); transition: 0.2s; color: #2d3748; line-height: 1.2; width: 100%; height: 100%; word-break: break-word; overflow: hidden;}
+/* 🌟 게임 내 아이템 (스피드 짝맞추기 등) */
+.sm-card-wrapper { flex: 1; cursor: pointer; width: 100%; display: flex; margin-bottom: 5px; padding-bottom: 8px; box-sizing: border-box; /* 🚀 아래쪽 그림자 잘림 방지 여백 */ }
+.sm-card { flex: 1; background: white; border: 4px solid #e2e8f0; border-radius: 16px; display: flex; justify-content: center; align-items: center; text-align: center; font-weight: 800; padding: 5px; box-shadow: 0 6px 12px rgba(0,0,0,0.08); transition: 0.2s; color: #2d3748; line-height: 1.2; width: 100%; height: 100%; word-break: break-word; overflow: hidden; box-sizing: border-box; /* 🚀 테두리가 상자를 뚫고 나가지 않게 꽉 잡아줌 */ }
 .sm-card.selected { border-color: #FF5722; background: #FFCCBC; transform: scale(1.05); box-shadow: 0 10px 20px rgba(255, 87, 34, 0.3); }
 .sm-card.wrong { animation: shake 0.4s; background: #FFCDD2; border-color: #F44336; }
 .sm-card.matched { opacity: 0; pointer-events: none; transition: opacity 0.3s; transform: scale(0); }
@@ -179,9 +179,13 @@ button:active { transform: translateY(8px); box-shadow: 0 0px 0 #c51162, 0 5px 5
 }
 
 /* 각종 오버레이 및 기타 스타일 */
-#emoji-container { display: flex; flex-wrap: wrap; justify-content: center; width: 300px; gap: 10px; margin-bottom: 30px; }
-.emoji-btn { font-size: 30px; background: white; border: 2px solid #ccc; border-radius: 50%; width: 50px; height: 50px; cursor: pointer; transition: 0.2s; padding: 0; box-shadow: none; }
-.emoji-btn.selected { border: 4px solid #ff4081; background-color: #ffcdd2; transform: scale(1.2); }
+/* 🌟 캐릭터 선택창 스타일 */
+#character-container { display: flex; flex-wrap: wrap; justify-content: center; width: 100%; gap: 12px; margin-bottom: 25px; }
+.char-btn { background: rgba(255, 255, 255, 0.8); border: 3px solid #cbd5e0; border-radius: 15px; width: 85px; height: 85px; cursor: pointer; transition: 0.2s; padding: 5px; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+.char-btn.selected { border: 4px solid #ff4081; background-color: #ffcdd2; transform: scale(1.15); box-shadow: 0 10px 20px rgba(255,64,129,0.3); }
+
+/* 🌟 애니메이션 캐릭터 공통 클래스 (도트 그래픽이 깨지지 않게 방지) */
+.anim-avatar { height: 100%; object-fit: contain; image-rendering: pixelated; }
 #unknown-modal { display: none; position: absolute; right: 50%; transform: translateX(50%); top: 10%; width: 320px; max-height: 80vh; background-color: rgba(255, 255, 255, 0.95); border: 4px solid #ff4081; border-radius: 20px; padding: 20px; box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3); z-index: 200; overflow-y: auto; font-family: "Paperlogy-4Regular", sans-serif; }
 #unknown-modal h3 { color: #ff4081; margin-top: 0; text-align: center; font-weight: 900; }
 #unknown-list { list-style: none; padding: 0; }
@@ -208,7 +212,7 @@ button:active { transform: translateY(8px); box-shadow: 0 0px 0 #c51162, 0 5px 5
 .admin-btn-edit { background-color: #2196F3; box-shadow: 0 4px 0 #1976D2;}
 .rank-item { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px dashed #cbd5e0; padding: 15px 5px; font-weight: bold;}
 .rank-medal { font-size: 26px; font-weight: 900; width: 45px; }
-.memory-card-wrapper { flex: 1; perspective: 1000px; cursor: pointer; width: 100%; }
+.memory-card-wrapper { flex: 1; perspective: 1000px; cursor: pointer; width: 100%; padding-bottom: 8px; box-sizing: border-box; /* 🚀 그림자 확보 */ }
 .memory-card { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); border-radius: 16px; box-shadow: 0 6px 12px rgba(0,0,0,0.1); }
 .memory-card.flipped { transform: rotateY(180deg); }
 .memory-card-face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; display: flex; justify-content: center; align-items: center; text-align: center; border-radius: 16px; padding: 5px; box-sizing: border-box; font-size: 16px; font-weight: 900; color: #2d3748; word-break: keep-all; line-height: 1.2; border: 3px solid rgba(255,255,255,0.6); }
@@ -229,3 +233,173 @@ button:active { transform: translateY(8px); box-shadow: 0 0px 0 #c51162, 0 5px 5
 .cm-fly-right { animation: flyRight 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 @keyframes flyLeft { from { transform: translateX(-100vw); } to { transform: translateX(0); } }
 @keyframes flyRight { from { transform: translateX(100vw); } to { transform: translateX(0); } }
+/* 🌟 애니메이션 캐릭터 공통 클래스 (도트 픽셀이 깨지지 않게 보정) */
+.anim-avatar {
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* 🛒 캐릭터 상점 아이템 카드 호버 효과 */
+#shop-character-list .shop-char-card {
+  display: flex; flex-direction: column; align-items: center; 
+  background: white; padding: 15px; border-radius: 18px; 
+  border: 3px solid #cbd5e0; width: 105px; box-shadow: 0 6px 12px rgba(0,0,0,0.05);
+  transition: transform 0.2s, border-color 0.2s;
+}
+#shop-character-list .shop-char-card:hover {
+  transform: scale(1.08) translateY(-5px);
+  border-color: #9C27B0;
+}
+/* 🌟 글꼴 볼드(굵게) 강제 해제 (Paperlogy 폰트 본연의 깔끔하고 얇은 느낌 살리기) */
+* {
+  font-weight: 400 !important;
+}
+b, strong {
+  font-weight: 400 !important;
+}
+
+/* 🌟 애니메이션 캐릭터 공통 클래스 (스프라이트가 깨지지 않게 보정) */
+.anim-avatar {
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* 🛒 캐릭터 상점 아이템 카드 세로형 3D 효과 */
+#shop-character-list .shop-char-card {
+  display: flex; 
+  align-items: center; 
+  justify-content: space-between; 
+  background: white; 
+  padding: 15px 20px; 
+  border-radius: 20px; 
+  border: 3px solid #cbd5e0; 
+  box-shadow: 0 6px 12px rgba(0,0,0,0.05); 
+  width: 100%; 
+  box-sizing: border-box; 
+  transition: transform 0.2s, border-color 0.2s;
+  cursor: pointer;
+}/* 채팅 말풍선 스타일 */
+.chat-bubble {
+  animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 대기실 격자 반응형 보정 */
+#lobby-grid-container {
+  width: 90%;
+  max-width: 600px;
+}
+/* =========================================
+   🖥️ PC / 크롬북 / 태블릿 (가로 모드) 최적화 자동 변환 마법 (최종 픽스!)
+   ========================================= */
+@media screen and (min-width: 768px) and (orientation: landscape) {
+  
+  /* 1. 세로 높이가 짧은 노트북 화면을 위해 불필요한 여백 축소 */
+  .screen { padding: 20px !important; justify-content: center !important; }
+
+  /* 2. 🚀 메인 메뉴: 트로피 안 깨지게, 버튼들은 좌우 2열로 정돈 */
+  #menu-screen { flex-direction: row !important; flex-wrap: wrap; align-content: center; padding: 10px !important; }
+  #menu-screen > h2, #menu-screen > p { width: 100%; margin-bottom: 10px; }
+  #menu-screen > div { width: 45% !important; max-width: 350px !important; margin: 5px 10px !important; }
+  
+  /* 👉 핵심 수정: 버튼 거인화 현상을 '메인 메뉴' 내부로만 엄격하게 제한! */
+  #menu-screen .menu-btn { width: 100% !important; padding: 15px !important; font-size: 22px !important; margin: 0 !important; }
+  #menu-screen .menu-btn-rank { width: 70px !important; } 
+  #menu-go-back-set-btn { width: 100% !important; max-width: 400px; margin-top: 15px !important; }
+
+  /* 3. 🕒 시간/옵션 선택 화면: 거인화 겹침 방지 및 가로로 예쁘게 나열 */
+  #time-option-screen, #fc-option-screen { flex-direction: row !important; flex-wrap: wrap; justify-content: center; align-content: center; gap: 15px; }
+  #time-option-screen > h2, #fc-option-screen > h2 { width: 100%; margin-bottom: 10px; }
+  #time-option-screen .menu-btn, #fc-option-screen .menu-btn { width: auto !important; padding: 15px 30px !important; margin: 0 !important; font-size: 22px !important; }
+  #time-option-back-btn, #fc-option-back-btn { width: 100% !important; max-width: 400px; margin-top: 15px !important; }
+
+  /* 4. 학습 세트 고르기 창 등 리스트 화면 잘림 방지 */
+  #set-select-list, #word-list-container, #ranking-list, #shop-character-list { max-height: 50vh !important; }
+
+  /* 5. 낚시 게임: 좌 연못, 우 바구니 */
+  #fishing-screen { flex-direction: row !important; }
+  #fish-pond { height: 100% !important; width: 75% !important; border-right: 6px dashed #00bcd4; border-radius: 20px 0 0 20px; }
+  #fishing-screen > div:first-child { height: 100% !important; width: 25% !important; border-bottom: none !important; border-radius: 0 20px 20px 0; }
+
+  /* 6. 심플 퀴즈: 좌 문제, 우 버튼 */
+  #speed-screen > div:nth-child(2) { flex-direction: row !important; max-width: 900px; width: 95%; }
+  .sq-word-box { height: 250px !important; width: 50% !important; margin: 0 !important; font-size: 40px !important; }
+  #speed-screen > div:nth-child(2) > div { width: 50% !important; justify-content: center; padding-left: 20px; }
+  .sq-btn { height: 100px !important; font-size: 24px !important; }
+
+  /* 7. 문장 해석(Chunk): 좌 슬롯, 우 버튼 */
+  #chunk-screen > div:nth-child(2) { flex-direction: row !important; max-width: 1000px; align-items: flex-start !important; }
+  #chunk-container { width: 50% !important; border-right: 4px dashed #9E9E9E; padding-right: 20px; min-height: 200px; }
+  #chunk-buttons-container { width: 50% !important; padding-left: 20px; margin-top: 0 !important; }
+
+  /* 8. 🚀 짝맞추기/메모리 게임: 세로(2열x4행) 구조를 가로(4열x2행) 구조로 완벽하게 눕혀서 잘림 방지! */
+  #speed-match-screen > div:nth-child(2), #memory-screen > div:nth-child(2) { 
+    flex-direction: column !important; /* 두 묶음을 위, 아래로 분리 */
+    max-width: 1000px !important; 
+    padding: 10px !important; 
+  }
+  #sm-left-col, #sm-right-col, #memory-left-col, #memory-right-col { 
+    flex-direction: row !important; /* 각 묶음 안의 카드 4장을 옆으로(가로) 쫙 나열! */
+    width: 100% !important;
+    height: 48% !important;
+    gap: 10px !important;
+  }
+  .sm-card-wrapper, .memory-card-wrapper { 
+    height: 100% !important; 
+    margin-bottom: 0 !important; 
+  }
+  .sm-card, .memory-card-face { font-size: 20px !important; }
+  
+  /* 멀티 대기실 넓게 펴기 */
+  #multi-lobby-screen > div:nth-child(3) { max-width: 900px !important; }
+  #lobby-grid-container { grid-template-columns: repeat(5, 1fr) !important; }
+  #multi-lobby-screen > div:nth-child(4) { max-width: 900px !important; }
+}
+/* =========================================
+   🚀 모든 화면 뒤로가기 버튼 좌상단 고정 마법
+   ========================================= */
+.global-back-btn {
+  position: absolute !important;
+  top: 15px !important;
+  left: 15px !important;
+  width: auto !important;
+  margin: 0 !important;
+  padding: 10px 15px !important;
+  font-size: 16px !important;
+  font-weight: 900 !important;
+  background: #9e9e9e !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 0 #616161 !important;
+  z-index: 9999 !important; /* 화면 내 최상단에 띄우기 */
+  text-decoration: none !important;
+}
+.global-back-btn:active {
+  transform: translateY(4px) !important;
+  box-shadow: 0 0px 0 #616161 !important;
+}
+
+/* 가로 모드(PC/태블릿)에서는 조금 더 크고 여유 있게 자동 조절 */
+@media screen and (min-width: 768px) and (orientation: landscape) {
+  .global-back-btn { 
+    top: 20px !important; 
+    left: 20px !important; 
+    font-size: 18px !important; 
+    padding: 12px 20px !important; 
+  }
+}
+@keyframes hfPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); box-shadow: 0 15px 0 #F57C00, 0 30px 40px rgba(0,0,0,0.3); }
+  100% { transform: scale(1); }
+}
+#hf-btn { animation: hfPulse 1s infinite alternate; cursor: pointer; }
