@@ -40,23 +40,63 @@ let currentSetTitle = "";
 let isWordHidden = false;
 let isMeanHidden = false;
 let starData = {};
+let currentMultiRoomGroupPlayMode = null;
+let currentMultiRoomRepresentatives = null;
+// ==========================================
+// 🚀 1. 등록된 캐릭터 폴더 목록 (folder_list.txt 자동 파싱 시스템)
+// ==========================================
+let availableCharacters = [];
+// 🚀 jr(돈)과 ownedCharacters(구매한 캐릭터 목록) 속성 추가
+let currentUser = { stdId: "", realName: "", classId: "", nickname: "", emoji: "😎", character: "", jr: 0, ownedCharacters: [], score: 0, caughtEmojis: "" };
+const praises = ["Fabulous!", "Terrific!", "Awesome!", "Incredible!", "Great Job!", "Perfect!"];
 
-let currentUser = { stdId: "", realName: "", classId: "", nickname: "", emoji: "", score: 0, caughtEmojis: "" };
+// 멀티플레이 및 글로벌 변수들 통합 정리
 let lobbyUsersUnsubscribe = null;
 let lobbyChatUnsubscribe = null;
-let myLobbyDocId = null; // 대기실에서 탈퇴할 때 쓸 내 고유 ID
-let globalMultiEndTime = null; // 🚀 멀티플레이 절대 종료 시간 각인용 변수
-let multiUseSpecialItems = false; // 🚀 특수 아이템 사용 여부 전역 변수 추가
-let myLobbyListenerUnsubscribe = null; // 내 개인 공격 수신용 리스너
-let isTeacherMode = false; // 🚀 현재 브라우저가 교사 제어 모드인지 판별하는 안전 플래그 추가
+let myLobbyDocId = null; 
+let globalMultiEndTime = null; 
+let multiUseSpecialItems = false; 
+let myLobbyListenerUnsubscribe = null; 
+let isTeacherMode = false; 
 let multiRoomUnsubscribe = null;
 let teacherLiveUnsubscribe = null;
 let teacherMatchInterval = null;
-const allEmojis = ["🎮", "🕹️", "🎲", "🎯", "🐶", "🐱", "🍓", "😎", "🤩", "🚀", "🌟", "🔥", "🦄", "🍀", "🍔", "👽","😀","😂","😍","🥳","👻","🤡","🤗","🤔","🤐","🐭","🐹","🐰","🦊","🐻","🐼","🐨","🐯","🦁","🐮","🐷","🐸","🐵","🐧","🐤","🦆","🦉","🦇","🐺","🐝","🦋","🐢","🐍","🦖","🐙","🦑","🦀","🐠","🐬","🐳","🦈","🐅","🦓","🦍","🐘","🐫","🦒","🦘","🐎","🐏","🐐","🦌","🐕","🐈","🦚","🦜","🦢","🦩","🕊","🦝","🦨","🦥","🐿","🦔","🐉","🍎","🍊","🍋","🍌","🍉","🍇","🫐","🍒","🍑","🍍","🥥","🥝","🍅","🥑","🥦","🥒","🌶","🌽","🥕","🥔","🍠","🥐","🍞","🥨","🧀","🍳","🥞","🥓","🥩","🍗","🌭","🍟","🍕","🥪","🌮","🥗","🍣","🍱","🥟","🍤","🍙","🍚","🍧","🍦","🍰","🎂","🍭","🍬","🍫","🍩","🍪","🍯","🍼","☕️","🧃","🥤","🍺","🍻","🥂","🍷","🥃","🧊","⚽️","🏀","🏈","⚾️","🎾","🏐","🏓","🏸","🥊","🛹","⛸","🎿","🏂","🏋️","🏄","🏊","🚴","🏆","🥇","🏅","🎟","🎪","🎭","🎨","🎬","🎤","🎧","🎹","🥁","🎸","🎳","🎰","🧩","🚗","🚓","🚑","🚒","🚜","🚲","🛵","🏍","✈️","🚁","⛵️","🛳","🗺","🗽","🏰","🎡","🎢","⛺️","🏠","🏢","🏥","🏦","🏫","⛪️","🌅","🌌","⌚️","📱","💻","⌨️","🖥","📷","📸","🎥","📞","☎️","📺","📻","⏱","⏰","⏳","💡","💸","💵","💰","💳","💎","🛠","🔫","💣","🪄"];
-const praises = ["Fabulous!", "Terrific!", "Awesome!", "Incredible!", "Great Job!", "Perfect!"];
 
-let isMuted = false; // BGM이 없어졌으므로 이 변수는 효과음 전체 음소거용으로 씁니다.
+// 🚀 char/folder_list.txt 파일을 읽어서 배열을 자동 생성하는 함수
+async function loadCharacterList() {
+  try {
+    const response = await fetch("char/folder_list.txt?t=" + Date.now());
+    if (!response.ok) throw new Error("텍스트 파일을 찾을 수 없습니다.");
+    const text = await response.text();
+    availableCharacters = text.split(/\r?\n/).map(line => line.trim()).filter(line => line !== "");
+    
+    if (availableCharacters.length > 0) {
+      currentUser.character = availableCharacters[0];
+      
+      // 🚀 파일 로딩 완료 즉시 로그인 화면에 기본 캐릭터(1번)를 표시합니다!
+      const avatarDisp = document.getElementById("main-character-display");
+      if (avatarDisp) {
+        avatarDisp.innerHTML = `<img src="char/${availableCharacters[0]}/stand1_0.png" class="anim-avatar" data-char-id="${availableCharacters[0]}" style="height: 140px; filter: drop-shadow(0px 8px 10px rgba(0,0,0,0.15));" />`;
+      }
+    }
+  } catch (error) {
+    console.warn("캐릭터 목록 로딩 실패 (대체 캐릭터 가동):", error);
+    availableCharacters = ["기본0(민준쌤)"];
+    currentUser.character = availableCharacters[0];
+    
+    // 실패 시에도 기본 캐릭터를 띄워줍니다
+    const avatarDisp = document.getElementById("main-character-display");
+    if (avatarDisp) {
+      avatarDisp.innerHTML = `<img src="char/${availableCharacters[0]}/stand1_0.png" class="anim-avatar" data-char-id="${availableCharacters[0]}" style="height: 140px; filter: drop-shadow(0px 8px 10px rgba(0,0,0,0.15));" />`;
+    }
+  }
+}
+loadCharacterList();
 
+// ==========================================
+// 사운드 시스템
+// ==========================================
+let isMuted = false; 
 let globalAudioCtx = null;
 function getAudioCtx() {
   if (!globalAudioCtx) {
@@ -69,32 +109,30 @@ function getAudioCtx() {
 }
 
 function playSound(type) {
-  if (isMuted) return; // 음소거 상태면 소리를 내지 않음
-
+  if (isMuted) return; 
   try {
     const ctx = getAudioCtx();
     if (!ctx) return;
     const osc = ctx.createOscillator(); const gainNode = ctx.createGain();
     osc.connect(gainNode); gainNode.connect(ctx.destination);
-    
-    if (type === "click") { // 일반 메뉴 버튼 소리
+    if (type === "click") { 
       osc.type = "sine"; osc.frequency.setValueAtTime(600, ctx.currentTime);
       osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.1);
       gainNode.gain.setValueAtTime(0.1, ctx.currentTime); osc.start(); osc.stop(ctx.currentTime + 0.1);
-    } else if (type === "flip") { // 🃏 카드 뒤집는 소리 (스윽)
+    } else if (type === "flip") { 
       osc.type = "triangle"; osc.frequency.setValueAtTime(300, ctx.currentTime);
       osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.08);
       gainNode.gain.setValueAtTime(0.1, ctx.currentTime); osc.start(); osc.stop(ctx.currentTime + 0.08);
-    } else if (type === "pop") { // 💧 낚시, 조각 선택 소리 (뾱!)
+    } else if (type === "pop") { 
       osc.type = "sine"; osc.frequency.setValueAtTime(400, ctx.currentTime);
       osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
       gainNode.gain.setValueAtTime(0.15, ctx.currentTime); 
       gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
       osc.start(); osc.stop(ctx.currentTime + 0.1);
-    } else if (type === "wrong") { // ❌ 오답 소리
+    } else if (type === "wrong") { 
       osc.type = "sawtooth"; osc.frequency.setValueAtTime(150, ctx.currentTime);
       gainNode.gain.setValueAtTime(0.1, ctx.currentTime); osc.start(); osc.stop(ctx.currentTime + 0.2);
-    } else if (type === "success") { // ⭕ 정답 소리
+    } else if (type === "success") { 
       osc.type = "sine"; osc.frequency.setValueAtTime(659.25, ctx.currentTime); 
       gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
       gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
@@ -105,7 +143,7 @@ function playSound(type) {
       gain2.gain.setValueAtTime(0.1, ctx.currentTime + 0.2);
       gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.6);
       osc2.start(ctx.currentTime + 0.2); osc2.stop(ctx.currentTime + 0.6);
-    } else if (type === "treasure") { // 🎁 보물상자 등장 소리
+    } else if (type === "treasure") { 
       osc.type = "square"; osc.frequency.setValueAtTime(400, ctx.currentTime);
       osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.3);
       gainNode.gain.setValueAtTime(0.1, ctx.currentTime); osc.start(); osc.stop(ctx.currentTime + 0.3);
@@ -113,29 +151,281 @@ function playSound(type) {
   } catch(e) { console.warn("Sound disabled", e); }
 }
 
-//5. UI 유틸리티
+// ==========================================
+// 5. UI 유틸리티
+// ==========================================
 function showScreen(screenId) {
   document.querySelectorAll(".screen").forEach((s) => { s.style.display = "none"; s.classList.remove("active"); });
   if (screenId) { const screen = document.getElementById(screenId); if(screen) { screen.style.display = "flex"; screen.classList.add("active"); } }
 
-  // 🚶‍♂️ 배경 걷는 이모지 표시/숨김 제어 (게임 화면에서는 숨기기)
   const gameScreens = ["flashcard-screen", "memory-screen", "speed-match-screen", "speed-screen", "fishing-screen", "chunk-screen", "teacher-match-screen"];
   const container = document.getElementById("walking-emoji-container");
   if (container) {
     if (gameScreens.includes(screenId)) {
-      container.style.opacity = "0"; // 게임 중엔 집중하도록 스르륵 숨김
+      container.style.opacity = "0"; 
     } else {
-      container.style.opacity = "1"; // 메뉴, 대기실 등에서는 보이게
+      container.style.opacity = "1"; 
     }
   }
 }
 
+function bindClick(id, callback) {
+  const el = document.getElementById(id);
+  if (el) el.onclick = callback;
+  else console.warn(`주의: HTML에서 '${id}' 버튼 찾기 실패 (무시됨)`);
+}
+
 // ==========================================
-// 🌟 배경 걸어다니는 이모지 시스템 (슈퍼마리오 물리엔진 최적화)
+// 🚀 2. 2D 픽셀 캐릭터 4프레임 애니메이션 엔진
 // ==========================================
+const charFrames = ["stand1_0.png", "stand1_1.png", "stand1_2.png", "stand1_3.png"];
+let currentFrameIdx = 0;
+const preloadedImages = {}; 
+
+setInterval(() => {
+  currentFrameIdx = (currentFrameIdx + 1) % charFrames.length;
+  document.querySelectorAll(".anim-avatar").forEach(img => {
+    const charFolder = img.getAttribute("data-char-id");
+    if (charFolder) {
+      const imgPath = `char/${charFolder}/${charFrames[currentFrameIdx]}`;
+      if (!preloadedImages[imgPath]) {
+        const tempImg = new Image();
+        tempImg.src = imgPath;
+        preloadedImages[imgPath] = tempImg;
+      }
+      img.src = imgPath; 
+    }
+  });
+}, 250);
+
+function getAvatarHtml(charFolder, size = "45px") {
+  if(!charFolder) return "😎"; 
+  return `<img src="char/${charFolder}/stand1_0.png" class="anim-avatar" data-char-id="${charFolder}" style="height:${size}; vertical-align:middle; margin-right:5px; filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.15));">`;
+}
+
+// ==========================================
+// 🛒 3. 캐릭터 상점 및 대기실
+// ==========================================
+// 🚀 [4/4] 캐릭터 상점: 구매(2000JR), 장착, 그리고 원작자 수익금(500JR) 발송 시스템
+function renderCharShopList() {
+  const shopContainer = document.getElementById("shop-character-list");
+  if (!shopContainer) return;
+  
+  shopContainer.innerHTML = "";
+  
+  availableCharacters.forEach(charFolder => {
+    let charName = charFolder;
+    let creatorName = "알 수 없음";
+    
+    if (charFolder.includes("(") && charFolder.includes(")")) {
+      const parts = charFolder.split("(");
+      charName = parts[0].trim(); 
+      creatorName = parts[1].replace(")", "").trim(); 
+    }
+
+    // 이미 구매한 캐릭터인지 확인
+    const isOwned = currentUser.ownedCharacters && currentUser.ownedCharacters.includes(charFolder);
+    const lockText = isOwned ? `<span style="color:#4CAF50;">보유 중 ✔️</span>` : `<span style="color:#f44336;">2000 JR 🔒</span>`;
+
+    const card = document.createElement("div");
+    card.className = "shop-char-card";
+    card.style.cssText = "display: flex; flex-direction:column; align-items: center; background: white; padding: 15px; border-radius: 20px; border: 3px solid #FF9800; cursor: pointer; transition: 0.2s;";
+    
+    card.innerHTML = `
+      <img src="char/${charFolder}/stand1_0.png" class="anim-avatar" data-char-id="${charFolder}" style="height: 80px; margin-bottom:10px;">
+      <span style="font-weight:bold; color:#333; font-size:18px;">${charName}</span>
+      <span style="font-size:13px; color:#666; margin-top:5px; background:#f0f0f0; padding:3px 8px; border-radius:8px;">만든이: ${creatorName}</span>
+      <div style="margin-top:10px; font-weight:bold; font-size:15px;">${lockText}</div>
+    `;
+    
+    card.onclick = async () => { 
+        playSound("click");
+
+        if (isOwned) {
+            // 이미 구매한 캐릭터 -> 장착
+            currentUser.character = charFolder; 
+            const avatarDisp = document.getElementById("main-character-display");
+            if(avatarDisp) avatarDisp.innerHTML = getAvatarHtml(charFolder, "140px");
+            alert(`[${charName}] 캐릭터를 장착했습니다!`);
+            showScreen("login-screen");
+        } else {
+            // 미보유 캐릭터 -> 2000 JR 구매 시도
+            if (confirm(`[${charName}] 캐릭터를 2000 JR에 구매하시겠습니까?\n(현재 내 JR: ${currentUser.jr} JR)`)) {
+                if (currentUser.jr < 2000) {
+                    return alert("JR이 부족합니다! 게임을 플레이하여 JR을 더 모아오세요.");
+                }
+
+                // 1. 내 돈 차감 및 소유권 추가
+                currentUser.jr -= 2000;
+                currentUser.ownedCharacters.push(charFolder);
+                currentUser.character = charFolder;
+
+                // 2. 내 DB 업데이트
+                await setDoc(doc(db, "users", currentUser.stdId), {
+                    jr: currentUser.jr,
+                    ownedCharacters: currentUser.ownedCharacters,
+                    character: currentUser.character
+                }, { merge: true });
+
+                // 3. 💸 원작자에게 로열티(500 JR) 발송 
+                if (creatorName && creatorName !== "알 수 없음" && creatorName !== "민준쌤") {
+                    await addDoc(collection(db, "royalties"), {
+                        creatorName: creatorName,      // 이 이름으로 주인을 찾습니다
+                        buyerId: currentUser.stdId,
+                        buyerName: currentUser.realName,
+                        charName: charName,
+                        amount: 500,
+                        isClaimed: false,              // 아직 수령하지 않음
+                        timestamp: Date.now()
+                    });
+                }
+
+                // UI 즉시 업데이트
+                const avatarDisp = document.getElementById("main-character-display");
+                if(avatarDisp) avatarDisp.innerHTML = getAvatarHtml(charFolder, "140px");
+                const jrDisp = document.getElementById("user-jr-display");
+                if(jrDisp) jrDisp.innerText = currentUser.jr;
+
+                alert(`🎉 구매 성공! [${charName}] 캐릭터를 장착했습니다!`);
+                showScreen("login-screen");
+            }
+        }
+    };
+    shopContainer.appendChild(card);
+  });
+}
+
+// 🚀 조편성 상태 글로벌 변수
+let currentGroupingActive = false;
+let myCurrentGroupId = null;
+
+// 👥 멀티플레이 대기실 (학생용) - 조가 편성되면 자기 조만 보임!
+function renderLobbyGrid(players, showId = false) {
+  const gridContainer = document.getElementById("lobby-grid-container");
+  if (!gridContainer) return;
+  
+  gridContainer.innerHTML = "";
+  players.forEach(p => {
+    const box = document.createElement("div");
+    box.style.cssText = "display:flex; flex-direction:column; align-items:center; background:rgba(255,255,255,0.9); padding:10px 5px; border-radius:15px; border:2px solid #ddd; position:relative;";
+    
+    const charFolder = p.character || availableCharacters[0] || "기본0(민준쌤)";
+    const idText = showId ? `<br><span style="font-size:12px; color:#555;">${p.stdId} ${p.realName || ''}</span>` : '';
+    
+    box.innerHTML = `
+      <div class="character-wrapper" style="position:relative; display:flex; justify-content:center; width:100%;">
+        <div id="bubble-${p.stdId}" class="chat-bubble" style="position:absolute; bottom:60px; background:#fff; border:2px solid #2196F3; padding:6px 10px; border-radius:12px; font-size:12px; font-weight:bold; color:#333; display:none; white-space:nowrap; z-index:100; box-shadow:0 3px 5px rgba(0,0,0,0.1);"></div>
+        <img src="char/${charFolder}/stand1_0.png" class="anim-avatar" data-char-id="${charFolder}" style="height:60px;">
+      </div>
+      <span style="font-size:14px; font-weight:bold; margin-top:5px; color:#1976D2; text-align:center; line-height:1.2;">${p.nickname}${idText}</span>
+    `;
+    gridContainer.appendChild(box);
+  });
+}
+
+// 👨‍🏫 교사 전용 실시간 모니터링 렌더러 (조편성 유무에 따라 자동 분할)
+function renderTeacherVisualLobby(players) {
+  const container = document.getElementById("teacher-visual-lobby-grid");
+  if (!container) return;
+  container.innerHTML = "";
+  
+  if (currentGroupingActive) {
+    // 🚀 조편성이 되어있으면 조별로 박스를 나눠서 렌더링
+    let maxGroup = 0;
+    players.forEach(p => { if(p.groupId > maxGroup) maxGroup = p.groupId; });
+    
+    for(let i = 1; i <= maxGroup; i++) {
+       const gPlayers = players.filter(p => p.groupId === i);
+       if(gPlayers.length === 0) continue;
+       
+       const gDiv = document.createElement("div");
+       gDiv.style.cssText = "background: rgba(255,255,255,0.7); border: 3px solid #FF9800; border-radius: 12px; padding: 15px; margin-bottom: 10px; width: 100%; box-sizing:border-box;";
+       gDiv.innerHTML = `<h3 style="margin-top:0; color:#F57C00; border-bottom:2px dashed #FFCC80; padding-bottom:5px;">${i}조 (${gPlayers.length}명)</h3>`;
+       
+       const gGrid = document.createElement("div");
+       gGrid.style.cssText = "display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;";
+       
+       gPlayers.forEach(p => { gGrid.innerHTML += getTeacherPlayerHtml(p); });
+       gDiv.appendChild(gGrid);
+       container.appendChild(gDiv);
+    }
+  } else {
+    // 🚀 조편성이 안되어있으면 한 통에 전부 다 렌더링
+    const gGrid = document.createElement("div");
+    gGrid.style.cssText = "display: flex; flex-wrap: wrap; gap: 10px;";
+    players.forEach(p => { gGrid.innerHTML += getTeacherPlayerHtml(p); });
+    container.appendChild(gGrid);
+  }
+}
+
+// 🚀 학번/이름 가리기 토글 상태 변수 및 이벤트
+let isTeacherNameHidden = false;
+
+bindClick("teacher-toggle-name-btn", () => {
+    playSound("click");
+    isTeacherNameHidden = !isTeacherNameHidden;
+    const btn = document.getElementById("teacher-toggle-name-btn");
+    if (isTeacherNameHidden) {
+        btn.innerText = "👀 학번/이름 보이기";
+        btn.style.backgroundColor = "#8BC34A";
+        btn.style.boxShadow = "0 4px 0 #689F38";
+    } else {
+        btn.innerText = "🙈 학번/이름 숨기기";
+        btn.style.backgroundColor = "#607D8B";
+        btn.style.boxShadow = "0 4px 0 #455A64";
+    }
+    // 버튼을 누르는 즉시 화면 리렌더링 강제 호출
+    if (window.teacherLobbyStatus === "playing") {
+        renderTeacherLiveLeaderboard(window.globalLobbyPlayers);
+    } else {
+        renderTeacherVisualLobby(window.globalLobbyPlayers);
+    }
+});
+
+// 교사용 미니 캐릭터 카드 HTML
+function getTeacherPlayerHtml(p) {
+  const charFolder = p.character || "기본0(민준쌤)";
+  // 🚀 가리기 토글이 켜져있으면 닉네임만 남기고 학번/이름은 빈칸 처리!
+  const nameHtml = isTeacherNameHidden ? "" : `<br><span style="font-size:11px; color:#777;">${p.stdId} ${p.realName || ''}</span>`;
+  
+  return `
+    <div class="character-wrapper" style="position:relative; display:flex; flex-direction:column; align-items:center; background:#fff; padding:8px; border-radius:10px; border:2px solid #ddd; width: 90px;">
+      <div id="teacher-bubble-${p.stdId}" class="chat-bubble" style="position:absolute; bottom:65px; background:#fff; border:2px solid #9C27B0; padding:4px 6px; border-radius:8px; font-size:11px; font-weight:bold; color:#333; display:none; white-space:nowrap; z-index:100; box-shadow:0 2px 4px rgba(0,0,0,0.1);"></div>
+      <img src="char/${charFolder}/stand1_0.png" class="anim-avatar" style="height:50px;">
+      <span style="font-size:12px; font-weight:bold; margin-top:5px; color:#333; text-align:center; line-height:1.2;">${p.nickname}${nameHtml}</span>
+    </div>
+  `;
+}
+
+// 💬 채팅 말풍선 띄우기 (학생용 & 교사용 동시 처리)
+let bubbleTimeouts = {};
+function showChatBubble(stdId, text) {
+  // 학생 뷰어용 버블
+  const bubble = document.getElementById(`bubble-${stdId}`);
+  if(bubble) {
+    bubble.innerText = text; bubble.style.display = "block";
+    bubble.classList.remove("fadeIn"); void bubble.offsetWidth; bubble.classList.add("fadeIn");
+    if(bubbleTimeouts[`std-${stdId}`]) clearTimeout(bubbleTimeouts[`std-${stdId}`]);
+    bubbleTimeouts[`std-${stdId}`] = setTimeout(() => { bubble.style.display = "none"; }, 3000);
+  }
+  // 교사 뷰어용 버블
+  const tBubble = document.getElementById(`teacher-bubble-${stdId}`);
+  if(tBubble) {
+    tBubble.innerText = text; tBubble.style.display = "block";
+    tBubble.classList.remove("fadeIn"); void tBubble.offsetWidth; tBubble.classList.add("fadeIn");
+    if(bubbleTimeouts[`tch-${stdId}`]) clearTimeout(bubbleTimeouts[`tch-${stdId}`]);
+    bubbleTimeouts[`tch-${stdId}`] = setTimeout(() => { tBubble.style.display = "none"; }, 3000);
+  }
+}
+
+bindClick("go-char-shop-btn", () => { playSound("click"); renderCharShopList(); showScreen("char-shop-screen"); });
+bindClick("char-shop-back-btn", () => { playSound("click"); showScreen("login-screen"); });
+
+// 🌟 배경 걸어다니는 이모지 시스템 (슈퍼마리오 물리엔진)
 const walkingEmojisList = ["🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐨", "🐯", "🦁", "🐮", "🐷", "🐸", "🐵", "🐧", "🐤", "🦆", "🦉", "🦇", "🐺", "🐢", "🐍", "🦖", "🐙", "🦑", "🦀", "🐠", "🐬", "🐳", "🦈", "🐅", "🦓", "🦍", "🐘", "🐫", "🦒", "🦘", "🐎", "🐏", "🐐", "🦌", "🐕", "🐈", "🦚", "🕊", "🐿", "🦔", "🚶", "🏃", "💃", "🕺"];
 let walkingEmojis = [];
 
+// 🌟 배경 걸어다니는 이모지 시스템 (슈퍼마리오 물리엔진 - 🚀 GPU 가속 최적화 완료)
 function initWalkingEmojis() {
   const container = document.createElement("div");
   container.id = "walking-emoji-container";
@@ -150,98 +440,45 @@ function initWalkingEmojis() {
     const size = Math.random() * 20 + 35; 
     let x = Math.random() * window.innerWidth;
     let y = 0; 
-    
-    // 🚀 속도를 기존보다 훨씬 낮추고(0.4~1.2), vx 대신 baseVx라는 기준 속도를 기억합니다.
     let baseVx = (Math.random() * 0.8 + 0.4) * (Math.random() < 0.5 ? 1 : -1); 
     let vy = 0; 
     
-    el.style.cssText = `position:absolute; bottom:0px; left:${x}px; font-size:${size}px; opacity: 0.8; filter: drop-shadow(0px 5px 5px rgba(0,0,0,0.3)); user-select:none;`;
-    
+    // 🚀 left, bottom을 고정하고 will-change: transform을 주어 그래픽카드(GPU)에게 렌더링을 완전히 맡깁니다.
+    el.style.cssText = `position:absolute; bottom:0px; left:0px; font-size:${size}px; opacity: 0.8; filter: drop-shadow(0px 5px 5px rgba(0,0,0,0.3)); user-select:none; will-change: transform;`;
     container.appendChild(el);
     walkingEmojis.push({ el, x, y, baseVx, vy, size });
   }
 
   function animateEmojis() {
     const w = window.innerWidth;
-    
-    // 🚀 화면 크기에 비례해서 속도를 조절합니다. (스마트폰처럼 작으면 속도가 최대 0.4배까지 느려짐)
     let speedScale = Math.max(0.4, w / 1000); 
 
     walkingEmojis.forEach(e => {
-      let currentVx = e.baseVx * speedScale; // 화면 크기가 반영된 현재 속도
-
-      // 중력 적용
-      if (e.y > 0) {
-        e.vy -= 0.6; 
-      }
-      
+      let currentVx = e.baseVx * speedScale;
+      if (e.y > 0) e.vy -= 0.6; 
       e.x += currentVx;
       e.y += e.vy;
       
-      // 바닥 충돌 및 점프 처리
       if (e.y <= 0) {
-        e.y = 0;
-        e.vy = 0;
-        
-        // 🚀 점프 빈도도 살짝 줄이고, 점프 높이를 현실적인 수준(7~11)으로 대폭 하향!
-        if (Math.random() < 0.003) {
-          e.vy = Math.random() * 4 + 7; 
-        }
+        e.y = 0; e.vy = 0;
+        if (Math.random() < 0.003) e.vy = Math.random() * 4 + 7; 
       }
       
-      // 벽 충돌 (방향 전환)
-      if (e.x > w - e.size) {
-        e.x = w - e.size;
-        e.baseVx *= -1; // 방향을 반대로
-      } else if (e.x < 0) {
-        e.x = 0;
-        e.baseVx *= -1; // 방향을 반대로
-      }
+      if (e.x > w - e.size) { e.x = w - e.size; e.baseVx *= -1; } 
+      else if (e.x < 0) { e.x = 0; e.baseVx *= -1; }
       
-      // 걷는 모션 (흔들림도 속도에 비례해서 부드럽게)
       let wobble = 0;
-      if (e.y === 0) {
-        wobble = Math.abs(Math.sin(Date.now() / 150)) * 6; 
-      }
+      if (e.y === 0) wobble = Math.abs(Math.sin(Date.now() / 150)) * 6; 
       
-      // 화면 렌더링
       const dir = e.baseVx > 0 ? 1 : -1;
-      e.el.style.transform = `scaleX(${dir})`;
-      e.el.style.left = e.x + "px";
-      e.el.style.bottom = (e.y + wobble) + "px"; 
+      // 🚀 CSS의 left, bottom 글씨를 바꾸는 대신, 3D 공간상에서 이미지를 쓱 밀어버리도록 변경 (렉 0%)
+      e.el.style.transform = `translate3d(${e.x}px, ${-(e.y + wobble)}px, 0) scaleX(${dir})`;
     });
-    
     requestAnimationFrame(animateEmojis);
   }
   animateEmojis();
 }
-// 로딩되자마자 이모지 생성!
 initWalkingEmojis();
-
-function bindClick(id, callback) {
-  const el = document.getElementById(id);
-  if (el) el.onclick = callback;
-  else console.warn(`주의: HTML에서 '${id}' 버튼 찾기 실패 (무시됨)`);
-}
-
-const emojiContainer = document.getElementById("emoji-container");
-if(emojiContainer) {
-  const shuffledEmojis = allEmojis.sort(() => 0.5 - Math.random()).slice(0, 10);
-  shuffledEmojis.forEach((emoji) => {
-    const btn = document.createElement("button"); btn.className = "emoji-btn"; btn.innerText = emoji;
-    btn.onclick = () => {
-      document.querySelectorAll(".emoji-btn").forEach((b) => b.classList.remove("selected"));
-      btn.classList.add("selected"); currentUser.emoji = emoji; playSound("click");
-    };
-    emojiContainer.appendChild(btn);
-  });
-}
-
-bindClick("mute-btn", () => {
-  isMuted = !isMuted; 
-  document.getElementById("mute-btn").innerText = isMuted ? "🔇" : "🔊"; 
-  playSound("click"); 
-});
 
 function resetGameStates() {
   clearInterval(gameTimerInterval); clearInterval(cdInterval); isFishing = false; isGamePaused = false; gameScore = 0; globalScoreMultiplier = 1; currentUser.caughtEmojis = "";
@@ -251,6 +488,8 @@ function resetGameStates() {
   ["pile-double_current", "pile-half_current", "pile-double_future"].forEach(id => {
     let el = document.getElementById(id); if(el) el.innerHTML = "";
   });
+  // 🚀 관전자 블라인드 해제
+  let blocker = document.getElementById("group-blocker-overlay"); if(blocker) blocker.style.display = "none";
 }
 
 bindClick("close-modal-btn", () => { document.getElementById("unknown-modal").style.display = "none"; });
@@ -261,57 +500,47 @@ bindClick("home-btn", () => { playSound("click"); showScreen("menu-screen"); });
 // 6. 로그인, DB 로드 (강력한 안정성 패치!)
 // ==========================================
 async function loadAllFromDB() {
-  let maxRetries = 3; // 최대 3번까지 끈질기게 재시도
+  let maxRetries = 3; 
   let success = false;
 
   for (let i = 0; i < maxRetries; i++) {
     try {
-      // 1. 파이어베이스에서 데이터 가져오기 시도
       const setSnap = await getDoc(doc(db, "gameData", "wordSets")); 
       if (setSnap.exists()) {
         wordSets = setSnap.data().sets || [];
-        // 성공 시 폰 내부에 몰래 백업 (로컬 캐시)
         localStorage.setItem("backup_wordSets", JSON.stringify(wordSets)); 
       }
       
       const stdSnap = await getDoc(doc(db, "gameData", "students")); 
       if (stdSnap.exists()) {
         studentList = stdSnap.data().students || [];
-        // 성공 시 폰 내부에 명단 백업
         localStorage.setItem("backup_studentList", JSON.stringify(studentList)); 
       }
       
-      success = true; // 성공!
-      break; // 성공했으니 재시도 루프(for문) 탈출
+      success = true; 
+      break; 
 
     } catch (error) { 
       console.warn(`DB 연결 실패 (재시도 ${i+1}/${maxRetries}):`, error);
-      // 실패하면 1초 기다렸다가 다시 시도합니다.
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
   }
 
-  // 2. 3번 다 실패했을 경우의 최후의 수단 (오프라인 백업본 사용)
   if (!success) {
     console.error("서버 통신 완전 실패, 내장 백업 데이터를 확인합니다.");
     const backupSets = localStorage.getItem("backup_wordSets");
     const backupStds = localStorage.getItem("backup_studentList");
 
     if (backupSets && backupStds) {
-      // 예전에 한 번이라도 접속했던 폰이면 저장된 데이터로 억지로 입장시킴!
       wordSets = JSON.parse(backupSets);
       studentList = JSON.parse(backupStds);
-      success = true; // 백업으로 복구 성공
-      // (선택사항) 학생에게 알림을 띄우려면 아래 주석을 해제하세요.
-      // alert("네트워크가 불안정하여 임시 모드로 접속되었습니다. (일부 데이터가 최신이 아닐 수 있습니다)");
+      success = true; 
     }
   }
 
-  // 3. 최종 결과에 따라 화면 넘기기
   if (success) {
     showScreen("auth-screen"); 
   } else {
-    // 캐시 백업도 없고 서버 연결도 죽었을 때만 진짜 에러창과 새로고침 버튼 띄움
     const loadingScreen = document.getElementById("loading-screen");
     if(loadingScreen) loadingScreen.innerHTML = `
       <h2 style="color:#f44336;">서버 연결 실패 ㅠㅠ</h2>
@@ -322,7 +551,9 @@ async function loadAllFromDB() {
 }
 loadAllFromDB(); 
 
-bindClick("auth-btn", () => {
+// 🚀 [1/4] 학생 인증 시 서버에서 내 JR과 캐릭터 정보 불러오기
+// 🚀 [1/2] 학생 인증 시 서버에서 정보 불러오고 출석/수익 보상 "즉시" 지급!
+bindClick("auth-btn", async () => {
   playSound("click");
   const inputId = document.getElementById("auth-id").value.trim();
   const inputName = document.getElementById("auth-name").value.trim();
@@ -332,24 +563,109 @@ bindClick("auth-btn", () => {
   
   if (matchedStudent) {
     currentUser.stdId = inputId; currentUser.realName = inputName; currentUser.classId = inputId.substring(0, 2); 
+    
+    // 로딩 화면 띄우기
+    showScreen("loading-screen"); 
+    document.querySelector("#loading-screen h2").innerText = "프로필 정보를 불러오는 중...";
+
+    // 서버(users 컬렉션)에서 내 정보 가져오기
+    const userDoc = await getDoc(doc(db, "users", inputId));
+    if (userDoc.exists()) {
+        const d = userDoc.data();
+        currentUser.jr = d.jr || 0;
+        currentUser.ownedCharacters = d.ownedCharacters || ["기본0(민준쌤)"];
+        currentUser.character = d.character || availableCharacters[0];
+        currentUser.nickname = d.nickname || "";
+        currentUser.lastLoginDate = d.lastLoginDate || "";
+    } else {
+        // 처음 접속하는 학생 초기 세팅
+        currentUser.jr = 0;
+        currentUser.ownedCharacters = ["기본0(민준쌤)"];
+        currentUser.character = availableCharacters[0];
+        currentUser.lastLoginDate = "";
+    }
+
+    // 1️⃣ 출석체크 로직 (로그인 화면 진입 전에 즉시 지급)
+    const todayStr = new Date().toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul" });
+    let isFirstLogin = (currentUser.lastLoginDate !== todayStr);
+
+    if (isFirstLogin) {
+       currentUser.jr += 1000;
+       currentUser.lastLoginDate = todayStr;
+       setTimeout(() => {
+          showBuffMsg("🎉 출석 보상 🎉", "오늘의 접속 보상 1000 JR 획득!", 76, 175, 80);
+          fireConfetti();
+       }, 500);
+    }
+
+    // 2️⃣ 로열티(수익) 확인: 내가 만든 캐릭터가 팔렸는지 검사
+    const royaltySnap = await getDocs(collection(db, "royalties"));
+    let totalRoyalty = 0;
+    let buyersList = [];
+
+    royaltySnap.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data.creatorName === currentUser.realName && data.isClaimed === false) {
+            totalRoyalty += data.amount;
+            buyersList.push(`${data.buyerId} ${data.buyerName} 학생`);
+            // 수익금 수령 완료 처리
+            setDoc(docSnap.ref, { isClaimed: true }, { merge: true }); 
+        }
+    });
+
+    if (totalRoyalty > 0) {
+        currentUser.jr += totalRoyalty;
+        setTimeout(() => {
+            alert(`💰 캐릭터 판매 수익 도착! 💰\n\n${buyersList.join("\n")}\n...이(가) 당신의 캐릭터를 샀습니다!\n\n총 ${totalRoyalty} JR 이 입금되었습니다!`);
+            const jrDisp = document.getElementById("user-jr-display");
+            if(jrDisp) jrDisp.innerText = currentUser.jr;
+        }, 3500); 
+    }
+
+    // 내 최종 정보를 DB에 영구 저장 (보상 받은 내용 반영)
+    await setDoc(doc(db, "users", currentUser.stdId), {
+       stdId: currentUser.stdId,
+       realName: currentUser.realName,
+       nickname: currentUser.nickname,
+       character: currentUser.character,
+       jr: currentUser.jr,
+       ownedCharacters: currentUser.ownedCharacters,
+       lastLoginDate: currentUser.lastLoginDate
+    }, { merge: true });
+
+    // 로그인 창에 현재 내 JR 잔액 띄우기 (이제 값이 보입니다!)
+    const jrDisp = document.getElementById("user-jr-display");
+    if(jrDisp) jrDisp.innerText = currentUser.jr;
+    if(currentUser.nickname) document.getElementById("nickname").value = currentUser.nickname;
+
     showScreen("login-screen");
   } else { alert("데이터베이스에 없는 학번이거나 이름이 틀렸습니다! 선생님께 문의하세요."); }
 });
 
-
-bindClick("login-btn", () => {
+// 🚀 [2/2] 게임 시작 버튼 (단순히 화면 넘어가기 + DB 닉네임/캐릭터 갱신만 수행)
+bindClick("login-btn", async () => {
   playSound("click");
   const nick = document.getElementById("nickname").value.trim();
-  if (!nick || !currentUser.emoji) return alert("닉네임과 이모지를 모두 골라주세요!");
-  currentUser.nickname = nick;
-  document.getElementById("user-display").innerText = `${currentUser.emoji} ${currentUser.nickname}`;
-  if (wordSets.length === 0) return alert("현재 등록된 학습 세트가 없습니다! 관리자 설정에서 세트를 만들어주세요.");
+  if (!nick) return alert("나만의 닉네임을 입력해 주세요!");
   
-  // 변경: 곧바로 세트를 고르지 않고 모드 선택 스크린으로 이동
+  currentUser.nickname = nick;
+  document.getElementById("user-display").innerText = currentUser.nickname;
+  
+  const avatarDisp = document.getElementById("user-avatar-display");
+  if(avatarDisp) {
+    avatarDisp.innerHTML = getAvatarHtml(currentUser.character, "80px");
+  }
+
+  // 이름/캐릭터 바뀐 내용만 저장
+  await setDoc(doc(db, "users", currentUser.stdId), {
+     nickname: currentUser.nickname,
+     character: currentUser.character
+  }, { merge: true });
+
+  if (wordSets.length === 0) return alert("현재 등록된 학습 세트가 없습니다! 관리자 설정에서 세트를 만들어주세요.");
   showScreen("lobby-mode-screen");
 });
 
-// 🌟 신규: 세트 선택 버튼에 무작위 파스텔 컬러 적용!
 const setBtnColors = [
   { bg: "#FFCDD2", shadow: "#E57373", color: "#333" },
   { bg: "#F8BBD0", shadow: "#F06292", color: "#333" },
@@ -374,7 +690,6 @@ function renderSetSelectList() {
     const btn = document.createElement("button"); 
     btn.style.width = "100%"; btn.style.margin = "0"; 
     
-    // 버튼 색깔 예쁜 걸로 랜덤 뽑기!
     let randColor = setBtnColors[Math.floor(Math.random() * setBtnColors.length)];
     btn.style.backgroundColor = randColor.bg; 
     btn.style.boxShadow = `0 5px 0 ${randColor.shadow}`;
@@ -393,13 +708,9 @@ function renderSetSelectList() {
   });
 }
 
-// 🌟 추가: 세트 선택 화면에서 뒤로가기 버튼
-bindClick("set-select-back-btn", () => { playSound("click"); showScreen("auth-screen"); });
+bindClick("set-select-back-btn", () => { playSound("click"); showScreen("login-screen"); }); // 🚀 프로필 설정창으로 리턴!
 bindClick("menu-go-back-set-btn", () => { playSound("click"); showScreen("set-select-screen"); });
 
-// ==========================================
-// 7. 관리자 로직 (비밀번호 및 학생 의견 확인 추가)
-// ==========================================
 bindClick("admin-main-open-btn", () => { 
   playSound("click"); 
   const pwd = prompt("관리자 비밀번호 4자리를 입력하세요.", "");
@@ -497,7 +808,6 @@ bindClick("admin-set-save-btn", async () => {
   } catch (error) { alert("저장 실패."); }
 });
 
-// 🌟 관리자: 피드백(의견) 보기 로직
 bindClick("admin-go-feedback-btn", () => { 
   playSound("click"); 
   renderAdminFeedbackList(); 
@@ -512,7 +822,7 @@ async function renderAdminFeedbackList() {
     const qSnap = await getDocs(collection(db, "feedback"));
     let fList = [];
     qSnap.forEach(doc => fList.push({ id: doc.id, ...doc.data() }));
-    fList.sort((a,b) => b.timestamp - a.timestamp); // 최신순 정렬
+    fList.sort((a,b) => b.timestamp - a.timestamp); 
     
     listEl.innerHTML = "";
     if(fList.length === 0) {
@@ -524,7 +834,7 @@ async function renderAdminFeedbackList() {
       listEl.innerHTML += `
         <div style="border-bottom: 2px dashed #ddd; padding: 10px 5px; margin-bottom: 10px;">
           <div style="font-size:12px; color:#888; margin-bottom:5px;">${date}</div>
-          <div style="font-weight:bold; margin-bottom:5px;">${f.emoji} ${f.nickname} <span style="font-size:12px; font-weight:normal; color:#666;">(${f.stdId})</span></div>
+          <div style="font-weight:bold; margin-bottom:5px;">${f.nickname} <span style="font-size:12px; font-weight:normal; color:#666;">(${f.stdId})</span></div>
           <div style="font-size:16px; color:#333; line-height:1.4;">${f.text}</div>
         </div>
       `;
@@ -533,10 +843,6 @@ async function renderAdminFeedbackList() {
     listEl.innerHTML = "<p>에러가 발생했습니다.</p>";
   }
 }
-
-// ==========================================
-// 🌟 8. 메인 메뉴 버튼 및 게임 시작 라우팅
-// ==========================================
 
 bindClick("menu-list-btn", () => { 
   playSound("click"); 
@@ -661,9 +967,8 @@ function routeGameStart(minutes) {
   else if(currentGameMode === "speed-match") startCountdown(minutes, "speed-match-screen", startSpeedMatchLogic);
   else if(currentGameMode === "speed") startCountdown(minutes, "speed-screen", startSpeedLogic);
   else if(currentGameMode === "fish") startCountdown(minutes, "fishing-screen", startFishingLogic);
-else if(currentGameMode === "chunk") startCountdown(minutes, "chunk-screen", startChunkLogic);
+  else if(currentGameMode === "chunk") startCountdown(minutes, "chunk-screen", startChunkLogic);
 }
-
 
 function startCountdown(minutes, screenId, logicCallback) {
   showScreen(screenId); document.getElementById("top-left-controls").style.display = "flex";
@@ -722,9 +1027,8 @@ function triggerTreasureEvent(callback) {
       setTimeout(() => {
         overlay.style.display = "none"; chest.classList.remove("chest-explode");
         
-        // 💥 멀티플레이 특수 아이템 발동 검사 분기 구역
         if (myLobbyDocId && multiUseSpecialItems) {
-          let multiItemType = Math.floor(Math.random() * 6); // 0~5 주사위 굴리기 (특수무기 등장확률 대폭 가산)
+          let multiItemType = Math.floor(Math.random() * 6); 
           
           if (multiItemType === 0) {
             openTargetSelectionModal("swap", "🔄 점수 뒤바꾸기 공격!", "점수를 강제로 맞교환할 타겟을 선택하세요.", callback);
@@ -733,14 +1037,11 @@ function triggerTreasureEvent(callback) {
           } else if (multiItemType === 2) {
             openTargetSelectionModal("blind", "🕶️ 3초 화면 암전 블라인드 공격!", "화면을 3초간 암전시켜 방해할 대상을 고르세요.", callback);
           } else if (multiItemType === 3) {
-            // 🚨 광역 공격: 모든 학생 점수 10% 일제 강탈 (대상을 고를 필요 없음)
             executeSteal10FromAll(callback);
           } else {
-            // 4, 5번이 나오면 기존 싱글모드 버프 지원
             executeNormalTreasureEffect(Math.floor(Math.random() * 2) === 0 ? 0 : 2, callback);
           }
         } else {
-          // 싱글 플레이이거나 아이템 기능이 꺼져있을 땐 기본 로직 구동
           executeNormalTreasureEffect(Math.floor(Math.random() * 3), callback);
         }
       }, 400); 
@@ -748,7 +1049,6 @@ function triggerTreasureEvent(callback) {
   });
 }
 
-// 기존 상자 연산 캡슐화 보조 함수
 function executeNormalTreasureEffect(effectType, callback) {
   if (effectType === 0) { gameScore *= 2; addInventoryItem("double_current"); showBuffMsg("버프 획득!", "현재 점수 2배!", 33, 150, 243); } 
   else if (effectType === 1) { gameScore = Math.floor(gameScore / 2); addInventoryItem("half_current"); showBuffMsg("앗, 함정!", "현재 점수 반토막...", 244, 67, 54); } 
@@ -783,6 +1083,7 @@ function startFlashcard() {
 
 function autoFontSize(text) { return text.length > 40 ? "18px" : (text.length > 20 ? "24px" : "32px"); }
 
+// (여기는 기존 깜빡이 학습과 실시간 낚시 엔진 로직이 수정 없이 그대로 안정되게 유지됩니다...)
 function updateFcUI() {
   let total = isRetryPhase ? unknownWordsHistory.length : wordList.length; let currentIdx = total - fcQueue.length + 1; if (currentIdx > total) currentIdx = total;
   let progEl = document.getElementById("fc-progress"); if(progEl) progEl.innerText = isRetryPhase ? `복습 모드: ${currentIdx} / ${total}` : `단어: ${currentIdx} / ${total}`;
@@ -862,7 +1163,7 @@ bindClick("btn-dont-know", () => {
 });
 
 // ==========================================
-//씬 2: 메모리 게임 
+// 씬 2: 메모리 게임
 // ==========================================
 let memoryRound = 1; let memoryPairsFound = 0; let memoryFlipped = []; 
 function updateMemoryUI() {
@@ -924,7 +1225,7 @@ function checkMemoryMatch() {
 function checkMemoryRoundEnd() { if (memoryPairsFound === 4) { memoryRound++; setTimeout(loadMemoryRound, 500); } }
 
 // ==========================================
-//씬 3: 스피드 짝맞추기
+// 씬 3: 스피드 짝맞추기
 // ==========================================
 let smRound = 1; let smPairsFound = 0; let smSelected = []; 
 function updateSpeedMatchUI() {
@@ -949,21 +1250,14 @@ function loadSpeedMatchRound() {
 function createSmCard(item) {
   const wrapper = document.createElement("div"); wrapper.className = `sm-card-wrapper`;
   const card = document.createElement("div"); card.className = `sm-card`; card.innerText = item.text;
-  
   card.style.fontSize = item.text.length > 30 ? "14px" : (item.text.length > 15 ? "18px" : "24px"); 
   wrapper.appendChild(card);
-  
   wrapper.onclick = () => {
     if (isGamePaused || card.classList.contains("selected") || card.classList.contains("matched")) return;
-    
     if (smSelected.length === 1 && smSelected[0].side === item.side) { smSelected[0].el.classList.remove("selected"); smSelected = []; }
     playSound("flip"); card.classList.add("selected"); smSelected.push({ id: item.id, side: item.side, el: card, wrapper });
     updateSmSideAvailability();
-    
-    if (smSelected.length === 2) {
-      isGamePaused = true; 
-      checkSmMatch();
-    }
+    if (smSelected.length === 2) { isGamePaused = true; checkSmMatch(); }
   }; return wrapper;
 }
 function updateSmSideAvailability() {
@@ -979,63 +1273,52 @@ function checkSmMatch() {
   if (c1.id === c2.id) { 
     playSound("success"); let earnedScore = calcSpeedBonus(); gameScore += earnedScore; updateSpeedMatchUI(); showGamePraise(earnedScore);
     c1.el.classList.add("matched"); c2.el.classList.add("matched"); smPairsFound++; smSelected = []; updateSmSideAvailability();
-    
-    if (Math.random() < 0.3) triggerTreasureEvent(() => { checkSmRoundEnd(); isGamePaused = false; }); 
-    else { checkSmRoundEnd(); isGamePaused = false; }
+    if (Math.random() < 0.3) triggerTreasureEvent(() => { checkSmRoundEnd(); isGamePaused = false; }); else { checkSmRoundEnd(); isGamePaused = false; }
   } else { 
     playSound("wrong"); let penalty = calcSpeedBonus(); gameScore -= penalty; updateSpeedMatchUI(); showBuffMsg("오답!", `-${penalty}점 ㅠㅠ`, 244, 67, 54);
     c1.el.classList.add("wrong"); c2.el.classList.add("wrong");
-    
-    setTimeout(() => { 
-      c1.el.classList.remove("selected", "wrong"); c2.el.classList.remove("selected", "wrong"); 
-      smSelected = []; updateSmSideAvailability(); 
-      isGamePaused = false; 
-    }, 400); 
+    setTimeout(() => { c1.el.classList.remove("selected", "wrong"); c2.el.classList.remove("selected", "wrong"); smSelected = []; updateSmSideAvailability(); isGamePaused = false; }, 400); 
   }
 }
 function checkSmRoundEnd() { if (smPairsFound === 4) { smRound++; setTimeout(loadSpeedMatchRound, 500); } }
-
+// 🚀 학생 인게임 UI 조별 점수 합산 텍스트 생성 엔진
+function getGroupScoreText() {
+    if (currentGroupingActive && currentMultiRoomGroupPlayMode === "all-sum" && myCurrentGroupId) {
+        let gScore = 0;
+        if (window.globalLobbyPlayers) {
+            window.globalLobbyPlayers.forEach(p => { if (p.groupId === myCurrentGroupId) gScore += (p.score || 0); });
+        }
+        return ` <span style="font-size:20px; color:#E91E63; text-shadow:1px 1px 0px #fff;">(조 합산: ${gScore})</span>`;
+    }
+    return "";
+}
 // ==========================================
-//씬 4: 심플 스피드 퀴즈 
+// 씬 4: 심플 스피드 퀴즈
 // ==========================================
 let sqCurrentWord = null;
 function updateSpeedUI() {
   const m = String(Math.floor(gameTimeRemaining / 60)).padStart(2, "0"); const s = String(gameTimeRemaining % 60).padStart(2, "0");
-  document.getElementById("speed-timer").innerText = `🕒 ${m}:${s}`; document.getElementById("speed-score").innerText = `점수: ${gameScore}`;
-if (myLobbyDocId && currentGameMode === "speed") {
-    let currentBuffs = "";
-    if (globalScoreMultiplier > 1) currentBuffs += "🟡"; // 배점 2배 버프 상태 표시
-    setDoc(doc(db, "lobbyUsers", myLobbyDocId), { score: gameScore, items: currentBuffs }, { merge: true })
-      .catch(e => console.error("점수 동기화 에러:", e));
+  document.getElementById("speed-timer").innerText = `🕒 ${m}:${s}`; 
+  document.getElementById("speed-score").innerHTML = `점수: ${gameScore}${getGroupScoreText()}`; // 🚀 합산 텍스트 추가
+  if (myLobbyDocId && currentGameMode === "speed") {
+    let currentBuffs = ""; if (globalScoreMultiplier > 1) currentBuffs += "🟡"; 
+    setDoc(doc(db, "lobbyUsers", myLobbyDocId), { score: gameScore, items: currentBuffs }, { merge: true }).catch(e => console.error(e));
   }
 }
 function startSpeedLogic() {
   updateSpeedUI();
   gameTimerInterval = setInterval(() => {
     if (globalMultiEndTime) {
-       // 🌐 멀티플레이: 타이머 오차를 없애기 위해 '절대 시간' 기준 측정 (일시정지 중에도 시간 흐름!)
        gameTimeRemaining = Math.max(0, Math.floor((globalMultiEndTime - Date.now()) / 1000));
        updateSpeedUI();
-       if (gameTimeRemaining <= 0) {
-         clearInterval(gameTimerInterval);
-         currentUser.score = gameScore; 
-         document.getElementById("result-detail").innerText = `제한 시간 종료! 획득한 퀴즈 점수입니다!`; 
-         goResult(); 
-       }
+       if (gameTimeRemaining <= 0) { clearInterval(gameTimerInterval); currentUser.score = gameScore; document.getElementById("result-detail").innerText = `제한 시간 종료! 획득한 퀴즈 점수입니다!`; goResult(); }
     } else {
-       // 👤 싱글플레이: 혼자 하므로 기존처럼 로컬 카운트 (보물상자 등 일시정지 시 시간 멈춤 허용)
        if (!isGamePaused) {
-         gameTimeRemaining--; 
-         updateSpeedUI();
-         if (gameTimeRemaining <= 0) {
-           clearInterval(gameTimerInterval);
-           currentUser.score = gameScore; 
-           document.getElementById("result-detail").innerText = `제한 시간 종료! 획득한 퀴즈 점수입니다!`; 
-           goResult(); 
-         }
+         gameTimeRemaining--; updateSpeedUI();
+         if (gameTimeRemaining <= 0) { clearInterval(gameTimerInterval); currentUser.score = gameScore; document.getElementById("result-detail").innerText = `제한 시간 종료! 획득한 퀴즈 점수입니다!`; goResult(); }
        }
     }
-  }, 500); // 타이머 딜레이를 막기 위해 0.5초 간격으로 촘촘히 체크!
+  }, 500); 
   loadNextSpeedQuiz();
 }
 function loadNextSpeedQuiz() {
@@ -1065,10 +1348,12 @@ function loadNextSpeedQuiz() {
 }
 
 // ==========================================
-//씬 5: 이모지 낚시하기 게임
+// 씬 5: 이모지 낚시하기 게임
 // ==========================================
 let fishCards = []; let fishSelected = []; let fishEmojisCaught = 0; let lastFrameTime = 0; let caughtEmojisList = [];
 const fishPond = document.getElementById("fish-pond");
+const fallbackEmojis = ["🐠", "🐟", "🐡", "🐙", "🦑", "🦐", "🦀", "🐳", "🐋", "🐬"];
+
 function startFishingLogic() {
   document.getElementById("fish-bucket").innerHTML = ""; fishPond.innerHTML = "";
   fishEmojisCaught = 0; caughtEmojisList = []; updateFishUI(); isFishing = true;
@@ -1108,7 +1393,7 @@ function refillFishes() {
   spawnList.forEach((item) => { let wordObj = wordList.find((w) => w.en === item.id); if (wordObj) createFishEl(item.lang === "en" ? wordObj.en : wordObj.ko, item.lang, item.id); });
 }
 function createFishEl(text, lang, targetId) {
-  let el = document.createElement("div"); el.className = "fish-card pop-in"; let emoji = allEmojis[Math.floor(Math.random() * allEmojis.length)]; let fontSize = text.length > 20 ? "11px" : text.length > 10 ? "13px" : "15px";
+  let el = document.createElement("div"); el.className = "fish-card pop-in"; let emoji = fallbackEmojis[Math.floor(Math.random() * fallbackEmojis.length)]; let fontSize = text.length > 20 ? "11px" : text.length > 10 ? "13px" : "15px";
   el.innerHTML = `<div class="fish-emoji">${emoji}</div><div class="fish-text" style="font-size:${fontSize}">${text}</div>`; fishPond.appendChild(el);
   let angle = Math.random() * Math.PI * 2; let speed = 80 + Math.random() * 80; let vx = Math.cos(angle) * speed; let vy = Math.sin(angle) * speed; let x = fishPond.clientWidth / 2 - 50 + (Math.random() * 40 - 20); let y = fishPond.clientHeight / 2 - 50 + (Math.random() * 40 - 20);
   let fishObj = { el, text, lang, targetId, emoji, x, y, vx, vy }; fishCards.push(fishObj);
@@ -1144,41 +1429,69 @@ function moveFishes(currentTime) {
 }
 
 // ==========================================
-//9. 결과, 피드백 전송 및 랭킹
+// 9. 결과, 피드백 전송 및 랭킹
 // ==========================================
+// 🚀 [3/4] 결과 화면: 멀티플레이 2초 대기 동기화 및 획득 JR 정산
 async function goResult() {
-  clearInterval(gameTimerInterval);
-  clearInterval(cdInterval);
-  isGamePaused = true; 
-
+  document.getElementById("group-blocker-overlay").style.display = "none"; // 🚀 결과창 올 때 블라인드 해제!
+  clearInterval(gameTimerInterval); clearInterval(cdInterval); isGamePaused = true; 
   document.getElementById("top-left-controls").style.display = "none"; 
-  showScreen("result-screen");
-  
-  document.getElementById("praise-word").innerText = praises[Math.floor(Math.random() * praises.length)];
-  document.getElementById("result-user").innerText = `${currentUser.emoji} ${currentUser.nickname} 학생`;
-  document.getElementById("final-score").innerText = currentUser.score;
-
-  const emojiBox = document.getElementById("result-caught-emojis");
-  if (currentGameMode === "fish" && currentUser.caughtEmojis) { emojiBox.style.display = "block"; emojiBox.innerText = "🎣 낚은 이모지:\n" + currentUser.caughtEmojis; } 
-  else { emojiBox.style.display = "none"; }
-  playSound("success");
 
   try {
     await addDoc(collection(db, "scores"), {
       stdId: currentUser.stdId, nickname: currentUser.nickname, emoji: currentUser.emoji, classId: currentUser.classId,
-      score: currentUser.score, mode: currentGameMode, timestamp: Date.now(),
-      setId: currentSetId,       
-      setTitle: currentSetTitle  
+      score: currentUser.score, mode: currentGameMode, timestamp: Date.now(), setId: currentSetId, setTitle: currentSetTitle,
+      groupId: currentGroupingActive ? myCurrentGroupId : null, groupPlayMode: currentGroupingActive ? currentMultiRoomGroupPlayMode : null
     });
   } catch(e) { console.error("점수 저장 실패:", e); }
+
+  let earnedJR = Math.floor(currentUser.score / 100);
+  let rankBonusJR = 0; let rankMsg = "";
+  
+  let finalDisplayScore = currentUser.score;
+  let finalDisplayName = `${currentUser.nickname} 학생`;
+
+  if (myLobbyDocId && (currentGameMode === "speed" || currentGameMode === "chunk")) {
+    showScreen("loading-screen");
+    document.querySelector("#loading-screen h2").innerText = "다른 친구들의 점수를 집계 중입니다...";
+    document.querySelector("#loading-screen p").innerText = "잠시만 기다려주세요 (약 2초)";
+    await new Promise(resolve => setTimeout(resolve, 2000)); 
+
+    // 🚀 조별 모드가 활성화되어 있다면 최종 표시 점수를 그룹 총합으로 변경!
+    if (currentGroupingActive && currentMultiRoomGroupPlayMode) {
+        finalDisplayName = `${myCurrentGroupId}조`;
+        let groupTotal = 0;
+        const snap = await getDocs(collection(db, "lobbyUsers"));
+        snap.forEach(d => {
+            const dt = d.data();
+            if(dt.groupId === myCurrentGroupId) groupTotal += dt.score;
+        });
+        finalDisplayScore = groupTotal;
+        
+        if (currentMultiRoomGroupPlayMode === "all-sum") {
+            document.getElementById("result-detail").innerText = `(개인 기여 점수: ${currentUser.score}점)`;
+        } else {
+            document.getElementById("result-detail").innerText = `조 대표의 획득 점수입니다!`;
+        }
+    } else {
+        document.getElementById("result-detail").innerText = `개인 획득 점수입니다.`;
+    }
+  }
+
+  currentUser.jr += (earnedJR + rankBonusJR);
+  if (currentUser.stdId) await setDoc(doc(db, "users", currentUser.stdId), { jr: currentUser.jr }, { merge: true });
+
+  showScreen("result-screen");
+  document.getElementById("praise-word").innerText = praises[Math.floor(Math.random() * praises.length)];
+  document.getElementById("result-user").innerText = finalDisplayName;
+  document.getElementById("final-score").innerText = finalDisplayScore;
+  document.getElementById("result-caught-emojis").style.display = "none";
+  playSound("success");
+
+  setTimeout(() => { showBuffMsg("💰 보상 획득!", `게임 보상: +${earnedJR} JR${rankMsg}\n(현재 잔액: ${currentUser.jr} JR)`, 33, 150, 243); }, 800);
 }
 
-// 🌟 신규: 학생 피드백 전송 로직
-bindClick("go-feedback-btn", () => {
-  playSound("click");
-  document.getElementById("feedback-text").value = "";
-  showScreen("feedback-screen");
-});
+bindClick("go-feedback-btn", () => { playSound("click"); document.getElementById("feedback-text").value = ""; showScreen("feedback-screen"); });
 bindClick("cancel-feedback-btn", () => { playSound("click"); showScreen("result-screen"); });
 
 bindClick("submit-feedback-btn", async () => {
@@ -1187,57 +1500,36 @@ bindClick("submit-feedback-btn", async () => {
   if(!text) return alert("의견을 적어주세요!");
   try {
     await addDoc(collection(db, "feedback"), {
-      stdId: currentUser.stdId,
-      nickname: currentUser.nickname,
-      emoji: currentUser.emoji,
-      text: text,
-      timestamp: Date.now()
+      stdId: currentUser.stdId, nickname: currentUser.nickname, emoji: currentUser.emoji, text: text, timestamp: Date.now()
     });
-    alert("소중한 의견 감사합니다!");
-    showScreen("result-screen");
-  } catch(e) {
-    alert("전송에 실패했습니다.");
-  }
+    alert("소중한 의견 감사합니다!"); showScreen("result-screen");
+  } catch(e) { alert("전송에 실패했습니다."); }
 });
 
 bindClick("go-ranking-btn", () => { playSound("click"); showRankings("today", currentGameMode); });
-
 bindClick("tab-today", () => { playSound("click"); showRankings("today", currentRankingMode); });
 bindClick("tab-class", () => { playSound("click"); showRankings("class", currentRankingMode); });
 bindClick("tab-all", () => { playSound("click"); showRankings("all", currentRankingMode); });
 bindClick("ranking-home-btn", () => { playSound("click"); document.getElementById("confetti-canvas").style.display = "none"; showScreen("menu-screen"); });
 
 async function showRankings(tab, mode = currentRankingMode) {
-  currentRankingMode = mode; 
-  showScreen("ranking-screen");
-  
+  currentRankingMode = mode; showScreen("ranking-screen");
   document.querySelectorAll(".rank-tab").forEach(btn => btn.classList.remove("active"));
   document.getElementById(`tab-${tab}`).classList.add("active");
 
-  const modeNames = {
-    "fc": "🃏 깜빡이 학습",
-    "memory": "🔠 메모 게임",
-    "speed-match": "🧩 스피드 짝맞추기",
-    "speed": "⚡ 심플 스피드퀴즈",
-    "fish": "🎣 이모지 낚시하기",
-"chunk": "🧩 문장 해석 게임"
-  };
-
+  const modeNames = { "fc": "🃏 깜빡이 학습", "memory": "🔠 메모 게임", "speed-match": "🧩 스피드 짝맞추기", "speed": "⚡ 심플 스피드퀴즈", "fish": "🎣 이모지 낚시하기", "chunk": "🧩 문장 해석 게임" };
   document.getElementById("ranking-mode-title").innerText = `[ ${currentSetTitle} ]\n${modeNames[mode] || "전체"} 순위`;
 
   const quotes = ["Wanna try again? 🚀", "You're a star! ⭐", "Keep it up! 🔥", "Fantastic job! 🎉", "Challenge the top! 🏆"];
   document.getElementById("ranking-encourage").innerText = quotes[Math.floor(Math.random() * quotes.length)];
-  document.getElementById("ranking-msg").innerText = `축하해요!! ${currentUser.emoji}${currentUser.nickname}님은 ${currentUser.score}점입니다!`;
+  document.getElementById("ranking-msg").innerText = `축하해요!! ${currentUser.nickname}님은 ${currentUser.score}점입니다!`;
 
-  const listEl = document.getElementById("ranking-list");
-  listEl.innerHTML = "<div style='text-align:center; padding: 20px;'>순위를 불러오는 중...🔍</div>";
+  const listEl = document.getElementById("ranking-list"); listEl.innerHTML = "<div style='text-align:center; padding: 20px;'>순위를 불러오는 중...🔍</div>";
 
   try {
     const qSnap = await getDocs(collection(db, "scores"));
     let allScores = []; qSnap.forEach(doc => allScores.push(doc.data()));
-    
     let filtered = allScores.filter(s => s.mode === currentRankingMode && s.setId === currentSetId);
-
     const now = new Date(); const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
 
     if (tab === "today") filtered = filtered.filter(s => s.timestamp >= todayStart);
@@ -1252,7 +1544,7 @@ async function showRankings(tab, mode = currentRankingMode) {
     else {
       sorted.forEach((s, idx) => {
         let medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx+1}위`;
-        listEl.innerHTML += `<div class="rank-item"><div><span class="rank-medal">${medal}</span> ${s.emoji} ${s.nickname}</div><div style="color:#ff4081; font-weight:bold;">${s.score}점</div></div>`;
+        listEl.innerHTML += `<div class="rank-item"><div><span class="rank-medal">${medal}</span> ${s.nickname}</div><div style="color:#ff4081; font-weight:bold;">${s.score}점</div></div>`;
       });
     }
     fireConfetti();
@@ -1289,709 +1581,819 @@ function renderConfetti() {
 // ==========================================
 // 씬 6: 문장 해석 게임 (Chunk Matching)
 // ==========================================
-let chunkAnswers = [];
-let chunkLength = 0;
-let currentChunkIndex = 0;
-
+let chunkAnswers = []; let chunkLength = 0; let currentChunkIndex = 0;
 function updateChunkUI() {
-  const m = String(Math.floor(gameTimeRemaining / 60)).padStart(2, "0"); 
-  const s = String(gameTimeRemaining % 60).padStart(2, "0");
+  const m = String(Math.floor(gameTimeRemaining / 60)).padStart(2, "0"); const s = String(gameTimeRemaining % 60).padStart(2, "0");
   document.getElementById("chunk-timer").innerText = `🕒 ${m}:${s}`; 
-  document.getElementById("chunk-score").innerText = `점수: ${gameScore}`;
-
-  // 🌐 [멀티 대전용 실시간 점수 연동 트리거 추가] 내 점수와 버프 상태를 중계 서버로 즉시 송신!
+  document.getElementById("chunk-score").innerHTML = `점수: ${gameScore}${getGroupScoreText()}`; // 🚀 합산 텍스트 추가
   if (myLobbyDocId && currentGameMode === "chunk") {
-    let currentBuffs = "";
-    if (globalScoreMultiplier > 1) currentBuffs += "🟡"; // 배점 2배 버프 상태 표시
-    setDoc(doc(db, "lobbyUsers", myLobbyDocId), { score: gameScore, items: currentBuffs }, { merge: true })
-      .catch(e => console.error("해석 점수 동기화 에러:", e));
+    let currentBuffs = ""; if (globalScoreMultiplier > 1) currentBuffs += "🟡"; 
+    setDoc(doc(db, "lobbyUsers", myLobbyDocId), { score: gameScore, items: currentBuffs }, { merge: true }).catch(e => console.error(e));
   }
-}
+} // 🚀 여기에 닫는 괄호가 빠져서 모든 코드를 집어삼키고 있었습니다!
+
 function startChunkLogic() {
-  // 슬래시가 포함된 문장만 필터링 (영어, 한글 모두 포함되어야 함)
   const validChunkWords = wordList.filter(w => w.en.includes('/') && w.ko.includes('/'));
-  
-  if(validChunkWords.length === 0) {
-    alert("현재 세트에는 슬래시(/)로 구분된 문장이 없습니다. 다른 세트를 선택해 주세요.");
-    clearInterval(gameTimerInterval);
-    showScreen("menu-screen");
-    return;
-  }
-
-  currentChunkIndex = 0; // 게임 시작 시 무조건 첫 번째 문장부터 시작
-  updateChunkUI();
-
-  // 🕒 절대 시간 동기화 타이머 가동
+  if(validChunkWords.length === 0) { alert("현재 세트에는 슬래시(/)로 구분된 문장이 없습니다. 다른 세트를 선택해 주세요."); clearInterval(gameTimerInterval); showScreen("menu-screen"); return; }
+  currentChunkIndex = 0; updateChunkUI();
   gameTimerInterval = setInterval(() => {
     if (globalMultiEndTime) {
-       // 🌐 멀티플레이어 대전 시: 타이머 오차를 없애기 위해 '절대 시간' 기준 측정
-       gameTimeRemaining = Math.max(0, Math.floor((globalMultiEndTime - Date.now()) / 1000));
-       updateChunkUI();
-       if (gameTimeRemaining <= 0) {
-         clearInterval(gameTimerInterval);
-         currentUser.score = gameScore; 
-         document.getElementById("result-detail").innerText = `제한 시간 종료! 획득한 해석 점수입니다!`; 
-         goResult(); 
-       }
+       gameTimeRemaining = Math.max(0, Math.floor((globalMultiEndTime - Date.now()) / 1000)); updateChunkUI();
+       if (gameTimeRemaining <= 0) { clearInterval(gameTimerInterval); currentUser.score = gameScore; document.getElementById("result-detail").innerText = `제한 시간 종료! 획득한 해석 점수입니다!`; goResult(); }
     } else {
-       // 👤 싱글플레이어 혼자하기 시: 기존 로컬 카운트 흐름 적용
        if (!isGamePaused) {
-         gameTimeRemaining--; 
-         updateChunkUI();
-         if (gameTimeRemaining <= 0) {
-           clearInterval(gameTimerInterval);
-           currentUser.score = gameScore; 
-           document.getElementById("result-detail").innerText = `제한 시간 종료! 획득한 해석 점수입니다!`; 
-           goResult(); 
-         }
+         gameTimeRemaining--; updateChunkUI();
+         if (gameTimeRemaining <= 0) { clearInterval(gameTimerInterval); currentUser.score = gameScore; document.getElementById("result-detail").innerText = `제한 시간 종료! 획득한 해석 점수입니다!`; goResult(); }
        }
     }
-  }, 500); // 0.5초마다 촘촘히 동기화 체크
-  
+  }, 500); 
   loadNextChunkQuiz(validChunkWords);
 }
-
 function loadNextChunkQuiz(validChunkWords) {
   const wordObj = validChunkWords[currentChunkIndex]; 
-  
-  let enParts = wordObj.en.split('/').map(s => s.trim());
-  let koParts = wordObj.ko.split('/').map(s => s.trim()); // 👈 빠져있던 핵심 코드 복구 완료!
+  let enParts = wordObj.en.split('/').map(s => s.trim()); let koParts = wordObj.ko.split('/').map(s => s.trim());
+  chunkLength = Math.min(enParts.length, koParts.length); enParts = enParts.slice(0, chunkLength); koParts = koParts.slice(0, chunkLength);
+  const container = document.getElementById("chunk-container"); const btnContainer = document.getElementById("chunk-buttons-container");
+  container.innerHTML = ""; btnContainer.innerHTML = ""; chunkAnswers = new Array(chunkLength).fill(null);
 
-  chunkLength = Math.min(enParts.length, koParts.length);
-  enParts = enParts.slice(0, chunkLength);
-  koParts = koParts.slice(0, chunkLength);
-
-  const container = document.getElementById("chunk-container");
-  const btnContainer = document.getElementById("chunk-buttons-container");
-  container.innerHTML = "";
-  btnContainer.innerHTML = "";
-  chunkAnswers = new Array(chunkLength).fill(null);
-
-  // 상단 청크 빈칸 영역 세팅
-  const pairsDiv = document.createElement("div");
-  pairsDiv.style.display = "flex";
-  pairsDiv.style.flexWrap = "wrap";
-  pairsDiv.style.justifyContent = "center";
-  pairsDiv.style.gap = "8px";
-  pairsDiv.style.width = "100%";
-
+  const pairsDiv = document.createElement("div"); pairsDiv.style.cssText = "display:flex; flex-wrap:wrap; justify-content:center; gap:8px; width:100%;";
   for(let i = 0; i < chunkLength; i++) {
-    const pair = document.createElement("div");
-    pair.style.display = "flex";
-    pair.style.flexDirection = "column";
-    pair.style.flex = "1 1 auto";
-    pair.style.minWidth = "80px";
-    pair.style.maxWidth = "45%";
-
-    const enDiv = document.createElement("div");
-    enDiv.className = "chunk-block sq-fly-in";
-    enDiv.innerText = enParts[i];
-
-    const slotDiv = document.createElement("div");
-    slotDiv.className = "chunk-slot sq-fly-in";
-    slotDiv.id = `chunk-slot-${i}`;
-    
-    // 채워진 빈칸을 다시 누르면 취소되는 로직
+    const pair = document.createElement("div"); pair.style.cssText = "display:flex; flex-direction:column; flex:1 1 auto; min-width:80px; max-width:45%;";
+    const enDiv = document.createElement("div"); enDiv.className = "chunk-block sq-fly-in"; enDiv.innerText = enParts[i];
+    const slotDiv = document.createElement("div"); slotDiv.className = "chunk-slot sq-fly-in"; slotDiv.id = `chunk-slot-${i}`;
     slotDiv.onclick = () => {
       if (isGamePaused) return;
       if (chunkAnswers[i] !== null) {
-        playSound("pop");
-        document.getElementById(`chunk-btn-${chunkAnswers[i]}`).classList.remove("used");
-        chunkAnswers[i] = null;
-        slotDiv.innerText = "";
-        slotDiv.classList.remove("filled");
+        playSound("pop"); document.getElementById(`chunk-btn-${chunkAnswers[i]}`).classList.remove("used");
+        chunkAnswers[i] = null; slotDiv.innerText = ""; slotDiv.classList.remove("filled");
       }
     };
-
-    pair.appendChild(enDiv);
-    pair.appendChild(slotDiv);
-    pairsDiv.appendChild(pair);
+    pair.appendChild(enDiv); pair.appendChild(slotDiv); pairsDiv.appendChild(pair);
   }
   container.appendChild(pairsDiv);
 
-  // 하단 섞인 버튼 영역 세팅
   const shuffledIndices = Array.from({length: chunkLength}, (_, i) => i).sort(() => 0.5 - Math.random());
-  
   shuffledIndices.forEach(origIdx => {
-    const btn = document.createElement("button");
-    btn.className = "chunk-btn sq-fly-in";
-    btn.id = `chunk-btn-${origIdx}`;
-    btn.innerText = koParts[origIdx];
-    
+    const btn = document.createElement("button"); btn.className = "chunk-btn sq-fly-in"; btn.id = `chunk-btn-${origIdx}`; btn.innerText = koParts[origIdx];
     btn.onclick = () => {
       if (isGamePaused || btn.classList.contains("used")) return;
-      playSound("pop");
-      
-      const emptyIdx = chunkAnswers.indexOf(null);
+      playSound("pop"); const emptyIdx = chunkAnswers.indexOf(null);
       if (emptyIdx !== -1) {
-        chunkAnswers[emptyIdx] = origIdx;
-        const slot = document.getElementById(`chunk-slot-${emptyIdx}`);
-        slot.innerText = koParts[origIdx];
-        slot.classList.add("filled");
-        btn.classList.add("used");
-
-        // 모든 빈칸이 채워졌는지 검사
-        if (!chunkAnswers.includes(null)) {
-          checkChunkAnswer(validChunkWords);
-        }
+        chunkAnswers[emptyIdx] = origIdx; const slot = document.getElementById(`chunk-slot-${emptyIdx}`);
+        slot.innerText = koParts[origIdx]; slot.classList.add("filled"); btn.classList.add("used");
+        if (!chunkAnswers.includes(null)) { checkChunkAnswer(validChunkWords); }
       }
-    };
-    btnContainer.appendChild(btn);
+    }; btnContainer.appendChild(btn);
   });
 }
-
 function checkChunkAnswer(validChunkWords) {
-  isGamePaused = true;
-  const isCorrect = chunkAnswers.every((val, idx) => val === idx);
-  
+  isGamePaused = true; const isCorrect = chunkAnswers.every((val, idx) => val === idx);
   if (isCorrect) {
-    playSound("success");
-    const earned = calcSpeedBonus() * 2; // 난이도가 있으므로 보너스 배점 상향
-    gameScore += earned;
-    updateChunkUI();
-    showGamePraise(earned, "Perfect Match!", "#3F51B5");
-
-    currentChunkIndex++;
-    if (currentChunkIndex >= validChunkWords.length) {
-      currentChunkIndex = 0; 
-    }
-    
-    if (Math.random() < 0.3) {
-      triggerTreasureEvent(() => { isGamePaused = false; loadNextChunkQuiz(validChunkWords); });
-    } else {
-      setTimeout(() => { isGamePaused = false; loadNextChunkQuiz(validChunkWords); }, 600);
-    }
+    playSound("success"); const earned = calcSpeedBonus() * 2; gameScore += earned; updateChunkUI(); showGamePraise(earned, "Perfect Match!", "#3F51B5");
+    currentChunkIndex++; if (currentChunkIndex >= validChunkWords.length) { currentChunkIndex = 0; }
+    if (Math.random() < 0.3) { triggerTreasureEvent(() => { isGamePaused = false; loadNextChunkQuiz(validChunkWords); }); } 
+    else { setTimeout(() => { isGamePaused = false; loadNextChunkQuiz(validChunkWords); }, 600); }
   } else {
-    playSound("wrong");
-    const penalty = Math.floor(calcSpeedBonus());
-    gameScore -= penalty;
-    updateChunkUI();
-    showBuffMsg("오답!", `순서가 맞지 않아요\n-${penalty}점`, 244, 67, 54);
-
-    // 오답 시 흔들림 애니메이션 후 블록 초기화
-    for(let i = 0; i < chunkLength; i++) {
-      document.getElementById(`chunk-slot-${i}`).classList.add("wrong");
-    }
-    
+    playSound("wrong"); const penalty = Math.floor(calcSpeedBonus()); gameScore -= penalty; updateChunkUI(); showBuffMsg("오답!", `순서가 맞지 않아요\n-${penalty}점`, 244, 67, 54);
+    for(let i = 0; i < chunkLength; i++) { document.getElementById(`chunk-slot-${i}`).classList.add("wrong"); }
     setTimeout(() => {
       for(let i = 0; i < chunkLength; i++) {
-        const slot = document.getElementById(`chunk-slot-${i}`);
-        slot.classList.remove("wrong", "filled");
-        slot.innerText = "";
-        if (chunkAnswers[i] !== null) {
-          document.getElementById(`chunk-btn-${chunkAnswers[i]}`).classList.remove("used");
-        }
+        const slot = document.getElementById(`chunk-slot-${i}`); slot.classList.remove("wrong", "filled"); slot.innerText = "";
+        if (chunkAnswers[i] !== null) { document.getElementById(`chunk-btn-${chunkAnswers[i]}`).classList.remove("used"); }
       }
-      chunkAnswers.fill(null);
-      isGamePaused = false;
+      chunkAnswers.fill(null); isGamePaused = false;
     }, 600);
   }
 }
+
 // ==========================================
 // 씬 7: 온라인 멀티플레이어 로비 로직
 // ==========================================
-
-// 모드 선택 화면 버튼 클릭 연동
-bindClick("mode-solo-btn", () => {
-  playSound("click");
-  renderSetSelectList(); 
-  showScreen("set-select-screen");
-});
-
-bindClick("mode-multi-student-btn", () => {
-  playSound("click");
-  enterMultiLobbyAsStudent();
-});
-
+bindClick("mode-solo-btn", () => { playSound("click"); renderSetSelectList(); showScreen("set-select-screen"); });
+bindClick("mode-multi-student-btn", () => { playSound("click"); enterMultiLobbyAsStudent(); });
 bindClick("mode-multi-teacher-btn", () => {
-  playSound("click");
-  const pwd = prompt("교사용 대기실 비밀번호를 입력하세요.", "");
-  if (pwd === "1234") {
-    enterMultiLobbyAsTeacher();
-  } else if (pwd !== null) {
-    alert("비밀번호가 틀렸습니다!");
-  }
+  playSound("click"); const pwd = prompt("교사용 대기실 비밀번호를 입력하세요.", "");
+  if (pwd === "1234") { enterMultiLobbyAsTeacher(); } else if (pwd !== null) { alert("비밀번호가 틀렸습니다!"); }
 });
+bindClick("lobby-mode-back-btn", () => { playSound("click"); showScreen("login-screen"); });
 
-bindClick("lobby-mode-back-btn", () => {
-  playSound("click");
-  showScreen("login-screen");
-});
-
-// [학생용] 실시간 대기실 입장
 async function enterMultiLobbyAsStudent() {
   showScreen("multi-lobby-screen");
-  
-  // 1. 파이어베이스 대기실 명단에 나 자신 등록
   try {
     const docRef = await addDoc(collection(db, "lobbyUsers"), {
-      stdId: currentUser.stdId,
-      nickname: currentUser.nickname,
-      emoji: currentUser.emoji,
-      score: 0,
-      items: "", 
-      attack: null, // 💥 실시간 피격 이벤트 수신용 필드
-      timestamp: Date.now()
+      stdId: currentUser.stdId, realName: currentUser.realName, nickname: currentUser.nickname, character: currentUser.character, emoji: currentUser.emoji, score: 0, items: "", attack: null, timestamp: Date.now()
     });
     myLobbyDocId = docRef.id;
-
-    // 🌟 [핵심] 나를 향한 공격을 실시간으로 도청하는 전용 안테나 설치
     myLobbyListenerUnsubscribe = onSnapshot(doc(db, "lobbyUsers", myLobbyDocId), (docSnap) => {
-      if (docSnap.exists() && docSnap.data().attack) {
-        const atk = docSnap.data().attack;
-        handleIncomingAttack(atk);
-        // 수신 확인했으니 파이어베이스 공격 필드는 즉시 비워두기 (중복 실행 방지)
+      // 🚀 선생님이 강제 초기화(마스터 리셋)를 눌러서 DB에서 내 정보가 지워졌을 때!
+      if (!docSnap.exists()) {
+          alert("선생님에 의해 대기실이 초기화되었습니다.");
+          exitLobby();
+          showScreen("lobby-mode-screen");
+          return;
+      }
+      if (docSnap.data().attack) {
+        const atk = docSnap.data().attack; handleIncomingAttack(atk);
         setDoc(doc(db, "lobbyUsers", myLobbyDocId), { attack: null }, { merge: true });
       }
     });
-
   } catch(e) { console.error("로비 입장 등록 실패:", e); }
 
-  // 2. 대기 유저 리스트 실시간 감지
+// 🚀 유저 변동 감지 및 조별 필터링 렌더링
   lobbyUsersUnsubscribe = onSnapshot(collection(db, "lobbyUsers"), (snapshot) => {
-    const userListEl = document.getElementById("lobby-user-list");
     const countEl = document.getElementById("lobby-user-count");
-    userListEl.innerHTML = "";
-    let count = 0;
+    let players = []; let count = 0;
+    
     snapshot.forEach((doc) => {
-      const u = doc.data();
-      const chip = document.createElement("span");
-      chip.style.cssText = "background: white; border: 1px solid #ddd; padding: 4px 8px; border-radius: 15px; font-size: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); white-space: nowrap;";
-      chip.innerText = `${u.emoji} ${u.nickname}`;
-      userListEl.appendChild(chip);
-      count++;
-    });
-    countEl.innerText = count;
+      const p = { docId: doc.id, ...doc.data() };
+      players.push(p); count++;
+      if (p.stdId === currentUser.stdId) myCurrentGroupId = p.groupId;
+    }); 
+    
+    window.globalLobbyPlayers = players; // 🚀 학생 화면에서도 실시간 조별 점수 합산을 위해 전역 저장
+    if(countEl) countEl.innerText = count;
+
+    // 🚀 대기실 제목에 조별 모드 표시 띄우기
+    const sTitle = document.getElementById("student-lobby-title");
+    if (currentGroupingActive && myCurrentGroupId) {
+        if(sTitle) sTitle.innerHTML = `🚀 실시간 대기실 <span style="color:#E91E63; font-size:18px;">(👥 ${myCurrentGroupId}조)</span>`;
+        const myGroupPlayers = players.filter(p => p.groupId === myCurrentGroupId);
+        renderLobbyGrid(myGroupPlayers, true); 
+    } else {
+        if(sTitle) sTitle.innerHTML = `🚀 실시간 대기실`;
+        renderLobbyGrid(players, false);
+    }
   });
 
-  // 3. 로비 채팅창 실시간 감지
+  // 🚀 채팅 송수신: 조편성이 켜져있으면 같은 조 채팅만 표시
   const qChat = query(collection(db, "lobbyChat"), orderBy("timestamp", "asc"));
   lobbyChatUnsubscribe = onSnapshot(qChat, (snapshot) => {
-    const chatWindow = document.getElementById("lobby-chat-window");
-    chatWindow.innerHTML = "";
-    snapshot.forEach((doc) => {
-      const c = doc.data();
-      const msgDiv = document.createElement("div");
-      msgDiv.innerHTML = `<span style="font-weight:bold; color:#1976D2;">${c.emoji} ${c.nickname}:</span> <span>${c.text}</span>`;
-      chatWindow.appendChild(msgDiv);
+    snapshot.docChanges().forEach((change) => {
+      if (change.type === "added") {
+        const c = change.doc.data();
+        if (currentGroupingActive) {
+            if (c.groupId === myCurrentGroupId) showChatBubble(c.stdId, c.text);
+        } else {
+            showChatBubble(c.stdId, c.text);
+        }
+      }
     });
-    chatWindow.scrollTop = chatWindow.scrollHeight;
   });
 
-  // 4. 교사의 실시간 원격 시작 신호 감지 인터셉터
-  multiRoomUnsubscribe = onSnapshot(doc(db, "gameData", "multiRoom"), (docSnap) => {
+multiRoomUnsubscribe = onSnapshot(doc(db, "gameData", "multiRoom"), (docSnap) => {
     if (docSnap.exists()) {
       const room = docSnap.data();
+      currentGroupingActive = room.groupingActive || false;
+      currentMultiRoomGroupPlayMode = room.groupPlayMode || null;
+      currentMultiRoomRepresentatives = room.representatives || null;
+      
       if (room.status === "playing") {
-         // (기존의 카운트다운 및 게임 실행 코드가 원본 그대로 유지됨...)
          const selectedSet = wordSets.find(s => s.id === room.setId);
          if (selectedSet) { wordList = selectedSet.words; currentSetId = room.setId; currentSetTitle = room.setTitle; }
-         currentGameMode = room.gameMode;
-         multiUseSpecialItems = (room.useSpecialItems === "on");
-         globalMultiEndTime = Date.now() + 5000 + (room.duration * 60 * 1000);
+         currentGameMode = room.gameMode; multiUseSpecialItems = (room.useSpecialItems === "on");
+         globalMultiEndTime = room.endTime; 
+         
+         if (currentGroupingActive && currentMultiRoomGroupPlayMode === "one-player" && room.gameMode !== "highfive") {
+             const rep = currentMultiRoomRepresentatives[myCurrentGroupId];
+             if (rep && rep.stdId !== currentUser.stdId) {
+                 document.getElementById("group-blocker-msg").innerHTML = `지금은 <b>${rep.name}</b> 친구의 화면에서<br>조원들과 다 함께 상의하며 플레이하세요!`;
+                 document.getElementById("group-blocker-overlay").style.display = "flex";
+             }
+         }
+
          if (room.gameMode === "speed") { startCountdown(room.duration, "speed-screen", () => { startSpeedLogic(); }); } 
          else if (room.gameMode === "chunk") { startCountdown(room.duration, "chunk-screen", () => { startChunkLogic(); }); }
+         else if (room.gameMode === "highfive") { startHighFiveLogic(room.endTime); }
       } 
-      // 🚀 [철통 보완] 게임 진행 중에 교사가 강제 종료를 누르거나 창을 꺼서 status가 waiting으로 폭파된 경우!
-      else if (room.status === "waiting" && (currentGameMode === "speed" || currentGameMode === "chunk") && !isTeacherMode) {
-        resetGameStates();
-        globalMultiEndTime = null;
-        alert("👑 선생님이 멀티플레이 게임을 강제 종료하셨거나 연결이 끊어졌습니다!\n실시간 대기실로 안전하게 이동합니다.");
-        showScreen("multi-lobby-screen");
+      else if (room.status === "waiting") {
+        if (currentGameMode === "speed" || currentGameMode === "chunk") {
+            resetGameStates(); globalMultiEndTime = null; currentGameMode = "";
+            alert("👑 선생님이 게임을 종료하셨습니다!\n실시간 대기실로 이동합니다.");
+            showScreen("multi-lobby-screen");
+        }
+        // 🚀 하이파이브 완료 후 선생님이 확정 누르면, 학생 결과창 끄고 대기실로 자동 입장!
+        if (room.groupingActive && document.getElementById("highfive-result-screen").classList.contains("active")) {
+            document.getElementById("confetti-canvas").style.display = "none";
+            showScreen("multi-lobby-screen");
+        }
+        
+        // 🚀 핵심 버그 픽스: 통신 엇박자로 인해 렌더링이 꼬이는 것을 방지!
+        // 방 상태(조편성 켜짐/꺼짐)가 바뀔 때마다 학생 대기실을 무조건 한 번 더 다시 그립니다.
+        if (window.globalLobbyPlayers) {
+            const sTitle = document.getElementById("student-lobby-title");
+            if (currentGroupingActive && myCurrentGroupId) {
+                if(sTitle) sTitle.innerHTML = `🚀 실시간 대기실 <span style="color:#E91E63; font-size:18px;">(👥 ${myCurrentGroupId}조)</span>`;
+                const myGroupPlayers = window.globalLobbyPlayers.filter(p => p.groupId === myCurrentGroupId);
+                renderLobbyGrid(myGroupPlayers, true); 
+            } else {
+                if(sTitle) sTitle.innerHTML = `🚀 실시간 대기실`;
+                renderLobbyGrid(window.globalLobbyPlayers, false);
+            }
+        }
       }
     }
   });
 }
 
-// 채팅 전송 버튼 연동
-bindClick("lobby-chat-send-btn", async () => {
-  const input = document.getElementById("lobby-chat-input");
-  const text = input.value.trim();
-  if(!text) return;
-  
-  input.value = "";
-  playSound("pop");
-  try {
-    await addDoc(collection(db, "lobbyChat"), {
-      nickname: currentUser.nickname,
-      emoji: currentUser.emoji,
-      text: text,
-      timestamp: Date.now()
-    });
-  } catch(e) { console.error("채팅 전송 실패:", e); }
-});
+bindClick("lobby-exit-btn", async () => { playSound("click"); await exitLobby(); showScreen("lobby-mode-screen"); });
 
-// 채팅창 엔터키 연동
-const chatInput = document.getElementById("lobby-chat-input");
-if(chatInput) {
-  chatInput.onkeydown = (e) => {
-    if(e.key === "Enter") {
-      document.getElementById("lobby-chat-send-btn").click();
-    }
-  };
-}
-
-// 학생 대기실 나가기 버튼
-bindClick("lobby-exit-btn", async () => {
-  playSound("click");
-  await exitLobby();
-  showScreen("lobby-mode-screen");
-});
-
-// 대기실 퇴장 처리 공통 함수
 async function exitLobby() {
   if (lobbyUsersUnsubscribe) { lobbyUsersUnsubscribe(); lobbyUsersUnsubscribe = null; }
   if (lobbyChatUnsubscribe) { lobbyChatUnsubscribe(); lobbyChatUnsubscribe = null; }
   if (multiRoomUnsubscribe) { multiRoomUnsubscribe(); multiRoomUnsubscribe = null; }
-  if (myLobbyListenerUnsubscribe) { myLobbyListenerUnsubscribe(); myLobbyListenerUnsubscribe = null; } // 👈 추가
-  if (myLobbyDocId) {
-    try { await deleteDoc(doc(db, "lobbyUsers", myLobbyDocId)); } catch(e) { console.error(e); }
-    myLobbyDocId = null;
-  }
+  if (myLobbyListenerUnsubscribe) { myLobbyListenerUnsubscribe(); myLobbyListenerUnsubscribe = null; }
+  if (myLobbyDocId) { try { await deleteDoc(doc(db, "lobbyUsers", myLobbyDocId)); } catch(e) { console.error(e); } myLobbyDocId = null; }
   globalMultiEndTime = null; 
 }
 
-// 브라우저 닫기/숨김 시 유령 유저 방지 및 교사 탈출 시 방 폭파
 function forceCleanupLobby() {
-  if (myLobbyDocId) {
-    deleteDoc(doc(db, "lobbyUsers", myLobbyDocId));
-  }
-  
-  // 🚀 만약 교사 모드가 켜진 상태에서 창을 그냥 닫아버리거나 새로고침을 한 경우 방을 즉시 대기 상태로 복구!
-  if (isTeacherMode) {
-    setDoc(doc(db, "gameData", "multiRoom"), { status: "waiting" });
-  }
+  if (myLobbyDocId) { deleteDoc(doc(db, "lobbyUsers", myLobbyDocId)); }
+  if (isTeacherMode) { setDoc(doc(db, "gameData", "multiRoom"), { status: "waiting" }); }
 }
 window.addEventListener("beforeunload", forceCleanupLobby);
 window.addEventListener("pagehide", forceCleanupLobby);
-// [교사용] 실시간 중계 대기실 입장 및 세트 옵션 주입
-function enterMultiLobbyAsTeacher() {
-  isTeacherMode = true; // 🚀 교사 모드 활성화!
-  showScreen("teacher-lobby-screen");
-  
-  const setSelect = document.getElementById("teacher-game-set-select");
-  if (setSelect) {
-    setSelect.innerHTML = wordSets.map(set => `<option value="${set.id}">${set.title} (${set.words.length}개)</option>`).join("");
-  }
 
-  // 대기방 유저 실시간 감지
+window.teacherGroupPlayMode = null; // 교사용 글로벌 변수 추가
+
+function enterMultiLobbyAsTeacher() {
+  isTeacherMode = true; showScreen("teacher-lobby-screen");
+  const setSelect = document.getElementById("teacher-game-set-select");
+  if (setSelect) { setSelect.innerHTML = wordSets.map(set => `<option value="${set.id}">${set.title} (${set.words.length}개)</option>`).join(""); }
+
   lobbyUsersUnsubscribe = onSnapshot(collection(db, "lobbyUsers"), (snapshot) => {
-    const userListEl = document.getElementById("teacher-user-list");
-    const countEl = document.getElementById("teacher-user-count");
-    userListEl.innerHTML = "";
-    let count = 0;
-    snapshot.forEach((doc) => {
-      const u = doc.data();
-      const card = document.createElement("div");
-      card.style.cssText = "background: white; border: 2px solid #9C27B0; padding: 6px 12px; border-radius: 10px; font-size: 15px; font-weight: bold; box-shadow: 0 3px 6px rgba(0,0,0,0.05); display: flex; align-items: center; gap: 5px;";
-      card.innerText = `${u.emoji} ${u.nickname} (${u.stdId})`;
-      userListEl.appendChild(card);
-      count++;
-    });
-    countEl.innerText = count;
+    const tCountEl = document.getElementById("teacher-user-count");
+    let players = []; let count = 0;
+    snapshot.forEach((doc) => { players.push({ docId: doc.id, ...doc.data() }); count++; }); 
+    if(tCountEl) tCountEl.innerText = count;
+    window.globalLobbyPlayers = players; 
+    if (window.teacherLobbyStatus === "waiting") { renderTeacherVisualLobby(window.globalLobbyPlayers); }
   });
+
+  const qChat = query(collection(db, "lobbyChat"), orderBy("timestamp", "asc"));
+  lobbyChatUnsubscribe = onSnapshot(qChat, (snapshot) => {
+    snapshot.docChanges().forEach((change) => {
+      if (change.type === "added") { const c = change.doc.data(); showChatBubble(c.stdId, c.text); }
+    });
+  });
+
+  multiRoomUnsubscribe = onSnapshot(doc(db, "gameData", "multiRoom"), (docSnap) => {
+      if (docSnap.exists()) {
+          const data = docSnap.data();
+          currentGroupingActive = data.groupingActive || false;
+          window.teacherGroupPlayMode = data.groupPlayMode || null;
+          updateTeacherMenuVisibility(); // 🚀 조편성 상태에 맞춰 UI 즉시 업데이트
+          
+          if (data.status === "playing" && data.gameMode !== "highfive") {
+              window.teacherLobbyStatus = "playing";
+              setupTeacherLiveMatch(data.endTime);
+          } else {
+              window.teacherLobbyStatus = "waiting";
+              cleanupTeacherLiveMatch();
+              renderTeacherVisualLobby(window.globalLobbyPlayers); 
+          }
+      }
+  });
+
+  if(teacherRenderInterval) clearInterval(teacherRenderInterval);
+  teacherRenderInterval = setInterval(() => {
+      if(!isTeacherMode) return;
+      if (window.teacherLobbyStatus === "playing") {
+          renderTeacherLiveLeaderboard(window.globalLobbyPlayers);
+      }
+  }, 500); 
 }
 
+// 🚀 교사 메뉴 숨김/표시 자동 갱신 로직
+function updateTeacherMenuVisibility() {
+    const modeSelect = document.getElementById("teacher-game-mode-select");
+    if(!modeSelect) return;
+    const mode = modeSelect.value;
+    const isHf = (mode === "highfive");
+    const isCreate = (mode === "create");
+    
+    // 일반 게임용
+    document.getElementById("teacher-time-container").style.display = (isHf || isCreate) ? "none" : "block";
+    document.getElementById("teacher-item-container").style.display = (isHf || isCreate) ? "none" : "block";
+    document.getElementById("teacher-set-container").style.display = (isHf) ? "none" : "block";
+    
+    // 조편성용
+    document.getElementById("teacher-group-count-container").style.display = isHf ? "block" : "none";
+    const playModeContainer = document.getElementById("teacher-group-play-mode-container");
+    if(playModeContainer) playModeContainer.style.display = (currentGroupingActive && !isHf) ? "block" : "none";
 
-// 교사용 🏁멀티플레이 게임 시작 버튼 이벤트 바인딩
+    // 문제만들기용
+    document.getElementById("teacher-create-time-container").style.display = isCreate ? "block" : "none";
+    document.getElementById("teacher-create-count-container").style.display = isCreate ? "block" : "none";
+    document.getElementById("teacher-create-type-container").style.display = isCreate ? "block" : "none";
+}
+
+// 🚀 모드 선택 시 메뉴 변경
+const modeSelect = document.getElementById("teacher-game-mode-select");
+if(modeSelect) modeSelect.addEventListener("change", updateTeacherMenuVisibility);
+
+// 🚀 게임 시작 및 모드 처리
 bindClick("teacher-game-start-btn", async () => {
-  const mode = document.getElementById("teacher-game-mode-select").value;
-  const duration = parseInt(document.getElementById("teacher-game-time-select").value);
-  const setId = document.getElementById("teacher-game-set-select").value;
-  const itemOption = document.getElementById("teacher-game-item-select").value; // 👈 추가
-  const selectedSet = wordSets.find(s => s.id === setId);
-
-  if(!selectedSet) return alert("게임을 진행할 학습 세트를 선택해 주세요!");
+  const modeSelect = document.getElementById("teacher-game-mode-select");
+  if (!modeSelect) return;
+  const mode = modeSelect.value;
+  
+  const groupCountSelect = document.getElementById("teacher-group-count-select");
+  const groupCount = groupCountSelect ? parseInt(groupCountSelect.value) : 2;
 
   playSound("success");
 
-  // 파이어베이스 원격 멀티룸 상태 업데이트 (아이템 승인값 추가 포함)
-  await setDoc(doc(db, "gameData", "multiRoom"), {
-    status: "playing",
-    gameMode: mode,
-    duration: duration,
-    setId: setId,
-    setTitle: selectedSet.title,
-    useSpecialItems: itemOption // 👈 서버 전송 각인
-  });
+  if (mode === "highfive") {
+     const targetEndTime = Date.now() + 15000;
+     await setDoc(doc(db, "gameData", "multiRoom"), { status: "playing", gameMode: mode, groupCount: groupCount, endTime: targetEndTime });
+     startHighFiveLogic(targetEndTime); 
+     return;
+  }
+// 🚀 문제 만들기 모드일 경우 통신 로직
+  if (mode === "create") {
+      const cTime = parseInt(document.getElementById("teacher-create-time-select").value);
+      const cCount = parseInt(document.getElementById("teacher-create-count-select").value);
+      
+      let allowedTypes = [];
+      document.querySelectorAll(".create-type-cb:checked").forEach(cb => allowedTypes.push(cb.value));
+      if(allowedTypes.length === 0) return alert("최소 1개 이상의 문제 유형을 선택해 주세요!");
+
+      const setSelect = document.getElementById("teacher-game-set-select");
+      const setId = setSelect ? setSelect.value : null;
+      if (!setId) return alert("참고할 학습 세트를 선택해 주세요!");
+      const selectedSet = wordSets.find(s => s.id === setId);
+
+      const targetEndTime = Date.now() + (cTime * 60 * 1000); // 카운트다운 없이 바로 시작
+
+      await setDoc(doc(db, "gameData", "multiRoom"), { 
+          status: "playing", gameMode: mode, duration: cTime, targetProblemCount: cCount, allowedTypes: allowedTypes,
+          setId: setId, setTitle: selectedSet.title, endTime: targetEndTime 
+      }, { merge: true });
+      return;
+  }
+  const timeSelect = document.getElementById("teacher-game-time-select");
+  const duration = timeSelect ? parseInt(timeSelect.value) : 3;
+  const setSelect = document.getElementById("teacher-game-set-select");
+  const setId = setSelect ? setSelect.value : null;
+  const itemSelect = document.getElementById("teacher-game-item-select");
+  const itemOption = itemSelect ? itemSelect.value : "off"; 
+  
+  if (!setId) return alert("게임을 진행할 학습 세트를 선택해 주세요!");
+  const selectedSet = wordSets.find(s => s.id === setId); 
+  if(!selectedSet) return alert("게임을 진행할 학습 세트를 찾을 수 없습니다.");
+
+  // 🚀 조별 모드일 경우 대표자 랜덤 선발 및 옵션 저장
+  let groupPlayMode = null;
+  let representatives = {};
+  if (currentGroupingActive) {
+      groupPlayMode = document.getElementById("teacher-group-play-mode-select").value;
+      if (groupPlayMode === "one-player") {
+          // 각 조마다 1명씩 랜덤 추출
+          const grouped = {};
+          window.globalLobbyPlayers.forEach(p => {
+              if (p.groupId) {
+                  if(!grouped[p.groupId]) grouped[p.groupId] = [];
+                  grouped[p.groupId].push(p);
+              }
+          });
+          for (const gId in grouped) {
+              const members = grouped[gId];
+              const rep = members[Math.floor(Math.random() * members.length)];
+              representatives[gId] = { stdId: rep.stdId, name: `${rep.nickname} (${rep.stdId} ${rep.realName})` };
+          }
+      }
+  }
 
   const targetEndTime = Date.now() + 5000 + (duration * 60 * 1000);
-  startTeacherLiveMatch(targetEndTime);
+  await setDoc(doc(db, "gameData", "multiRoom"), { 
+      status: "playing", gameMode: mode, duration: duration, setId: setId, setTitle: selectedSet.title, 
+      useSpecialItems: itemOption, endTime: targetEndTime,
+      groupPlayMode: groupPlayMode, representatives: representatives
+  }, { merge: true }); // 🚀 핵심 픽스: 기존에 설정된 조편성(groupingActive) 상태가 날아가지 않게 유지!
 });
 
-// 교사용 실시간 타이머 및 중계화면 가동 함수 (절대 시간 적용)
-function startTeacherLiveMatch(targetEndTime) {
-  showScreen("teacher-match-screen");
-  document.getElementById("teacher-match-exit-btn").style.display = "none";
-  document.getElementById("teacher-match-abort-btn").style.display = "block"; // 🚀 강제 종료 버튼 상시 노출
-
-  teacherMatchInterval = setInterval(async () => {
-    let remain = Math.max(0, Math.floor((targetEndTime - Date.now()) / 1000));
-    const m = String(Math.floor(remain / 60)).padStart(2, "0");
-    const s = String(remain % 60).padStart(2, "0");
-    timerEl.innerText = `🕒 ${m}:${s}`;
-
-    if (remain <= 0) {
-      clearInterval(teacherMatchInterval);
-      await setDoc(doc(db, "gameData", "multiRoom"), { status: "finished" }, { merge: true });
-      fireConfetti();
-      document.getElementById("teacher-match-abort-btn").style.display = "none"; // 🚀 정상 종료 시 강제 종료 버튼 감춤
-      document.getElementById("teacher-match-exit-btn").style.display = "block";
-    }
-  }, 500);
-
-  startTeacherLiveLeaderboard();
-}
-
-// 🏎️ [정렬 핵심] 학생 점수를 가로채서 부드러운 위치 이동 연출을 수행하는 실시간 랭킹 보드
-function startTeacherLiveLeaderboard() {
-  const leaderboardContainer = document.getElementById("teacher-live-leaderboard");
-  leaderboardContainer.innerHTML = ""; 
-
-  teacherLiveUnsubscribe = onSnapshot(collection(db, "lobbyUsers"), (snapshot) => {
-    let players = [];
-    snapshot.forEach(doc => { players.push({ docId: doc.id, ...doc.data() }); });
-
-    players.sort((a, b) => b.score - a.score);
-
-    players.forEach((player, idx) => {
-      let playerBar = document.getElementById(`live-bar-${player.stdId}`);
-      if (!playerBar) {
-        playerBar = document.createElement("div");
-        playerBar.id = `live-bar-${player.stdId}`;
-        playerBar.className = "live-rank-item";
-        leaderboardContainer.appendChild(playerBar);
-      }
-
-      playerBar.className = `live-rank-item rank-${idx + 1}`;
-      playerBar.style.top = `${idx * 70}px`;
-
-      let medalBadge = idx === 0 ? "🥇 1등" : idx === 1 ? "🥈 2등" : idx === 2 ? "🥉 3등" : `${idx + 1}위`;
-
-      playerBar.innerHTML = `
-        <div class="live-rank-badge">${medalBadge}</div>
-        <div class="live-rank-user">${player.emoji} ${player.nickname} <span style="font-size:12px; color:#888; font-weight:normal;">(${player.stdId})</span></div>
-        <div class="live-rank-items">${player.items || ""}</div>
-        <div class="live-rank-score">${player.score} 점</div>
-      `;
-    });
-
-    const aliveIds = players.map(p => `live-bar-${p.stdId}`);
-    Array.from(leaderboardContainer.children).forEach(child => {
-      if (!aliveIds.includes(child.id)) child.remove();
-    });
-  });
-}
-
-// 중계 완료 후 대기방으로 리턴 제어 버튼
-bindClick("teacher-match-exit-btn", async () => {
+// 🧹 교사용 마스터 초기화 버튼
+bindClick("teacher-clear-ghosts-btn", async () => {
   playSound("click");
-  clearInterval(teacherMatchInterval);
-  if (teacherLiveUnsubscribe) { teacherLiveUnsubscribe(); teacherLiveUnsubscribe = null; }
-  if (lobbyUsersUnsubscribe) { lobbyUsersUnsubscribe(); lobbyUsersUnsubscribe = null; }
-  
-  await setDoc(doc(db, "gameData", "multiRoom"), { status: "waiting" });
-  enterMultiLobbyAsTeacher();
+  if(confirm("대기실 유저 목록 및 꼬여버린 게임 상태를 완전히 초기화합니다.\n진행할까요?")) {
+    try {
+      const snap = await getDocs(collection(db, "lobbyUsers"));
+      snap.forEach(d => deleteDoc(doc(db, "lobbyUsers", d.id)));
+      
+      const chatSnap = await getDocs(collection(db, "lobbyChat"));
+      chatSnap.forEach(d => deleteDoc(doc(db, "lobbyChat", d.id)));
+      
+      await setDoc(doc(db, "gameData", "multiRoom"), { status: "waiting", groupingActive: false, gameMode: "", endTime: null }, { merge: true });
+      currentGroupingActive = false;
+      alert("✅ 완벽하게 초기화되었습니다!");
+    } catch(e) { console.error("초기화 에러", e); }
+  }
 });
 
-// 교사 대기실 나가기 버튼
+// ==========================================
+// 🚀 교사용 대기실 및 무중단 라이브 중계 엔진
+// ==========================================
+window.teacherLobbyStatus = "waiting";
+window.globalLobbyPlayers = [];
+let teacherRenderInterval = null;
+
+
+
+// ⚡ 실시간 중계 UI 셋업
+function setupTeacherLiveMatch(endTime) {
+    document.getElementById("teacher-viewer-title").innerText = "⚡ 실시간 라이브 중계";
+    document.getElementById("teacher-match-timer").style.display = "block";
+    document.getElementById("teacher-visual-lobby-grid").style.display = "none";
+    
+    const board = document.getElementById("teacher-live-leaderboard");
+    board.style.display = "block";
+    board.innerHTML = ""; // 기존 그리드 지우기
+    
+    const abortBtn = document.getElementById("teacher-match-abort-btn");
+    if(abortBtn) abortBtn.style.display = "block";
+
+    clearInterval(teacherMatchInterval);
+    teacherMatchInterval = setInterval(() => {
+        const remaining = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
+        const m = String(Math.floor(remaining / 60)).padStart(2, "0");
+        const s = String(remaining % 60).padStart(2, "0");
+        document.getElementById("teacher-match-timer").innerText = `🕒 ${m}:${s}`;
+        if (remaining <= 0) {
+            clearInterval(teacherMatchInterval);
+            document.getElementById("teacher-match-timer").innerText = "게임 종료!";
+            if(abortBtn) abortBtn.style.display = "none";
+        }
+    }, 500);
+}
+
+// ⚡ 실시간 중계 UI 해제 (대기실 복구)
+function cleanupTeacherLiveMatch() {
+    clearInterval(teacherMatchInterval);
+    document.getElementById("teacher-viewer-title").innerText = "👀 학생 대기실 모니터링";
+    document.getElementById("teacher-match-timer").style.display = "none";
+    document.getElementById("teacher-visual-lobby-grid").style.display = "flex";
+    document.getElementById("teacher-live-leaderboard").style.display = "none";
+    
+    const abortBtn = document.getElementById("teacher-match-abort-btn");
+    if(abortBtn) abortBtn.style.display = "none";
+}
+
+// ⚡ 라이브 리더보드 렌더러 (조별 모드 지원)
+function renderTeacherLiveLeaderboard(players) {
+    const board = document.getElementById("teacher-live-leaderboard");
+    if (!board) return;
+
+    let renderList = [];
+
+    // 🚀 조별 모드가 활성화되어 있다면 점수 합산해서 렌더링!
+    if (currentGroupingActive && window.teacherGroupPlayMode) {
+        let groupData = {};
+        players.forEach(p => {
+            if (!p.groupId) return;
+            if (!groupData[p.groupId]) groupData[p.groupId] = { id: p.groupId, score: 0, items: "" };
+            groupData[p.groupId].score += p.score || 0;
+            if (p.items) groupData[p.groupId].items += p.items; 
+        });
+        
+        renderList = Object.values(groupData).map(g => ({
+            renderId: `group-${g.id}`,
+            title: `<span style="color:#FF5722">${g.id}조</span>`,
+            subtitle: `<span style="font-size:14px; color:#666;">(조별 합산 점수)</span>`,
+            score: g.score,
+            items: g.items,
+            icon: `<span style="font-size:35px; margin-right:10px;">👥</span>`
+        }));
+    } else {
+        // 개인전 렌더링
+        renderList = players.map(p => {
+            const charFolder = p.character || availableCharacters[0] || "기본0(민준쌤)";
+            const nameHtml = isTeacherNameHidden ? "" : ` <span style="font-size:14px; color:#666;">(${p.stdId} ${p.realName || ''})</span>`;
+            return {
+                renderId: `user-${p.stdId}`,
+                title: p.nickname,
+                subtitle: nameHtml,
+                score: p.score || 0,
+                items: p.items || "",
+                icon: `<img src="char/${charFolder}/stand1_0.png" class="anim-avatar" style="height:45px; margin-right: 10px; vertical-align: middle;">`
+            };
+        });
+    }
+
+    const sorted = renderList.sort((a, b) => b.score - a.score);
+    board.style.minHeight = (sorted.length * 80) + "px";
+
+    sorted.forEach((p, index) => {
+        const topPos = index * 80;
+        let row = document.getElementById(`live-rank-${p.renderId}`);
+        let medal = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `${index + 1}위`;
+        let rankClass = index === 0 ? "rank-1" : index === 1 ? "rank-2" : index === 2 ? "rank-3" : "";
+
+        if (!row) {
+            row = document.createElement("div");
+            row.id = `live-rank-${p.renderId}`;
+            row.className = `live-rank-item`;
+            row.innerHTML = `
+                <div class="live-rank-badge"></div>
+                <div class="live-rank-user" style="display:flex; align-items:center;"></div>
+                <div class="live-rank-items"></div>
+                <div class="live-rank-score">0점</div>
+            `;
+            board.appendChild(row);
+        }
+        
+        row.style.top = topPos + "px";
+        row.className = `live-rank-item ${rankClass}`;
+        row.querySelector(".live-rank-badge").innerText = medal;
+        row.querySelector(".live-rank-user").innerHTML = `${p.icon} ${p.title} ${p.subtitle}`;
+        row.querySelector(".live-rank-items").innerText = p.items;
+        row.querySelector(".live-rank-score").innerText = p.score + "점";
+    });
+}
+
+// 🛑 진행 중인 게임 강제 종료 버튼
+bindClick("teacher-match-abort-btn", async () => {
+    playSound("click");
+    if(confirm("진행 중인 게임을 즉시 종료하고 아이들을 대기실로 부르시겠습니까?")) {
+        await setDoc(doc(db, "gameData", "multiRoom"), { status: "waiting" }, { merge: true });
+    }
+});
+
+// 🚀 교사 대기실 나가기 버튼 핸들러 연결
 bindClick("teacher-lobby-exit-btn", async () => {
   playSound("click");
-  isTeacherMode = false; // 🚀 교사 모드 해제
+  isTeacherMode = false; 
   if (lobbyUsersUnsubscribe) { lobbyUsersUnsubscribe(); lobbyUsersUnsubscribe = null; }
+  if (lobbyChatUnsubscribe) { lobbyChatUnsubscribe(); lobbyChatUnsubscribe = null; }
+  if (multiRoomUnsubscribe) { multiRoomUnsubscribe(); multiRoomUnsubscribe = null; }
+  if (teacherRenderInterval) { clearInterval(teacherRenderInterval); teacherRenderInterval = null; }
   await setDoc(doc(db, "gameData", "multiRoom"), { status: "waiting" });
   showScreen("lobby-mode-screen");
 });
 // ==========================================
-// 💥 멀티플레이 특수 아이템 대인 타격 처리 시스템
+// 🚀 전역 뒤로가기 버튼 UI 이름/위치 통일 패치
 // ==========================================
+const backBtnIds = [
+  "char-shop-back-btn", "admin-main-close-btn", "admin-feedback-back-btn", 
+  "admin-student-back-btn", "admin-set-list-back-btn", "set-select-back-btn", 
+  "lobby-mode-back-btn", "lobby-exit-btn", "teacher-lobby-exit-btn", 
+  "menu-go-back-set-btn", "list-back-btn", "fc-option-back-btn", 
+  "time-option-back-btn", "home-btn", "ranking-home-btn"
+];
 
-// 공격 대상 선택 모달 빌더
-async function openTargetSelectionModal(itemType, title, desc, gameCallback) {
-  const modal = document.getElementById("multi-target-modal");
-  const listContainer = document.getElementById("multi-target-list");
+// 1. 위 목록에 있는 모든 버튼을 찾아 "⬅️ 뒤로 가기"로 이름을 바꾸고 좌상단으로 날려버립니다.
+backBtnIds.forEach(id => {
+  const btn = document.getElementById(id);
+  if (btn) {
+    btn.innerText = "⬅️ 뒤로 가기";
+    btn.classList.add("global-back-btn");
+  }
+});
+
+// 2. 게임 플레이 중 나타나는 인게임 메뉴 버튼은 이미 좌상단에 잘 세팅되어 있으므로 텍스트만 맞춥니다.
+const inGameBackBtn = document.getElementById("back-to-menu-btn");
+if (inGameBackBtn) {
+  inGameBackBtn.innerText = "⬅️ 뒤로 가기";
+}
+// ==========================================
+// 🚀 하이파이브 조편성 코어 엔진
+// ==========================================
+let hfClicked = false;
+
+function startHighFiveLogic(endTime) {
+  hfClicked = false;
+  showScreen("highfive-screen");
   
-  document.getElementById("multi-target-title").innerText = title;
-  document.getElementById("multi-target-desc").innerText = desc;
-  listContainer.innerHTML = "<span style='color:#888; font-size:14px; padding:10px;'>타겟 탐색 중...</span>";
-  modal.style.display = "flex";
+  const timerEl = document.getElementById("hf-timer");
+  const btn = document.getElementById("hf-btn");
+  const status = document.getElementById("hf-status");
+  
+  btn.style.display = "flex";
+  status.style.display = "none";
+  
+  // 교사 모드면 버튼 숨기고 안내만 띄움
+  if(isTeacherMode) {
+      btn.style.display = "none";
+      status.style.display = "block";
+      status.innerText = "학생들이 조편성을 진행 중입니다...";
+  }
 
-  // 현재 룸안에 실시간 동기화 중인 학생들의 스냅샷 스캔
-  try {
-    const snap = await getDocs(collection(db, "lobbyUsers"));
-    listContainer.innerHTML = "";
-    let targetsExist = false;
+  clearInterval(gameTimerInterval);
+  gameTimerInterval = setInterval(() => {
+     const remaining = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
+     timerEl.innerText = remaining;
+     
+     if(remaining <= 0) {
+         clearInterval(gameTimerInterval);
+         
+         // 안 누르고 뻐기는 학생은 15초 땡 치는 순간 강제 터치!
+         if(!isTeacherMode && !hfClicked) {
+             submitHighFive(Date.now());
+         }
+         
+         timerEl.innerText = "종료!";
+         btn.style.display = "none";
+         status.style.display = "block";
+         status.innerText = "조편성 결과 집계 중... (약 2초)";
+         
+         // 데이터 동기화를 위해 2.5초 대기 후 결과창 이동
+         setTimeout(() => { processHighFiveResult(); }, 2500);
+     }
+  }, 500);
+}
 
-    snap.forEach((docObj) => {
-      const u = docObj.data();
-      // 나 자신은 공격 대상 목록에서 철저히 배제
-      if (docObj.id !== myLobbyDocId) {
-        targetsExist = true;
-        const btn = document.createElement("button");
-        btn.style.cssText = "width:100%; text-align:left; font-size:16px; padding:10px; margin:0; border-radius:10px; background:#fff; color:#333; border:2px solid #ddd; box-shadow:0 3px 0 #ccc; display:flex; justify-content:space-between; align-items:center;";
-        btn.innerHTML = `<span>${u.emoji} ${u.nickname}</span> <span style='font-weight:bold; color:#ff4081;'>${u.score}점</span>`;
-        
-        btn.onclick = async () => {
-          modal.style.display = "none";
-          playSound("success");
-          await fireAttackToTarget(itemType, docObj.id, u, gameCallback);
-        };
-        listContainer.appendChild(btn);
-      }
+bindClick("hf-btn", () => {
+    if(hfClicked || isTeacherMode) return;
+    playSound("pop");
+    submitHighFive(Date.now()); // 누른 순간의 밀리초(Timestamp) 전송!
+});
+
+async function submitHighFive(timestamp) {
+    hfClicked = true;
+    document.getElementById("hf-btn").style.display = "none";
+    const status = document.getElementById("hf-status");
+    status.style.display = "block";
+    status.innerText = "하이파이브 성공! 다른 친구들을 기다리는 중...";
+    
+    try {
+        await addDoc(collection(db, "scores"), {
+          stdId: currentUser.stdId, 
+          nickname: currentUser.nickname, 
+          character: currentUser.character,
+          score: timestamp, // 점수 칸에 타이밍(Timestamp)을 넣습니다
+          mode: "highfive", 
+          timestamp: Date.now()
+        });
+    } catch(e) { console.error(e); }
+}
+
+// 🚀 하이파이브 결과 처리 (학번/실명 표시 및 데이터 저장)
+async function processHighFiveResult() {
+    showScreen("loading-screen");
+    document.querySelector("#loading-screen h2").innerText = "마음이 통하는 친구들을 찾고 있습니다...";
+    
+    let groupCount = 2;
+    const roomDoc = await getDoc(doc(db, "gameData", "multiRoom"));
+    if(roomDoc.exists() && roomDoc.data().groupCount) groupCount = roomDoc.data().groupCount;
+
+    const qSnap = await getDocs(collection(db, "scores"));
+    let hfScores = [];
+    const thirtySecondsAgo = Date.now() - 30000; 
+    qSnap.forEach(d => {
+        const s = d.data();
+        if(s.mode === "highfive" && s.timestamp > thirtySecondsAgo) hfScores.push(s);
     });
 
-    if(!targetsExist) {
-      listContainer.innerHTML = "<p style='font-size:14px; color:#666; padding:10px; margin:0;'>공격할 수 있는 다른 학생이 없습니다! 혼자 플레이 중입니다.</p>";
-    }
-
-  } catch(e) { console.error(e); modal.style.display = "none"; isGamePaused = false; gameCallback(); }
-
-  // 취소 버튼 연동
-  document.getElementById("multi-target-cancel-btn").onclick = () => {
-    modal.style.display = "none";
-    playSound("click");
-    isGamePaused = false;
-    gameCallback();
-  };
-}
-
-// 타겟을 향한 실시간 공격 신호 미사일 발사부
-async function fireAttackToTarget(itemType, targetDocId, targetData, gameCallback) {
-  try {
-    // 실시간 정밀 타격을 위해 대상의 최신 점수 다이렉트 긴급 로드
-    const freshSnap = await getDoc(doc(db, "lobbyUsers", targetDocId));
-    let currentTargetScore = targetData.score;
-    if(freshSnap.exists()) currentTargetScore = freshSnap.data().score || 0;
-
-    if (itemType === "swap") {
-      // 🔄 점수 스왑 연산: 내 점수와 타겟 점수를 통째로 교체
-      let myOldScore = gameScore;
-      gameScore = currentTargetScore;
-      
-      // 상대편 기기에 변동 점수 주입 및 팝업 통보 전송
-      await setDoc(doc(db, "lobbyUsers", targetDocId), { 
-        score: myOldScore,
-        attack: { type: "swap", by: currentUser.nickname, newScore: myOldScore }
-      }, { merge: true });
-
-      showBuffMsg("점수 스왑 성공!", `${targetData.nickname}님과 점수가 바뀌어 ${gameScore}점이 되었습니다!`, 76, 175, 80);
-
-    } else if (itemType === "steal50") {
-      // 💥 50% 강탈 연산: 타겟의 점수 절반을 빼앗아 나에게 흡수
-      let stealAmt = Math.floor(currentTargetScore * 0.5);
-      gameScore += stealAmt;
-
-      let targetNewScore = Math.max(0, currentTargetScore - stealAmt);
-      await setDoc(doc(db, "lobbyUsers", targetDocId), {
-        score: targetNewScore,
-        attack: { type: "steal50", by: currentUser.nickname, amt: stealAmt }
-      }, { merge: true });
-
-      showBuffMsg("강탈 대성공! 🔵", `${targetData.nickname}님에게서 ${stealAmt}점을 강탈했습니다!`, 33, 150, 243);
-
-    } else if (itemType === "blind") {
-      // 🕶️ 화면 가리기 전송 (대상 점수 파괴 없음)
-      await setDoc(doc(db, "lobbyUsers", targetDocId), {
-        attack: { type: "blind", by: currentUser.nickname }
-      }, { merge: true });
-
-      showBuffMsg("블라인드 저주 발사! 👻", `${targetData.nickname}님의 화면을 3초간 마비시켰습니다.`, 156, 39, 176);
-    }
-
-  } catch(e) { console.error("공격 실패:", e); }
-
-  refreshGameModeUI();
-  isGamePaused = false;
-  gameCallback();
-}
-
-// 🚨 광역 패시브: 나를 제외한 방 안의 모든 학생 점수 10%씩 일제 강탈
-async function executeSteal10FromAll(gameCallback) {
-  try {
-    const snap = await getDocs(collection(db, "lobbyUsers"));
-    let totalStolen = 0;
-
-    for (let docObj of snap.docs) {
-      if (docObj.id !== myLobbyDocId) {
-        const u = docObj.data();
-        let stolen = Math.floor((u.score || 0) * 0.1);
-        totalStolen += stolen;
-
-        let uNewScore = Math.max(0, (u.score || 0) - stolen);
-        // 대상 유저들 일제히 차감 및 도발 팝업 송신
-        await setDoc(doc(db, "lobbyUsers", docObj.id), {
-          score: uNewScore,
-          attack: { type: "steal10all", by: currentUser.nickname }
-        }, { merge: true });
-      }
-    }
-
-    gameScore += totalStolen;
-    showBuffMsg("🔱 광역 강탈 스킬 발동!", `모든 학생의 점수를 10%씩 흡수하여 총 ${totalStolen}점을 획득했습니다!`, 255, 152, 0);
-
-  } catch(e) { console.error(e); }
-
-  refreshGameModeUI();
-  isGamePaused = false;
-  gameCallback();
-}
-
-// 💥 날벼락 피격 이벤트 발생 시 수신자 브라우저 작동 컨트롤러
-function handleIncomingAttack(atk) {
-  if (atk.type === "swap") {
-    playSound("wrong");
-    gameScore = atk.newScore;
-    refreshGameModeUI();
-    alert(`🚨 날벼락 발동!!!\n\n[${atk.by}]님이 당신과 점수를 맞바꿨습니다!\n바뀐 내 점수: ${gameScore}점`);
-
-  } else if (atk.type === "steal50") {
-    playSound("wrong");
-    // 공격자가 내 점수를 계산하여 줄였으므로, 로컬 변수 즉시 재동기화 후 경고창 알림
-    gameScore = Math.floor(gameScore * 0.5);
-    refreshGameModeUI();
-    alert(`🚨 탈탈 털렸습니다!!!\n\n[${atk.by}]님이 당신의 점수 50% (${atk.amt}점)를 빼앗아 갔습니다!`);
-
-  } else if (atk.type === "steal10all") {
-    playSound("wrong");
-    gameScore = Math.max(0, gameScore - Math.floor(gameScore * 0.1));
-    refreshGameModeUI();
-    showBuffMsg("💥 흡수 당함!", `[${atk.by}]님의 광역 스킬로 인해 내 점수의 10%를 빼앗겼습니다!`, 244, 67, 54);
-
-  } else if (atk.type === "blind") {
-    playSound("wrong");
-    const blindOverlay = document.getElementById("multi-blind-overlay");
-    document.getElementById("multi-blind-msg").innerText = `😈 [${atk.by}]님의 먹칠 공격! 3초간 조작이 불가합니다.`;
+    let uniqueTop = {};
+    hfScores.forEach(s => { 
+        if(!uniqueTop[s.stdId] || uniqueTop[s.stdId].score > s.score) uniqueTop[s.stdId] = s; 
+    });
     
-    // 3초간 전면 차단 레이어 노출
-    blindOverlay.style.display = "flex";
-    setTimeout(() => {
-      blindOverlay.style.display = "none";
-    }, 3000);
-  }
+    let sorted = Object.values(uniqueTop).sort((a, b) => a.score - b.score);
+    let groups = Array.from({length: groupCount}, () => []);
+    let baseSize = Math.floor(sorted.length / groupCount);
+    let remainder = sorted.length % groupCount;
+    
+    let currentIndex = 0;
+    for(let i=0; i<groupCount; i++) {
+        let size = baseSize + (i < remainder ? 1 : 0);
+        groups[i] = sorted.slice(currentIndex, currentIndex + size);
+        currentIndex += size;
+    }
+
+    // 🚀 교사가 '이 조로 게임하기'를 누를 때를 대비해 결과를 메모리에 임시 저장
+    window.latestGroups = groups;
+
+    const container = document.getElementById("hf-result-container");
+    container.innerHTML = "";
+    
+    groups.forEach((group, idx) => {
+        const groupDiv = document.createElement("div");
+        groupDiv.style.cssText = "background: white; border: 4px solid #FF9800; border-radius: 15px; padding: 15px; width: 100%; max-width: 280px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);";
+        groupDiv.innerHTML = `<h3 style="margin-top:0; color:#F57C00; border-bottom:2px dashed #ccc; padding-bottom:10px; font-size:22px;">${idx + 1}조 (${group.length}명)</h3>`;
+        
+        const ul = document.createElement("div");
+        ul.style.cssText = "display: flex; flex-direction: column; gap: 8px;";
+        group.forEach(member => {
+            const charFolder = member.character || "기본0(민준쌤)";
+            // 🚀 결과창에 학번과 실명 동시 표기
+            ul.innerHTML += `
+              <div style="display:flex; align-items:center; gap:10px; background:#fff3e0; padding:8px 12px; border-radius:10px; border:2px solid #ffe0b2;">
+                <img src="char/${charFolder}/stand1_0.png" style="height:40px; image-rendering:pixelated; image-rendering: crisp-edges;">
+                <div style="display:flex; flex-direction:column; align-items:flex-start;">
+                  <span style="font-weight:bold; font-size:16px; color:#333;">${member.nickname}</span>
+                  <span style="font-size:12px; color:#666;">${member.stdId} ${member.realName || ''}</span>
+                </div>
+              </div>
+            `;
+        });
+        groupDiv.appendChild(ul);
+        container.appendChild(groupDiv);
+    });
+    
+    // 교사에게만 확정/취소 버튼 보이기, 학생은 대기 메시지 띄우기
+    const playBtn = document.getElementById("hf-result-play-btn");
+    if(playBtn) playBtn.style.display = isTeacherMode ? "block" : "none";
+    const homeBtn = document.getElementById("hf-result-home-btn");
+    if(homeBtn) homeBtn.style.display = isTeacherMode ? "block" : "none";
+
+    // 🚀 학생 화면에는 버튼 대신 자동 이동 대기 메시지 띄우기
+    let studentWaitMsg = document.getElementById("hf-student-wait-msg");
+    if (!studentWaitMsg) {
+        studentWaitMsg = document.createElement("div");
+        studentWaitMsg.id = "hf-student-wait-msg";
+        studentWaitMsg.style.cssText = "font-size: 22px; font-weight: bold; color: #E91E63; margin-top: 25px; width: 100%; text-align: center;";
+        studentWaitMsg.innerText = "⏳ 선생님의 조편성 확정을 기다리는 중...";
+        document.getElementById("highfive-result-screen").appendChild(studentWaitMsg);
+    }
+    studentWaitMsg.style.display = isTeacherMode ? "none" : "block";
+
+    showScreen("highfive-result-screen");
+    playSound("success");
+    fireConfetti();
 }
-// 🚀 교사용 원격 게임 강제 종료 이벤트 바인딩
-bindClick("teacher-match-abort-btn", async () => {
-  if (!confirm("현재 진행 중인 실시간 멀티플레이 대전을 강제 종료하시겠습니까?\n접속한 모든 학생의 화면도 즉시 중단됩니다.")) return;
-  
-  playSound("wrong");
-  clearInterval(teacherMatchInterval);
-  if (teacherLiveUnsubscribe) { teacherLiveUnsubscribe(); teacherLiveUnsubscribe = null; }
-  if (lobbyUsersUnsubscribe) { lobbyUsersUnsubscribe(); lobbyUsersUnsubscribe = null; }
-  
-  // 서버 룸 상태를 대기(waiting) 상태로 즉시 강제 폭파 신호 전송!
-  await setDoc(doc(db, "gameData", "multiRoom"), { status: "waiting" });
-  
-  alert("게임이 정상적으로 강제 종료되었습니다.");
-  enterMultiLobbyAsTeacher(); // 교사 대기실 화면으로 리턴
+
+// 🚀 교사 전용: 이 조로 게임하기(확정) 버튼
+bindClick("hf-result-play-btn", async () => {
+    if (!isTeacherMode) return;
+    playSound("click");
+    document.getElementById("confetti-canvas").style.display = "none";
+    
+    // 로비에 있는 모든 유저에게 조(groupId) 부여하기
+    const lobbySnap = await getDocs(collection(db, "lobbyUsers"));
+    lobbySnap.forEach(docSnap => {
+        const d = docSnap.data();
+        let gId = null;
+        for (let i = 0; i < window.latestGroups.length; i++) {
+            if (window.latestGroups[i].find(m => m.stdId === d.stdId)) { gId = i + 1; break; }
+        }
+        if (gId) setDoc(docSnap.ref, { groupId: gId }, { merge: true });
+    });
+
+    currentGroupingActive = true;
+    await setDoc(doc(db, "gameData", "multiRoom"), { status: "waiting", groupingActive: true }, { merge: true });
+    alert("✅ 조편성이 완료되어 활성화되었습니다!");
+    showScreen("teacher-lobby-screen");
 });
-// 🧹 교사용 유령 유저 (전체) 강제 퇴장 처리
-bindClick("teacher-clear-ghosts-btn", async () => {
-  playSound("click");
-  if(confirm("대기실의 모든 유저 목록을 강제로 싹 비웁니다.\n(실제 접속 중인 학생도 지워지니 주의하세요!) 진행할까요?")) {
-    try {
-      const snap = await getDocs(collection(db, "lobbyUsers"));
-      snap.forEach(d => deleteDoc(doc(db, "lobbyUsers", d.id)));
-      alert("대기실 명단이 초기화되었습니다.");
-    } catch(e) { console.error("초기화 에러", e); }
-  }
+
+// 취소 및 대기실로 돌아가기 (조편성 해제)
+bindClick("hf-result-home-btn", async () => {
+    playSound("click");
+    document.getElementById("confetti-canvas").style.display = "none";
+    if(isTeacherMode) {
+        currentGroupingActive = false;
+        await setDoc(doc(db, "gameData", "multiRoom"), { status: "waiting", groupingActive: false }, { merge: true });
+        alert("❌ 조편성을 취소하고 대기실로 돌아갑니다.");
+        showScreen("teacher-lobby-screen");
+    } else {
+        showScreen("multi-lobby-screen");
+    }
+});
+
+// 채팅 보낼 때 자기 조 번호 같이 보내기 (마지막 수정 포인트)
+bindClick("lobby-chat-send-btn", async () => {
+  const input = document.getElementById("lobby-chat-input"); const text = input.value.trim(); if(!text) return;
+  input.value = ""; playSound("pop");
+  try { 
+    // 🚀 에러 방지: 조편성이 안되어있으면 undefined 대신 null을 전송하게 묶어줍니다.
+    await addDoc(collection(db, "lobbyChat"), { 
+        stdId: currentUser.stdId, 
+        nickname: currentUser.nickname, 
+        text: text, 
+        groupId: myCurrentGroupId || null, 
+        timestamp: Date.now() 
+    }); 
+  } catch(e) { console.error("채팅 전송 에러:", e); }
+});
+
+const chatInput = document.getElementById("lobby-chat-input");
+if(chatInput) { chatInput.onkeydown = (e) => { if(e.key === "Enter") { document.getElementById("lobby-chat-send-btn").click(); } }; }
+
+// ==========================================
+// 🧪 개발자 전용 빠른 테스트 모드 (원클릭 입장)
+// ==========================================
+bindClick("dev-t-btn", () => {
+    playSound("click");
+    enterMultiLobbyAsTeacher(); // 인증 생략하고 바로 교사 로비로 점프!
+});
+
+bindClick("dev-s1-btn", () => {
+    playSound("click");
+    // 가상의 테스터 1 데이터 강제 주입
+    currentUser.stdId = "9991";
+    currentUser.realName = "테스터1";
+    currentUser.nickname = "테스터1";
+    currentUser.classId = "99";
+    currentUser.character = availableCharacters[0] || "기본0(민준쌤)";
+    enterMultiLobbyAsStudent(); // 인증 생략하고 바로 학생 로비로 점프!
+});
+
+bindClick("dev-s2-btn", () => {
+    playSound("click");
+    // 가상의 테스터 2 데이터 강제 주입
+    currentUser.stdId = "9992";
+    currentUser.realName = "테스터2";
+    currentUser.nickname = "테스터2";
+    currentUser.classId = "99";
+    // 캐릭터가 여러 개면 2번째 캐릭터 할당, 없으면 1번째 할당
+currentUser.character = availableCharacters[1] || availableCharacters[0] || "기본0(민준쌤)";
+    enterMultiLobbyAsStudent(); // 인증 생략하고 바로 학생 로비로 점프!
 });
