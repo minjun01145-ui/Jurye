@@ -1021,13 +1021,16 @@ function triggerTreasureEvent(callback) {
   const chests = document.querySelectorAll(".treasure-chest");
   
   chests.forEach(chest => {
-    chest.onclick = null;
     chest.onclick = () => {
+      // 🚀 핵심 버그 픽스 1: 한 번 누르면 모든 상자의 터치 기능을 즉시 마비시켜 '다다닥' 중복 클릭 원천 차단!
+      chests.forEach(c => c.onclick = null);
+
       playSound("click"); chest.classList.add("chest-explode");
       setTimeout(() => {
         overlay.style.display = "none"; chest.classList.remove("chest-explode");
         
-        if (myLobbyDocId && multiUseSpecialItems) {
+        // 🚀 핵심 버그 픽스 2: 멀티 특수 아이템 함수가 누락되어 멈추는 현상 방지 안전장치
+        if (myLobbyDocId && multiUseSpecialItems && typeof openTargetSelectionModal === "function") {
           let multiItemType = Math.floor(Math.random() * 6); 
           
           if (multiItemType === 0) {
@@ -1042,6 +1045,7 @@ function triggerTreasureEvent(callback) {
             executeNormalTreasureEffect(Math.floor(Math.random() * 2) === 0 ? 0 : 2, callback);
           }
         } else {
+          // 혼자하기 모드이거나 공격 함수가 아직 로드되지 않았을 때는 무조건 일반 모드로 안전하게 라우팅!
           executeNormalTreasureEffect(Math.floor(Math.random() * 3), callback);
         }
       }, 400); 
@@ -1869,15 +1873,22 @@ function updateTeacherMenuVisibility() {
     if(!modeSelect) return;
     const mode = modeSelect.value;
     const isHf = (mode === "highfive");
+    const isCreate = (mode === "create");
     
-    document.getElementById("teacher-time-container").style.display = isHf ? "none" : "block";
-    document.getElementById("teacher-item-container").style.display = isHf ? "none" : "block";
-    document.getElementById("teacher-set-container").style.display = isHf ? "none" : "block";
+    // 일반 게임용
+    document.getElementById("teacher-time-container").style.display = (isHf || isCreate) ? "none" : "block";
+    document.getElementById("teacher-item-container").style.display = (isHf || isCreate) ? "none" : "block";
+    document.getElementById("teacher-set-container").style.display = (isHf) ? "none" : "block";
+    
+    // 조편성용
     document.getElementById("teacher-group-count-container").style.display = isHf ? "block" : "none";
-    
-    // 🚀 조편성이 활성화된 상태이고 하이파이브가 아닐 때만 "조별 게임 방식" 노출!
     const playModeContainer = document.getElementById("teacher-group-play-mode-container");
     if(playModeContainer) playModeContainer.style.display = (currentGroupingActive && !isHf) ? "block" : "none";
+
+    // 문제만들기용
+    document.getElementById("teacher-create-time-container").style.display = isCreate ? "block" : "none";
+    document.getElementById("teacher-create-count-container").style.display = isCreate ? "block" : "none";
+    document.getElementById("teacher-create-type-container").style.display = isCreate ? "block" : "none";
 }
 
 // 🚀 모드 선택 시 메뉴 변경
@@ -1901,7 +1912,28 @@ bindClick("teacher-game-start-btn", async () => {
      startHighFiveLogic(targetEndTime); 
      return;
   }
+// 🚀 문제 만들기 모드일 경우 통신 로직
+  if (mode === "create") {
+      const cTime = parseInt(document.getElementById("teacher-create-time-select").value);
+      const cCount = parseInt(document.getElementById("teacher-create-count-select").value);
+      
+      let allowedTypes = [];
+      document.querySelectorAll(".create-type-cb:checked").forEach(cb => allowedTypes.push(cb.value));
+      if(allowedTypes.length === 0) return alert("최소 1개 이상의 문제 유형을 선택해 주세요!");
 
+      const setSelect = document.getElementById("teacher-game-set-select");
+      const setId = setSelect ? setSelect.value : null;
+      if (!setId) return alert("참고할 학습 세트를 선택해 주세요!");
+      const selectedSet = wordSets.find(s => s.id === setId);
+
+      const targetEndTime = Date.now() + (cTime * 60 * 1000); // 카운트다운 없이 바로 시작
+
+      await setDoc(doc(db, "gameData", "multiRoom"), { 
+          status: "playing", gameMode: mode, duration: cTime, targetProblemCount: cCount, allowedTypes: allowedTypes,
+          setId: setId, setTitle: selectedSet.title, endTime: targetEndTime 
+      }, { merge: true });
+      return;
+  }
   const timeSelect = document.getElementById("teacher-game-time-select");
   const duration = timeSelect ? parseInt(timeSelect.value) : 3;
   const setSelect = document.getElementById("teacher-game-set-select");
@@ -2369,3 +2401,93 @@ bindClick("dev-s2-btn", () => {
 currentUser.character = availableCharacters[1] || availableCharacters[0] || "기본0(민준쌤)";
     enterMultiLobbyAsStudent(); // 인증 생략하고 바로 학생 로비로 점프!
 });
+// ==========================================
+// 🚀 누락되었던 멀티플레이어 전용 특수 공격 시스템 픽스!
+// ==========================================
+window.openTargetSelectionModal = function(attackType, title, desc, callback) {
+    const modal = document.getElementById("multi-target-modal");
+    if(!modal) { isGamePaused = false; callback(); return; } 
+    
+    document.getElementById("multi-target-title").innerText = title;
+    document.getElementById("multi-target-desc").innerText = desc;
+    const listEl = document.getElementById("multi-target-list");
+    listEl.innerHTML = "";
+    
+    let targets = window.globalLobbyPlayers ? window.globalLobbyPlayers.filter(p => p.stdId !== currentUser.stdId) : [];
+    
+    if (targets.length === 0) {
+        alert("공격할 대상이 없어 일반 게임으로 계속 진행합니다!");
+        isGamePaused = false; callback(); return;
+    }
+
+    targets.forEach(t => {
+        const btn = document.createElement("button");
+        btn.style.cssText = "padding: 10px; font-size: 16px; border-radius: 10px; background: #fff; border: 2px solid #ddd; text-align: left; font-weight: bold; cursor: pointer; margin-bottom: 5px;";
+        btn.innerText = `🎯 ${t.nickname} (${t.score || 0}점)`;
+        btn.onclick = async () => {
+            playSound("pop"); modal.style.display = "none";
+            try {
+                let targetOldScore = t.score || 0;
+                await setDoc(doc(db, "lobbyUsers", t.docId), {
+                    attack: { type: attackType, fromId: currentUser.stdId, fromName: currentUser.nickname, myScore: gameScore, timestamp: Date.now() }
+                }, { merge: true });
+
+                if (attackType === "swap") {
+                    gameScore = targetOldScore;
+                    showBuffMsg("점수 스왑 성공!", `${t.nickname}님과 점수가 바뀌었습니다!`, 156, 39, 176);
+                } else if (attackType === "steal50") {
+                    const stolen = Math.floor(targetOldScore / 2);
+                    gameScore += stolen;
+                    showBuffMsg("점수 강탈 성공!", `${t.nickname}님의 점수 ${stolen}점을 뺏었습니다!`, 233, 30, 99);
+                } else if (attackType === "blind") {
+                    showBuffMsg("블라인드 공격 성공!", `${t.nickname}님의 화면을 가렸습니다!`, 33, 33, 33);
+                }
+            } catch(e) { console.error(e); }
+            refreshGameModeUI(); isGamePaused = false; callback();
+        };
+        listEl.appendChild(btn);
+    });
+
+    document.getElementById("multi-target-cancel-btn").onclick = () => {
+        playSound("click"); modal.style.display = "none"; isGamePaused = false; callback();
+    };
+    modal.style.display = "flex";
+};
+
+window.executeSteal10FromAll = async function(callback) {
+    let stolenTotal = 0;
+    const targets = window.globalLobbyPlayers ? window.globalLobbyPlayers.filter(p => p.stdId !== currentUser.stdId) : [];
+    targets.forEach(t => {
+        setDoc(doc(db, "lobbyUsers", t.docId), {
+            attack: { type: "steal10", fromId: currentUser.stdId, fromName: currentUser.nickname, timestamp: Date.now() }
+        }, { merge: true });
+        stolenTotal += 10;
+    });
+    gameScore += stolenTotal;
+    showBuffMsg("광역 공격 성공!", `모든 친구에게서 총 ${stolenTotal}점을 뺏어왔습니다!`, 255, 87, 34);
+    refreshGameModeUI(); isGamePaused = false; callback();
+};
+
+window.handleIncomingAttack = function(atk) {
+    if (!atk) return;
+    playSound("wrong");
+    if (atk.type === "swap") {
+        showBuffMsg("앗!", `${atk.fromName}님이 당신과 점수를 바꿨습니다!`, 244, 67, 54);
+        gameScore = atk.myScore || 0; 
+    } else if (atk.type === "steal50") {
+        const lost = Math.floor(gameScore / 2);
+        gameScore -= lost;
+        showBuffMsg("강탈당함!", `${atk.fromName}님에게 ${lost}점을 뺏겼습니다!`, 244, 67, 54);
+    } else if (atk.type === "steal10") {
+        gameScore -= 10;
+        showBuffMsg("광역 공격!", `${atk.fromName}님이 10점을 훔쳐갔습니다!`, 244, 67, 54);
+    } else if (atk.type === "blind") {
+        const blind = document.getElementById("multi-blind-overlay");
+        if (blind) {
+            document.getElementById("multi-blind-msg").innerText = `${atk.fromName}님의 공격! 3초 후 해제됩니다.`;
+            blind.style.display = "flex";
+            setTimeout(() => { blind.style.display = "none"; }, 3000);
+        }
+    }
+    refreshGameModeUI();
+};
