@@ -492,20 +492,15 @@ function resetGameStates() {
   
   lastSyncedScore = -1; lastSyncedItems = null; 
   
+  // 🚀 [좀비 점수 소각 픽스 2] 학생 기기에서도 DB에 자신의 점수를 명시적으로 0으로 덮어씀
+  if (myLobbyDocId) {
+      setDoc(doc(db, "lobbyUsers", myLobbyDocId), { score: 0, items: "", createdCount: 0, isSubmitted: false }, { merge: true }).catch(e=>e);
+  }
+  
   // 🚀 문제 만들기 상태 초기화
   myCreatedProblems = []; currentEditingSlot = -1;
   const submitBtn = document.getElementById("create-submit-btn"); if(submitBtn) submitBtn.style.display = "none";
-  const inlineShop = document.getElementById("inline-shop-container"); if(inlineShop) inlineShop.style.display = "none";
-
-  ["game-countdown-overlay", "treasure-overlay", "sq-penalty-overlay", "buff-msg-overlay"].forEach(id => {
-    let el = document.getElementById(id); if(el) el.style.display = "none";
-  });
-  ["pile-double_current", "pile-half_current", "pile-double_future"].forEach(id => {
-    let el = document.getElementById(id); if(el) el.innerHTML = "";
-  });
-  let blocker = document.getElementById("group-blocker-overlay"); if(blocker) blocker.style.display = "none";
 }
-
 bindClick("close-modal-btn", () => { document.getElementById("unknown-modal").style.display = "none"; });
 // 🚀 1. 게임 도중 좌상단 '메뉴' 버튼 (유령 플레이어 생성 완벽 방지)
 bindClick("back-to-menu-btn", async () => { 
@@ -1010,6 +1005,9 @@ function routeGameStart(minutes) {
 }
 
 function startCountdown(minutes, screenId, logicCallback) {
+  // 🚀 [안정성 픽스 1] 기존에 돌고 있던 모든 타이머와 찌꺼기들을 확실하게 파괴하고 시작! (더블 스피드 폭주 완벽 차단)
+  clearInterval(gameTimerInterval); 
+  clearInterval(cdInterval);
   showScreen(screenId); document.getElementById("top-left-controls").style.display = "flex";
   const overlay = document.getElementById("game-countdown-overlay"); const textEl = document.getElementById("countdown-text");
   overlay.style.display = "flex"; gameTimeRemaining = minutes * 60; gameScore = 0; globalScoreMultiplier = 1;
@@ -1055,7 +1053,6 @@ function addInventoryItem(type) {
 }
 
 function triggerTreasureEvent(callback) {
-  // 🚀 선생님이 보물상자(버프) 자체를 껐다면 상자를 띄우지 않고 바로 넘어갑니다!
   if (myLobbyDocId && window.multiUseBuffItems === false) {
       callback();
       return;
@@ -1071,23 +1068,22 @@ function triggerTreasureEvent(callback) {
 
       playSound("click"); chest.classList.add("chest-explode");
 
-      // 🚀 [천재적 최적화] 보물상자가 터지는 애니메이션(0.4초)이 진행되는 동안, 
-      // 뒤에서 '몰래' 전체 학생의 최신 점수를 딱 1번만 가져옵니다! (렉 전혀 없음)
-      let fetchPromise = Promise.resolve();
+      // 🚀 [초강력 멈춤 방지 픽스] 
+      // 서버에서 점수를 가져오라고 명령만 던져놓고, "절대 기다리지 않음(No Await)!"
+      // 와이파이가 느려서 못 가져오면 그냥 옛날 점수 띄우고 게임은 무조건 진행시킴!
       if (myLobbyDocId && multiUseSpecialItems && typeof openTargetSelectionModal === "function") {
-          fetchPromise = getDocs(collection(db, "lobbyUsers")).then(snap => {
+          getDocs(collection(db, "lobbyUsers")).then(snap => {
               let freshPlayers = [];
               snap.forEach(d => freshPlayers.push({ docId: d.id, ...d.data() }));
-              window.globalLobbyPlayers = freshPlayers; // 최신 점수로 갱신 완료!
-          }).catch(e => console.error(e));
+              window.globalLobbyPlayers = freshPlayers; 
+          }).catch(e => console.error("점수 로딩 지연(무시됨)"));
       }
 
-      setTimeout(async () => {
-        await fetchPromise; // 데이터 로딩이 끝날 때까지 안전하게 대기
+      // 무조건 0.4초 뒤에 상자 닫고 게임 재개 (절대 멈추지 않음)
+      setTimeout(() => { 
         overlay.style.display = "none"; chest.classList.remove("chest-explode");
         
         if (myLobbyDocId && multiUseSpecialItems && typeof openTargetSelectionModal === "function") {
-          // 🚀 렉 유발 주범이던 '전체 10점 뺏기' 완전 삭제! 및 확률 재조정 (0,1,2는 공격 / 나머진 버프)
           let multiItemType = Math.floor(Math.random() * 5); 
           if (multiItemType === 0) { openTargetSelectionModal("swap", "🔄 점수 뒤바꾸기 공격!", "점수를 강제로 맞교환할 타겟을 선택하세요.", callback); } 
           else if (multiItemType === 1) { openTargetSelectionModal("steal50", "💥 점수 50% 강탈 공격!", "점수의 절반을 내 점수로 뺏어올 대상을 고르세요.", callback); } 
@@ -1100,7 +1096,6 @@ function triggerTreasureEvent(callback) {
     };
   });
 }
-
 function executeNormalTreasureEffect(effectType, callback) {
   if (effectType === 0) { gameScore *= 2; addInventoryItem("double_current"); showBuffMsg("버프 획득!", "현재 점수 2배!", 33, 150, 243); } 
   else if (effectType === 1) { gameScore = Math.floor(gameScore / 2); addInventoryItem("half_current"); showBuffMsg("앗, 함정!", "현재 점수 반토막...", 244, 67, 54); } 
@@ -2038,8 +2033,6 @@ if(groupPlayModeBox) groupPlayModeBox.addEventListener("change", updateTeacherMe
 const modeSelect = document.getElementById("teacher-game-mode-select");
 if(modeSelect) modeSelect.addEventListener("change", updateTeacherMenuVisibility);
 
-// 🚀 게임 시작 및 모드 처리
-// 🚀 게임 시작 및 모드 처리 (옵션 분리 버전)
 // 🚀 게임 시작 및 모드 처리 (옵션 분리 버전)
 bindClick("teacher-game-start-btn", async () => {
   const modeSelect = document.getElementById("teacher-game-mode-select");
@@ -2050,6 +2043,15 @@ bindClick("teacher-game-start-btn", async () => {
   const groupCount = groupCountSelect ? parseInt(groupCountSelect.value) : 2;
 
   playSound("success");
+
+  // 🧹 [좀비 점수 소각 픽스 1] 
+  // 새로운 게임 시작 버튼을 누르는 순간, 대기실에 있는 모든 학생의 DB 점수를 0으로 완벽 초기화!
+  try {
+      const snap = await getDocs(collection(db, "lobbyUsers"));
+      snap.forEach(d => {
+          setDoc(doc(db, "lobbyUsers", d.id), { score: 0, items: "", createdCount: 0, isSubmitted: false }, { merge: true }).catch(e=>e);
+      });
+  } catch(e) { console.error("점수 초기화 에러", e); }
 
   if (mode === "highfive") {
      const targetEndTime = Date.now() + 15000;
@@ -2066,7 +2068,6 @@ bindClick("teacher-game-start-btn", async () => {
       if(allowedTypes.length === 0) return alert("최소 1개 이상의 문제 유형을 선택해 주세요!");
       const targetEndTime = Date.now() + (cTime * 60 * 1000); 
 
-      // 🚀 조별 출제 시 플레이 방식 (1기기 vs 전원기기) 세팅
       let gPlayMode = null; let reps = {};
       if (currentGroupingActive) {
           gPlayMode = document.getElementById("teacher-group-play-mode-select").value;
@@ -2079,7 +2080,7 @@ bindClick("teacher-game-start-btn", async () => {
       await setDoc(doc(db, "gameData", "multiRoom"), { 
           status: "playing", gameMode: mode, duration: cTime, targetProblemCount: cCount, allowedTypes: allowedTypes,
           setId: "custom_creation", setTitle: "학생들이 출제 중...", endTime: targetEndTime,
-          groupingActive: currentGroupingActive, groupPlayMode: gPlayMode, representatives: reps // 🚀 서버 전송!
+          groupingActive: currentGroupingActive, groupPlayMode: gPlayMode, representatives: reps
       }, { merge: true });
       return;
   }
@@ -2686,25 +2687,30 @@ window.openTargetSelectionModal = function(attackType, title, desc, callback) {
         const btn = document.createElement("button");
         btn.style.cssText = "padding: 10px; font-size: 16px; border-radius: 10px; background: #fff; border: 2px solid #ddd; text-align: left; font-weight: bold; cursor: pointer; margin-bottom: 5px;";
         btn.innerText = `🎯 ${t.nickname} (${t.score || 0}점)`;
-        btn.onclick = async () => {
+        
+        // 🚀 [초강력 멈춤 방지] 기존의 async/await 를 완전히 삭제했습니다!
+        btn.onclick = () => {
             playSound("pop"); modal.style.display = "none";
-            try {
-                let targetOldScore = t.score || 0;
-                await setDoc(doc(db, "lobbyUsers", t.docId), {
-                    attack: { type: attackType, fromId: currentUser.stdId, fromName: currentUser.nickname, myScore: gameScore, timestamp: Date.now() }
-                }, { merge: true });
+            
+            let targetOldScore = t.score || 0;
 
-                if (attackType === "swap") {
-                    gameScore = targetOldScore;
-                    showBuffMsg("점수 스왑 성공!", `${t.nickname}님과 점수가 바뀌었습니다!`, 156, 39, 176);
-                } else if (attackType === "steal50") {
-                    const stolen = Math.floor(targetOldScore / 2);
-                    gameScore += stolen;
-                    showBuffMsg("점수 강탈 성공!", `${t.nickname}님의 점수 ${stolen}점을 뺏었습니다!`, 233, 30, 99);
-                } else if (attackType === "blind") {
-                    showBuffMsg("블라인드 공격 성공!", `${t.nickname}님의 화면을 가렸습니다!`, 33, 33, 33);
-                }
-            } catch(e) { console.error(e); }
+            // 🚀 핵심 픽스: 서버에 공격 신호만 툭 던져놓고 절대 기다리지 않습니다! (네트워크가 1초 끊겨도 게임은 즉시 진행됨)
+            setDoc(doc(db, "lobbyUsers", t.docId), {
+                attack: { type: attackType, fromId: currentUser.stdId, fromName: currentUser.nickname, myScore: gameScore, timestamp: Date.now() }
+            }, { merge: true }).catch(e => console.error("공격 통신 지연 (무시됨)"));
+
+            if (attackType === "swap") {
+                gameScore = targetOldScore;
+                showBuffMsg("점수 스왑 성공!", `${t.nickname}님과 점수가 바뀌었습니다!`, 156, 39, 176);
+            } else if (attackType === "steal50") {
+                const stolen = Math.floor(targetOldScore / 2);
+                gameScore += stolen;
+                showBuffMsg("점수 강탈 성공!", `${t.nickname}님의 점수 ${stolen}점을 뺏었습니다!`, 233, 30, 99);
+            } else if (attackType === "blind") {
+                showBuffMsg("블라인드 공격 성공!", `${t.nickname}님의 화면을 가렸습니다!`, 33, 33, 33);
+            }
+            
+            // 기다림 없이 무조건 즉각적으로 UI를 갱신하고 다음 문제로 넘어갑니다!
             refreshGameModeUI(); isGamePaused = false; callback();
         };
         listEl.appendChild(btn);
@@ -2824,10 +2830,12 @@ function startCreateLogic(room) {
             document.getElementById("create-timer").innerText = `🕒 ${m}:${s}`;
             
             if (gameTimeRemaining <= 0) {
-                clearInterval(gameTimerInterval);
-                alert("제한 시간이 종료되었습니다! 지금까지 만든 문제만 제출됩니다.");
-                submitAllProblems(); 
-            }
+                    clearInterval(gameTimerInterval);
+                    alert("제한 시간이 종료되었습니다! 지금까지 만든 문제만 강제 제출됩니다.");
+                    // 🚀 [치명적 픽스] 없는 함수를 불러서 앱이 튕기던 오류 삭제하고, 
+                    // 제출 버튼을 코드로 강제 클릭하게 만들어 부드럽게 넘어가도록 완벽 수정!
+                    document.getElementById("create-submit-btn").click(); 
+                }
         }
     }, 500);
 }
