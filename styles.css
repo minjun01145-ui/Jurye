@@ -177,6 +177,42 @@ button:active { transform: translateY(8px); box-shadow: 0 0px 0 #c51162, 0 5px 5
   .credits-columns { gap: 15px; font-size: 12px; line-height: 1.6; }
   .class-title { font-size: 13px; }
 }
+/* 📱 모바일 전용: 메인 메뉴 스크롤 잘림 완벽 방지 */
+  #menu-screen {
+    justify-content: flex-start !important; /* 중앙 정렬 해제하고 위에서부터 차곡차곡 쌓기 */
+    padding-top: 30px !important;
+    padding-bottom: 50px !important;
+  }
+
+  /* 📱 모바일 전용: 학생 멀티 대기실 세로 UI로 완벽 개편 */
+  #lobby-split-container {
+    flex-direction: column !important; /* 좌우 분할을 상하 분할로 변신! */
+    height: 65vh !important; /* 전체 높이 살짝 더 확보 */
+  }
+  #lobby-grid-container {
+    flex: 1 !important; /* 상단 아바타 공간 50% 분배 */
+    min-height: 0 !important; /* 스크롤 내부 동작 허용 */
+    width: 100% !important;
+    box-sizing: border-box;
+  }
+  #lobby-chat-wrapper {
+    flex: 1 !important; /* 하단 채팅창 50% 분배 */
+    min-height: 0 !important;
+    width: 100% !important;
+    min-width: 100% !important; /* 모바일에서 채팅창 찌그러짐 방지 */
+    box-sizing: border-box;
+  }
+  #lobby-input-container {
+    flex-wrap: wrap !important; /* 입력창, 버튼이 좁으면 자연스럽게 줄바꿈 */
+  }
+  #lobby-chat-input {
+    width: 100% !important;
+    flex: none !important; /* 가로 폭을 100% 차지하게 늘림 */
+  }
+  #lobby-chat-send-btn, #lobby-exit-btn {
+    flex: 1 !important; /* 남은 공간을 두 버튼이 예쁘게 반반 나눠가짐 */
+    padding: 12px 10px !important;
+  }
 
 /* 각종 오버레이 및 기타 스타일 */
 /* 🌟 캐릭터 선택창 스타일 */
