@@ -8,7 +8,7 @@
 <link rel="icon" href="data:,">
     <style>
       body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
-      .screen { position: fixed !important; top: 0; left: 0; width: 100vw !important; height: 100dvh !important; overflow: hidden !important; display: none; flex-direction: column; align-items: center; justify-content: center; box-sizing: border-box; }
+      .screen { position: fixed !important; top: 0; left: 0; width: 100vw !important; height: 100dvh !important; overflow-x: hidden !important; overflow-y: auto !important; display: none; flex-direction: column; align-items: center; justify-content: center; box-sizing: border-box; }
       .screen.active { display: flex !important; }
 
       #unknown-modal { display: none; position: absolute; right: 50%; transform: translateX(50%); top: 10%; width: 320px; max-height: 80vh; background-color: rgba(255, 255, 255, 0.95); border: 3px solid #ff4081; border-radius: 15px; padding: 20px; box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2); z-index: 200; overflow-y: auto; font-family: "Paperlogy-4Regular", sans-serif; }
@@ -271,18 +271,18 @@
       <h2 id="student-lobby-title" style="color: #2196F3; margin: 10px 0 5px 0;">🚀 실시간 대기실</h2>
       <p style="font-size: 16px; margin-bottom: 10px; font-weight: bold;">현재 접속자: <span id="lobby-user-count" style="color: #E91E63; font-size: 20px;">0</span>명</p>
       
-      <div style="display: flex; width: 95%; max-width: 1000px; height: 60vh; gap: 15px;">
+      <div id="lobby-split-container" style="display: flex; width: 95%; max-width: 1000px; height: 60vh; gap: 15px;">
         <div id="lobby-grid-container" style="flex: 2; display: flex; flex-wrap: wrap; gap: 10px; background: rgba(255,255,255,0.8); border-radius: 15px; padding: 15px; border: 3px solid #2196F3; justify-content: flex-start; overflow-y: auto; align-content: flex-start;">
         </div>
         
-        <div style="flex: 1; display: flex; flex-direction: column; background: rgba(255,255,255,0.9); border-radius: 15px; border: 3px solid #9C27B0; overflow: hidden; min-width: 250px;">
+        <div id="lobby-chat-wrapper" style="flex: 1; display: flex; flex-direction: column; background: rgba(255,255,255,0.9); border-radius: 15px; border: 3px solid #9C27B0; overflow: hidden; min-width: 250px;">
           <div style="background: #9C27B0; color: white; padding: 8px; text-align: center; font-weight: bold;">💬 실시간 채팅</div>
           <div id="student-chat-log" style="flex: 1; padding: 10px; overflow-y: auto; font-size: 14px; display: flex; flex-direction: column; gap: 8px;">
-            </div>
+          </div>
         </div>
       </div>
 
-      <div style="margin-top: 15px; display: flex; gap: 10px; width: 95%; max-width: 1000px;">
+      <div id="lobby-input-container" style="margin-top: 15px; display: flex; gap: 10px; width: 95%; max-width: 1000px;">
         <input type="text" id="lobby-chat-input" placeholder="채팅을 입력하세요... (엔터로 전송)" style="flex: 1; padding: 12px; font-size: 16px; border: 2px solid #2196F3; border-radius: 10px; font-family: inherit;">
         <button id="lobby-chat-send-btn" style="background-color: #2196F3; box-shadow: 0 4px 0 #1976D2; color: white; border: none; border-radius: 10px; padding: 0 20px; font-size: 16px; font-weight: bold; cursor: pointer; white-space: nowrap;">보내기</button>
         <button id="lobby-exit-btn" style="background-color: #9e9e9e; box-shadow: 0 4px 0 #616161; color: white; border: none; border-radius: 10px; padding: 0 20px; font-size: 16px; font-weight: bold; cursor: pointer; white-space: nowrap;">나가기</button>
