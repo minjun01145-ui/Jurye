@@ -457,6 +457,12 @@ function initWalkingEmojis() {
   }
 
   function animateEmojis() {
+    // 🚀 [CPU/메모리 구원] 게임 화면일 때는 배경 이모지 물리엔진 연산을 완전히 멈춤! (크롬북 뻗음 방지)
+    const container = document.getElementById("walking-emoji-container");
+    if (container && container.style.opacity === "0") {
+      requestAnimationFrame(animateEmojis);
+      return;
+    }
     const w = window.innerWidth;
     let speedScale = Math.max(0.4, w / 1000); 
 
@@ -1343,23 +1349,32 @@ function getGroupScoreText() {
 // ==========================================
 let sqCurrentWord = null;
 
+// 🚀 [네트워크 다이어트] 점수 동기화 2초 쿨타임 엔진 (학교 와이파이 마비 방지)
+let syncScoreTimeout = null;
+window.syncScoreToServer = function() {
+    if (!myLobbyDocId) return;
+    let currentBuffs = ""; if (globalScoreMultiplier > 1) currentBuffs += "🟡"; 
+    if (gameScore !== lastSyncedScore || currentBuffs !== lastSyncedItems) {
+        if (syncScoreTimeout) return; // 이미 2초 대기열에 있으면 무시하고 스킵!
+        syncScoreTimeout = setTimeout(() => {
+            setDoc(doc(db, "lobbyUsers", myLobbyDocId), { score: gameScore, items: currentBuffs }, { merge: true }).catch(e => e);
+            lastSyncedScore = gameScore; lastSyncedItems = currentBuffs;
+            syncScoreTimeout = null;
+        }, 2000);
+    }
+};
+
+// ==========================================
+// 씬 4: 심플 스피드 퀴즈
+// ==========================================
+let sqCurrentWord = null;
+
 function updateSpeedUI() {
   const m = String(Math.floor(gameTimeRemaining / 60)).padStart(2, "0"); const s = String(gameTimeRemaining % 60).padStart(2, "0");
   document.getElementById("speed-timer").innerText = `🕒 ${m}:${s}`; 
   document.getElementById("speed-score").innerHTML = `점수: ${gameScore}${getGroupScoreText()}`; 
-  
-  if (myLobbyDocId && currentGameMode === "speed") {
-    let currentBuffs = ""; if (globalScoreMultiplier > 1) currentBuffs += "🟡"; 
-    
-    // 🚀 [초긴급 패치] 점수나 버프가 '바뀌었을 때만' 서버에 전송! (1초에 50번씩 날아가던 통신 폭탄 원천 차단)
-    if (gameScore !== lastSyncedScore || currentBuffs !== lastSyncedItems) {
-        setDoc(doc(db, "lobbyUsers", myLobbyDocId), { score: gameScore, items: currentBuffs }, { merge: true }).catch(e => console.error(e));
-        lastSyncedScore = gameScore;
-        lastSyncedItems = currentBuffs;
-    }
-  }
-}
-function startSpeedLogic() {
+  if (currentGameMode === "speed") window.syncScoreToServer(); // 🚀 쿨타임 엔진 적용
+}function startSpeedLogic() {
   updateSpeedUI();
   gameTimerInterval = setInterval(() => {
     if (globalMultiEndTime) {
@@ -1601,7 +1616,8 @@ async function showRankings(tab, mode = currentRankingMode) {
   const listEl = document.getElementById("ranking-list"); listEl.innerHTML = "<div style='text-align:center; padding: 20px;'>순위를 불러오는 중...🔍</div>";
 
   try {
-    const qSnap = await getDocs(collection(db, "scores"));
+    const q = query(collection(db, "scores"), orderBy("timestamp", "desc"), limit(500));
+    const qSnap = await getDocs(q);
     let allScores = []; qSnap.forEach(doc => allScores.push(doc.data()));
     let filtered = allScores.filter(s => s.mode === currentRankingMode && s.setId === currentSetId);
     const now = new Date(); const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
@@ -1660,17 +1676,7 @@ function updateChunkUI() {
   const m = String(Math.floor(gameTimeRemaining / 60)).padStart(2, "0"); const s = String(gameTimeRemaining % 60).padStart(2, "0");
   document.getElementById("chunk-timer").innerText = `🕒 ${m}:${s}`; 
   document.getElementById("chunk-score").innerHTML = `점수: ${gameScore}${getGroupScoreText()}`; 
-  
-  if (myLobbyDocId && currentGameMode === "chunk") {
-    let currentBuffs = ""; if (globalScoreMultiplier > 1) currentBuffs += "🟡"; 
-    
-    // 🚀 [초긴급 패치] 여기도 통신 폭탄 차단!
-    if (gameScore !== lastSyncedScore || currentBuffs !== lastSyncedItems) {
-        setDoc(doc(db, "lobbyUsers", myLobbyDocId), { score: gameScore, items: currentBuffs }, { merge: true }).catch(e => console.error(e));
-        lastSyncedScore = gameScore;
-        lastSyncedItems = currentBuffs;
-    }
-  }
+  if (currentGameMode === "chunk") window.syncScoreToServer(); // 🚀 쿨타임 엔진 적용
 }
 
 function startChunkLogic() {
@@ -2501,7 +2507,8 @@ async function processHighFiveResult() {
     const roomDoc = await getDoc(doc(db, "gameData", "multiRoom"));
     if(roomDoc.exists() && roomDoc.data().groupCount) groupCount = roomDoc.data().groupCount;
 
-    const qSnap = await getDocs(collection(db, "scores"));
+    const q = query(collection(db, "scores"), orderBy("timestamp", "desc"), limit(200));
+    const qSnap = await getDocs(q);
     let hfScores = [];
     const thirtySecondsAgo = Date.now() - 30000; 
     qSnap.forEach(d => {
@@ -2685,16 +2692,17 @@ window.openTargetSelectionModal = function(attackType, title, desc, callback) {
 
     targets.forEach(t => {
         const btn = document.createElement("button");
-        btn.style.cssText = "padding: 10px; font-size: 16px; border-radius: 10px; background: #fff; border: 2px solid #ddd; text-align: left; font-weight: bold; cursor: pointer; margin-bottom: 5px;";
+        // 🚀 핵심 픽스: color: #333; 을 추가하여 흰색 배경에서 글씨가 선명하게 보이게 만듭니다!
+        btn.style.cssText = "padding: 10px; font-size: 16px; border-radius: 10px; background: #fff; color: #333; border: 2px solid #ddd; text-align: left; font-weight: bold; cursor: pointer; margin-bottom: 5px;";
         btn.innerText = `🎯 ${t.nickname} (${t.score || 0}점)`;
         
-        // 🚀 [초강력 멈춤 방지] 기존의 async/await 를 완전히 삭제했습니다!
+        // 🚀 [초강력 멈춤 방지 유지됨]
         btn.onclick = () => {
             playSound("pop"); modal.style.display = "none";
             
             let targetOldScore = t.score || 0;
 
-            // 🚀 핵심 픽스: 서버에 공격 신호만 툭 던져놓고 절대 기다리지 않습니다! (네트워크가 1초 끊겨도 게임은 즉시 진행됨)
+            // 🚀 서버에 공격 신호만 툭 던져놓고 절대 기다리지 않습니다!
             setDoc(doc(db, "lobbyUsers", t.docId), {
                 attack: { type: attackType, fromId: currentUser.stdId, fromName: currentUser.nickname, myScore: gameScore, timestamp: Date.now() }
             }, { merge: true }).catch(e => console.error("공격 통신 지연 (무시됨)"));
@@ -3135,13 +3143,7 @@ function updateCiUI() {
   const m = String(Math.floor(gameTimeRemaining / 60)).padStart(2, "0"); const s = String(gameTimeRemaining % 60).padStart(2, "0");
   document.getElementById("ci-timer").innerText = `🕒 ${m}:${s}`; 
   document.getElementById("ci-score").innerHTML = `점수: ${gameScore}${getGroupScoreText()}`; 
-  if (myLobbyDocId && currentGameMode === "custom_infinite") {
-    let currentBuffs = ""; if (globalScoreMultiplier > 1) currentBuffs += "🟡"; 
-    if (gameScore !== lastSyncedScore || currentBuffs !== lastSyncedItems) {
-        setDoc(doc(db, "lobbyUsers", myLobbyDocId), { score: gameScore, items: currentBuffs }, { merge: true }).catch(e=>e);
-        lastSyncedScore = gameScore; lastSyncedItems = currentBuffs;
-    }
-  }
+  if (currentGameMode === "custom_infinite") window.syncScoreToServer(); // 🚀 쿨타임 엔진 적용
 }
 
 function startCustomInfiniteLogic() {
