@@ -1338,16 +1338,13 @@ function checkSmMatch() {
 function checkSmRoundEnd() { if (smPairsFound === 4) { smRound++; setTimeout(loadSpeedMatchRound, 500); } }
 // 🚀 학생 인게임 UI 조별 점수 합산 텍스트 생성 엔진
 // 🚀 학생 인게임 UI 조별 점수 합산 텍스트 생성 엔진 (다이어트 패치 적용)
+// 🚀 학생 인게임 UI 조별 점수 합산 텍스트 생성 엔진 (다이어트 패치 적용)
 function getGroupScoreText() {
     if (currentGroupingActive && currentMultiRoomGroupPlayMode === "all-sum" && myCurrentGroupId) {
         return ` <span style="font-size:16px; color:#E91E63; text-shadow:1px 1px 0px #fff;">(조 점수는 앞화면 참조!)</span>`;
     }
     return "";
 }
-// ==========================================
-// 씬 4: 심플 스피드 퀴즈
-// ==========================================
-let sqCurrentWord = null;
 
 // 🚀 [네트워크 다이어트] 점수 동기화 2초 쿨타임 엔진 (학교 와이파이 마비 방지)
 let syncScoreTimeout = null;
