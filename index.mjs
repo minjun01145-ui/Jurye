@@ -4188,14 +4188,21 @@ function startBossGameLoop(endTime, maxHp) {
         }
     }, 1000); 
 
-    const effectInterval = setInterval(() => {
-        if (isBossDefeated || !window.isTeacherBossMatchRunning) { clearInterval(effectInterval); return; }
-        if (bossDamageQueue.length > 0) {
-            const hit = bossDamageQueue.shift();
-            spawnDamageFloater(hit.amount, hit.name);
+// 🚀 [크롬북 메모리 폭발 방지] 전역 변수에 타이머를 담아 게임 종료 시 확실하게 파괴할 수 있게 묶어둡니다.
+    if (window.bossEffectInterval) clearInterval(window.bossEffectInterval);
+    
+    window.bossEffectInterval = setInterval(() => {
+        if (isBossDefeated || !window.isTeacherBossMatchRunning) { clearInterval(window.bossEffectInterval); return; }
+        
+        // 🚀 [핵심 렉 픽스] 밀려있는 데미지가 있다면 한 틱당 최대 6개씩 묶어서 다발로 쏟아냅니다! (처리 속도 600% 향상)
+        let processCount = Math.min(bossDamageQueue.length, 6);
+        if (processCount > 0) {
+            for(let i=0; i<processCount; i++) {
+                const hit = bossDamageQueue.shift();
+                spawnDamageFloater(hit.amount, hit.name);
+            }
             
             const spriteEl = document.getElementById("boss-sprite");
-            // 🚀 안전한 피격 애니메이션으로 변경 (순간이동 박멸!)
             spriteEl.classList.remove("boss-hit-anim");
             void spriteEl.offsetWidth;
             spriteEl.classList.add("boss-hit-anim");
@@ -4204,11 +4211,10 @@ function startBossGameLoop(endTime, maxHp) {
             setTimeout(() => { if(!isBossDefeated) playBossAnimation("idle", 150, true); }, 400);
             
             const hits = ["boss_hit_1", "boss_hit_2", "boss_hit_3"];
-            playBossSound(hits[Math.floor(Math.random() * hits.length)]); // 🚀 3가지 타격음 중 찰지게 랜덤 재생!
+            playBossSound(hits[Math.floor(Math.random() * hits.length)]); 
         }
     }, 150);
 }
-
 function spawnDamageFloater(amount, name) {
     const arena = document.getElementById("boss-arena");
     const floater = document.createElement("div");
@@ -4231,6 +4237,8 @@ async function endBossMatch(isVictory) {
     
     clearInterval(bossInterval);
     clearTimeout(bossPatternTimeout); 
+    if (window.bossEffectInterval) clearInterval(window.bossEffectInterval); // 🚀 [좀비 타이머 파괴] 데미지 출력 타이머 완벽 소각!
+    bossDamageQueue = []; // 🚀 대기 중이던 타격 데이터도 전부 소각!
     
     const spriteEl = document.getElementById("boss-sprite");
     // 🚀 부모/자식 분리에 따른 안전한 초기화
