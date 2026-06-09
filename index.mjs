@@ -542,11 +542,11 @@ function resetGameStates() {
       
       lastSyncedScore = -1; lastSyncedItems = null;
   
-// 🚀 [0점 증발 버그 완벽 픽스!] 
-  // 학생 폰이 너무 성급하게 0점으로 지워버리던 치명적인 코드를 수정했습니다!
-  // 이제 0점이 아니라, "방금까지 딴 진짜 최종 점수"를 서버에 한 번 더 확실하게 쐐기를 박고 끝냅니다.
+window.myProblemStats = {}; // 🚀 [오답률 패치] 게임 시작 시 내 오답 장부 초기화!
+  
+  // 🚀 [0점 증발 버그 완벽 픽스!] 
   if (myLobbyDocId) {
-      setDoc(doc(db, "lobbyUsers", myLobbyDocId), { score: currentUser.score || 0, items: "", createdCount: 0, isSubmitted: false }, { merge: true }).catch(e=>e);
+      setDoc(doc(db, "lobbyUsers", myLobbyDocId), { score: currentUser.score || 0, items: "", createdCount: 0, isSubmitted: false, problemStats: {} }, { merge: true }).catch(e=>e);
   }
   
   // 🚀 문제 만들기 상태 초기화
@@ -1472,14 +1472,16 @@ let syncScoreTimeout = null;
 window.syncScoreToServer = function() {
     if (!myLobbyDocId) return;
     let currentBuffs = ""; if (globalScoreMultiplier > 1) currentBuffs += "🟡"; 
-    if (gameScore !== lastSyncedScore || currentBuffs !== lastSyncedItems) {
-        if (syncScoreTimeout) return; // 이미 2초 대기열에 있으면 무시하고 스킵!
-        syncScoreTimeout = setTimeout(() => {
-            setDoc(doc(db, "lobbyUsers", myLobbyDocId), { score: gameScore, items: currentBuffs }, { merge: true }).catch(e => e);
-            lastSyncedScore = gameScore; lastSyncedItems = currentBuffs;
-            syncScoreTimeout = null;
-        }, 2000);
-    }
+    if (syncScoreTimeout) return; 
+    syncScoreTimeout = setTimeout(() => {
+        setDoc(doc(db, "lobbyUsers", myLobbyDocId), { 
+            score: gameScore, 
+            items: currentBuffs,
+            problemStats: window.myProblemStats || {} // 🚀 [오답률 패치] 내 오답 장부를 서버로 전송!
+        }, { merge: true }).catch(e => e);
+        lastSyncedScore = gameScore; lastSyncedItems = currentBuffs;
+        syncScoreTimeout = null;
+    }, 2000);
 };
 
 // ==========================================
@@ -2369,16 +2371,39 @@ bindClick("teacher-game-start-btn", async () => {
       const subMode = document.getElementById("teacher-boss-submode-select").value;
       const duration = document.getElementById("teacher-game-time-select")?.value || 3;
       
-      // 🚀 [보스전 세트 픽스] 메인 드롭다운에서 선택된 세트(학생 출제작 포함)를 깔끔하게 읽어옵니다.
-      let finalSetId = document.getElementById("teacher-game-set-select").value;
-      if(!finalSetId) return alert("보스전을 진행할 학습 세트를 선택해 주세요!");
-      let finalSetTitle = wordSets.find(s => s.id === finalSetId)?.title;
+      let finalSetId, finalSetTitle;
+      if (subMode === "custom_infinite") {
+          finalSetId = document.getElementById("teacher-custom-set-select").value;
+          if(!finalSetId) return alert("보스전(학생출제 모드)용 세트를 선택해 주세요!");
+          finalSetTitle = wordSets.find(s => s.id === finalSetId)?.title;
+      } else {
+          finalSetId = document.getElementById("teacher-game-set-select").value;
+          if(!finalSetId) return alert("보스전을 진행할 학습 세트를 선택해 주세요!");
+          finalSetTitle = wordSets.find(s => s.id === finalSetId)?.title;
+      }
+
+      // 🚀 [보스전 조편성 강제 해제 패치]
+      // 보스전 시작 시 조가 편성되어 있다면 시스템이 알아서 학생들의 조(groupId) 정보를 싹 날려버리고 
+      // 완벽한 개인전(전원 협동) 상태로 리셋합니다!
+      if (currentGroupingActive) {
+          currentGroupingActive = false;
+          try {
+              const snap = await getDocs(collection(db, "lobbyUsers"));
+              const disbandPromises = [];
+              snap.forEach(d => {
+                  disbandPromises.push(setDoc(doc(db, "lobbyUsers", d.id), { groupId: null }, { merge: true }).catch(e=>e));
+              });
+              await Promise.all(disbandPromises);
+          } catch(e) { console.error("보스전 조 해제 에러", e); }
+          window.customAlert("보스전은 개인전으로 진행됩니다!\n(편성되었던 조가 자동 해제되었습니다.)");
+      }
 
       const tEnd = Date.now() + 5000 + (duration * 60 * 1000); // 5초 인트로
       await setDoc(doc(db, "gameData", "multiRoom"), { 
           status: "playing", gameMode: "boss", subMode: subMode, duration: duration, 
           setId: finalSetId, setTitle: finalSetTitle, 
-          bossHp: bossHp, bossMaxHp: bossHp, endTime: tEnd, groupingActive: false,
+          bossHp: bossHp, bossMaxHp: bossHp, endTime: tEnd, 
+          groupingActive: false, groupPlayMode: null, groupCount: null, // 🚀 방 상태도 개인전으로 완벽 리셋
           useBuffItems: "on", useSpecialItems: "off" // 보스전에선 팀킬 불가!
       }, { merge: true });
       return;
@@ -3606,6 +3631,7 @@ function startCustomInfiniteLogic() {
 
 function loadNextCiQuiz() {
   const wordObj = wordList[Math.floor(Math.random() * wordList.length)];
+  window.currentCiWordEnKey = wordObj.en; // 🚀 [오답률 패치] 현재 풀고 있는 문제 기억하기!
   try {
     ciCurrentProb = JSON.parse(wordObj.en);
   } catch(e) {
@@ -3704,6 +3730,17 @@ function loadNextCiQuiz() {
 
 function handleCiAnswer(isCorrect, answerText) {
     if(isGamePaused) return;
+
+    // 🚀 [오답률 패치] 맞춤/틀림 실시간 기록 엔진
+    if (window.currentCiWordEnKey) {
+        let key = window.currentCiWordEnKey;
+        if (!window.myProblemStats) window.myProblemStats = {};
+        if (!window.myProblemStats[key]) window.myProblemStats[key] = { total: 0, wrong: 0 };
+        window.myProblemStats[key].total++;
+        if (!isCorrect) window.myProblemStats[key].wrong++;
+        window.syncScoreToServer(); // 기록 즉시 서버 전송 예약
+    }
+
     if(isCorrect) {
         playSound("success"); let earned = calcSpeedBonus(); gameScore += earned; updateCiUI(); showGamePraise(earned);
         if(Math.random() < 0.3) triggerTreasureEvent(() => loadNextCiQuiz()); else loadNextCiQuiz();
@@ -4205,3 +4242,143 @@ const outroTitle = document.getElementById("boss-outro-title");
         await setDoc(doc(db, "gameData", "multiRoom"), { status: "waiting" }, { merge: true });
     }, 3500);
 }
+// ==========================================
+// 🚀 [신규 기능] 학생 출제 문제 오답률 분석 엔진
+// ==========================================
+setTimeout(() => {
+    // 1. 교사 화면 리더보드 옆에 '문제 분석' 버튼 주입
+    const titleContainer = document.getElementById("teacher-viewer-title");
+    if (titleContainer && !document.getElementById("open-analysis-btn")) {
+        const btn = document.createElement("button");
+        btn.id = "open-analysis-btn";
+        btn.innerHTML = "📊 학생출제 문제 분석";
+        btn.style.cssText = "display: none; background: #E91E63; color: white; border: none; border-radius: 8px; padding: 6px 15px; font-size: 15px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 0 #C2185B; margin-left: 20px; vertical-align: middle; animation: popIn 0.3s ease-out;";
+        btn.onclick = window.openProblemAnalysis;
+        titleContainer.appendChild(btn);
+    }
+
+    // 2. 오답률 랭킹 및 확대 모달창 HTML 주입
+    if (!document.getElementById("teacher-analysis-modal")) {
+        const modalHtml = `
+        <div id="teacher-analysis-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 100000; flex-direction: column; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box;">
+          <div style="background: white; border: 4px solid #9C27B0; border-radius: 20px; width: 100%; max-width: 800px; height: 80vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 15px 30px rgba(0,0,0,0.3);">
+            <div style="background: #9C27B0; color: white; padding: 15px 20px; font-size: 22px; font-weight: bold; display: flex; justify-content: space-between; align-items: center;">
+              <span>📊 학생 출제 문제 오답률 랭킹</span>
+              <button onclick="document.getElementById('teacher-analysis-modal').style.display='none'" style="background: transparent; border: none; color: white; font-size: 28px; cursor: pointer;">✖</button>
+            </div>
+            <div id="analysis-list-container" style="flex: 1; overflow-y: auto; padding: 20px; background: #F3E5F5; display: flex; flex-direction: column; gap: 12px;"></div>
+          </div>
+        </div>
+
+        <div id="teacher-problem-detail-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 100001; flex-direction: column; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; backdrop-filter: blur(5px);">
+          <div style="background: white; border: 5px solid #FF9800; border-radius: 20px; width: 100%; max-width: 650px; padding: 40px 30px; text-align: center; box-shadow: 0 15px 40px rgba(0,0,0,0.5); position: relative;">
+            <button onclick="document.getElementById('teacher-problem-detail-modal').style.display='none'" style="position: absolute; top: 15px; right: 20px; background: transparent; border: none; font-size: 30px; color: #888; cursor: pointer;">✖</button>
+            <div id="detail-author" style="font-size: 18px; color: #E91E63; font-weight: bold; margin-bottom: 20px; background: #FCE4EC; display: inline-block; padding: 8px 20px; border-radius: 20px; border: 2px dashed #F06292;">만든이 정보</div>
+            <div id="detail-question" style="font-size: 32px; font-weight: 900; color: #333; margin-bottom: 30px; word-break: keep-all; line-height: 1.4;">질문 내용</div>
+            <div id="detail-answer" style="font-size: 24px; color: #4CAF50; font-weight: bold; background: #E8F5E9; padding: 15px; border-radius: 15px; border: 2px solid #81C784;">정답 내용</div>
+            <div id="detail-stats" style="margin-top: 25px; font-size: 18px; font-weight: bold; color: #555; background: #eee; padding: 10px; border-radius: 10px;">오답률: 0%</div>
+          </div>
+        </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    }
+}, 1500);
+
+// 3. 통계 분석 및 화면 렌더링 함수
+window.openProblemAnalysis = function() {
+    if(typeof playSound === "function") playSound("click");
+    const container = document.getElementById("analysis-list-container");
+    container.innerHTML = "<h3 style='text-align:center; color:#666;'>데이터를 취합 중입니다...🔍</h3>";
+    document.getElementById("teacher-analysis-modal").style.display = "flex";
+
+    let aggregatedStats = {};
+    if (window.globalLobbyPlayers) {
+        window.globalLobbyPlayers.forEach(p => {
+            if (p.problemStats) {
+                for (let key in p.problemStats) {
+                    if (!aggregatedStats[key]) aggregatedStats[key] = { total: 0, wrong: 0 };
+                    aggregatedStats[key].total += p.problemStats[key].total;
+                    aggregatedStats[key].wrong += p.problemStats[key].wrong;
+                }
+            }
+        });
+    }
+
+    let analysisList = [];
+    if(typeof wordList !== "undefined" && wordList) {
+        wordList.forEach(w => {
+            let stats = aggregatedStats[w.en];
+            if (stats && stats.total > 0) {
+                let rate = Math.round((stats.wrong / stats.total) * 100);
+                let probData = {};
+                try { probData = JSON.parse(w.en); } catch(e) {}
+                
+                let answerText = "";
+                if (probData.type === "multiple" || probData.type === "short") answerText = probData.a;
+                else if (probData.type === "order") answerText = probData.words ? probData.words.join(" ") : "";
+                else if (probData.type === "match") answerText = probData.pairs ? probData.pairs.map(p => `${p.a} ↔ ${p.b}`).join(" / ") : "";
+
+                analysisList.push({
+                    author: w.author || "작자 미상",
+                    question: probData.q || "알 수 없는 문제",
+                    answer: answerText,
+                    total: stats.total,
+                    wrong: stats.wrong,
+                    rate: rate
+                });
+            }
+        });
+    }
+
+    // 🚀 오답률 높은 순서대로 1차 정렬 -> 같으면 많이 틀린 횟수 2차 정렬
+    analysisList.sort((a, b) => b.rate - a.rate || b.wrong - a.wrong);
+
+    container.innerHTML = "";
+    if (analysisList.length === 0) {
+        container.innerHTML = "<div style='text-align:center; padding: 30px; font-size: 20px; color: #666;'>이번 게임에서 학생들이 푼 문제 기록이 없습니다.</div>";
+        return;
+    }
+
+    analysisList.forEach((item, idx) => {
+        let color = item.rate >= 50 ? "#F44336" : (item.rate >= 20 ? "#FF9800" : "#4CAF50");
+        const div = document.createElement("div");
+        div.style.cssText = "background: white; border: 3px solid #ddd; border-radius: 15px; padding: 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: 0.2s;";
+        div.onmouseover = () => div.style.borderColor = "#9C27B0";
+        div.onmouseout = () => div.style.borderColor = "#ddd";
+        
+        div.innerHTML = `
+            <div style="flex: 1; text-align: left; padding-right: 15px;">
+                <div style="font-size: 13px; color: #E91E63; font-weight: bold; margin-bottom: 5px;">${item.author}</div>
+                <div style="font-size: 18px; color: #333; font-weight: bold; line-height: 1.3; word-break: keep-all;">Q. ${item.question}</div>
+            </div>
+            <div style="text-align: right; min-width: 110px;">
+                <div style="font-size: 28px; font-weight: 900; color: ${color};">${item.rate}%</div>
+                <div style="font-size: 12px; color: #666; font-weight: bold;">오답: ${item.wrong} / ${item.total}</div>
+            </div>
+        `;
+        
+        div.onclick = () => {
+            if(typeof playSound === "function") playSound("pop");
+            document.getElementById("detail-author").innerText = item.author;
+            document.getElementById("detail-question").innerText = "Q. " + item.question;
+            document.getElementById("detail-answer").innerText = "정답: " + item.answer;
+            document.getElementById("detail-stats").innerText = `🔥 오답률: ${item.rate}% (총 ${item.total}번 시도 중 ${item.wrong}번 오답)`;
+            document.getElementById("teacher-problem-detail-modal").style.display = "flex";
+        };
+        container.appendChild(div);
+    });
+};
+
+// 4. 게임 종료 시 조건에 따라 자동으로 "문제 분석하기" 버튼 띄우기
+setInterval(() => {
+    const btn = document.getElementById("open-analysis-btn");
+    if (btn && window.teacherLobbyStatus === "waiting") {
+        // 현재 선택된 세트가 '학생 출제' 데이터일 때만 버튼 활성화
+        const isCustomMode = typeof wordList !== "undefined" && wordList && wordList.length > 0 && wordList[0].isCustomData;
+        if (isCustomMode && window.globalLobbyPlayers && window.globalLobbyPlayers.some(p => p.problemStats)) {
+            btn.style.display = "inline-block";
+        } else {
+            btn.style.display = "none";
+        }
+    }
+}, 1000);
