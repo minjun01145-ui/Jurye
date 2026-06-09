@@ -15,7 +15,7 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const db = initializeFirestore(app, { experimentalForceLongPolling: true });
+const db = getFirestore(app); // 🚀 [속도 패치] 강제 저속 모드 해제! 고속 실시간 통신망(WebSocket)으로 연결합니다.
 
 window.addEventListener("unhandledrejection", (event) => {
   console.error("처리되지 않은 통신 오류:", event.reason);
