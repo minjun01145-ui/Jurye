@@ -102,7 +102,12 @@
   </head>
   <body>
     <canvas id="confetti-canvas" style="position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:9999; display:none;"></canvas>
-
+<div id="custom-alert-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 99999; flex-direction: column; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; backdrop-filter: blur(5px);">
+      <div style="background: white; border: 4px solid #00BCD4; border-radius: 20px; width: 100%; max-width: 350px; padding: 30px 20px; text-align: center; box-shadow: 0 15px 30px rgba(0,0,0,0.3); animation: popIn 0.3s ease-out;">
+        <div id="custom-alert-msg" style="font-size: 20px; font-weight: bold; color: #333; margin-bottom: 25px; word-break: keep-all; line-height: 1.5; white-space: pre-line;">메시지 내용</div>
+        <button id="custom-alert-btn" style="background-color: #00BCD4; box-shadow: 0 6px 0 #0097A7; color: white; padding: 12px 30px; font-size: 18px; border: none; border-radius: 12px; cursor: pointer; font-family: 'Paperlogy-4Regular', sans-serif; font-weight: bold; width: 100%;">확인</button>
+      </div>
+    </div>
     <div id="game-countdown-overlay"><div id="countdown-text" class="countdown-text">5</div></div>
     <div id="game-praise-overlay">
       <div id="praise-title">Fabulous!</div>

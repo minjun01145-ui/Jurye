@@ -170,7 +170,28 @@ function playSound(type) {
     }
   } catch(e) { console.warn("Sound disabled", e); }
 }
-
+// 🚀 [멈춤 미아 방지] 브라우저를 얼리지 않는 자체 팝업창 엔진
+window.customAlert = function(msg, callback) {
+  const overlay = document.getElementById("custom-alert-overlay");
+  const msgEl = document.getElementById("custom-alert-msg");
+  const btn = document.getElementById("custom-alert-btn");
+  
+  if (overlay && msgEl && btn) {
+    msgEl.innerText = msg;
+    overlay.style.display = "flex";
+    
+    // 버튼을 누르면 창이 닫히도록 설정
+    btn.onclick = () => {
+      if (typeof playSound === "function") playSound("click");
+      overlay.style.display = "none";
+      if (callback) callback();
+    };
+  } else {
+    // 혹시라도 HTML을 못 찾으면 기존 시스템 alert로 임시 작동
+    alert(msg);
+    if (callback) callback();
+  }
+};
 // ==========================================
 // 5. UI 유틸리티
 // ==========================================
@@ -1930,8 +1951,8 @@ async function enterMultiLobbyAsStudent() {
     });
     myLobbyDocId = docRef.id;
     myLobbyListenerUnsubscribe = onSnapshot(doc(db, "lobbyUsers", myLobbyDocId), (docSnap) => {
-      if (!docSnap.exists()) {
-          alert("선생님에 의해 대기실이 초기화되었습니다.");
+if (!docSnap.exists()) {
+          window.customAlert("선생님에 의해 대기실이 초기화되었습니다.");
           exitLobby();
           showScreen("lobby-mode-screen");
           return;
@@ -2067,10 +2088,10 @@ if (room.status === "playing") {
                 goResult();
             } else {
                 resetGameStates(); 
-                globalMultiEndTime = null; 
-                let alertMsg = currentGameMode === "showcase" ? "✨ 쇼케이스가 종료되었습니다. 대기실로 이동합니다." : "👑 선생님이 활동을 종료하셨습니다!\n실시간 대기실로 이동합니다.";
+let alertMsg = currentGameMode === "showcase" ? "✨ 쇼케이스가 종료되었습니다. 대기실로 이동합니다." : "👑 선생님이 활동을 종료하셨습니다!\n실시간 대기실로 이동합니다.";
                 currentGameMode = "";
-                alert(alertMsg);
+                // 🚀 브라우저 멈춤 없이 팝업만 띄우고 백그라운드에서 즉시 대기실로 강제 이동!
+                window.customAlert(alertMsg);
                 showScreen("multi-lobby-screen");
             }
         }
@@ -3149,11 +3170,10 @@ function startCreateLogic(room) {
             const s = String(gameTimeRemaining % 60).padStart(2, "0");
             document.getElementById("create-timer").innerText = `🕒 ${m}:${s}`;
             
-            if (gameTimeRemaining <= 0) {
+if (gameTimeRemaining <= 0) {
                     clearInterval(gameTimerInterval);
-                    alert("제한 시간이 종료되었습니다! 지금까지 만든 문제만 강제 제출됩니다.");
-                    // 🚀 [치명적 픽스] 없는 함수를 불러서 앱이 튕기던 오류 삭제하고, 
-                    // 제출 버튼을 코드로 강제 클릭하게 만들어 부드럽게 넘어가도록 완벽 수정!
+                    // 🚀 폰이 멈추지 않게 팝업 띄우고 바로 강제 제출 실행
+                    window.customAlert("제한 시간이 종료되었습니다!\n지금까지 만든 문제만 강제 제출됩니다.");
                     document.getElementById("create-submit-btn").click(); 
                 }
         }
