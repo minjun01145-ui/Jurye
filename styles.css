@@ -439,3 +439,72 @@ b, strong {
   100% { transform: scale(1); }
 }
 #hf-btn { animation: hfPulse 1s infinite alternate; cursor: pointer; }
+/* =========================================
+   👹 보스전 레이드 특수 연출 CSS (최종 완성본)
+   ========================================= */
+
+/* 1. 데미지 텍스트 플로팅 (숫자가 하늘로 솟구치는 효과) */
+@keyframes floatUp {
+  0% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-100px) scale(1.2); }
+}
+.damage-floater {
+  position: absolute; font-weight: 900; color: #fff;
+  text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
+  pointer-events: none; z-index: 60;
+  animation: floatUp 1s cubic-bezier(0.2, 1, 0.3, 1) forwards;
+  display: flex; flex-direction: column; align-items: center;
+}
+.damage-amount { font-size: 50px; color: #FFEB3B; }
+.damage-player { font-size: 18px; color: #fff; background: rgba(0,0,0,0.6); padding: 4px 10px; border-radius: 12px; margin-top: 5px; }
+
+/* 2. 보스 부모 상자 (오직 가로 위치 이동만 담당) */
+#boss-sprite-container {
+  position: absolute;
+  bottom: 15vh;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 400px;
+  height: 400px;
+  z-index: 40;
+  transition: left 2s linear;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 3. 보스 자식 상자 (스프라이트 애니메이션과 좌우 휙! 반전 담당) */
+#boss-sprite {
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* 4. 무결점 피격 애니메이션 (순간이동 버그 원천 차단!) */
+@keyframes bossHurtRed {
+  0% { filter: brightness(1) drop-shadow(0 10px 10px rgba(0,0,0,0.5)); left: 0; }
+  20% { filter: brightness(2) crimson drop-shadow(0 0 25px #f44336); left: -10px; }
+  40% { left: 10px; }
+  60% { left: -5px; }
+  80% { left: 5px; }
+  100% { filter: brightness(1) drop-shadow(0 10px 10px rgba(0,0,0,0.5)); left: 0; }
+}
+.boss-hit-anim {
+  position: relative;
+  animation: bossHurtRed 0.3s linear forwards;
+}
+
+/* 5. 하늘에서 쿵! 오프닝 지진 효과 */
+@keyframes screenShake {
+  0% { transform: translate(0, 0); }
+  10% { transform: translate(-10px, 10px); }
+  30% { transform: translate(10px, -10px); }
+  50% { transform: translate(-5px, -5px); }
+  70% { transform: translate(5px, 5px); }
+  100% { transform: translate(0, 0); }
+}
+.shake-screen-effect {
+  animation: screenShake 0.4s ease-in-out;
+}

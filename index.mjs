@@ -17,6 +17,16 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = initializeFirestore(app, { experimentalForceLongPolling: true });
 
+window.addEventListener("unhandledrejection", (event) => {
+  console.error("처리되지 않은 통신 오류:", event.reason);
+  if (currentGameMode === "create") {
+    alert("네트워크가 잠시 불안정해서 작업이 멈췄습니다. 화면을 복구합니다. 다시 제출 버튼을 눌러 주세요.");
+    showScreen("student-create-screen");
+    const controls = document.getElementById("top-left-controls");
+    if (controls) controls.style.display = "flex";
+  }
+});
+
 //3. 글로벌 상태 변수들
 let wordSets = []; 
 let studentList = []; 
@@ -51,6 +61,7 @@ let createTargetCount = 1;
 let createAllowedTypes = [];
 let myCreatedProblems = [];
 let currentEditingSlot = -1;
+let isBossRaid = false; // 보스전 모드인지 확인하는 전역 변수
 // ==========================================
 // 🚀 1. 등록된 캐릭터 폴더 목록 (folder_list.txt 자동 파싱 시스템)
 // ==========================================
@@ -495,6 +506,9 @@ function initWalkingEmojis() {
 initWalkingEmojis();
 
 function resetGameStates() {
+  // 🚀 [멀티 자물쇠 완전 해제] 게임 초기화 시 상태를 깨끗이 비워줍니다.
+  window.isMultiGameActive = false; 
+  if (typeof window.isCountdownActive !== 'undefined') window.isCountdownActive = false;
   // 🚀 [관전자 영구 암전 방지] 대기실로 돌아갈 때 모든 방해 레이어 강제 철거!
   ["group-blocker-overlay", "sq-penalty-overlay", "treasure-overlay", "buff-msg-overlay", "multi-target-modal", "multi-blind-overlay"].forEach(id => {
       const el = document.getElementById(id);
@@ -1048,21 +1062,52 @@ function routeGameStart(minutes) {
   else if(currentGameMode === "chunk") startCountdown(minutes, "chunk-screen", startChunkLogic);
 }
 
+// 🚀 [타이머 폭주 방지용 글로벌 자물쇠]
+window.isCountdownActive = false; 
+
 function startCountdown(minutes, screenId, logicCallback) {
-  // 🚀 [안정성 픽스 1] 기존에 돌고 있던 모든 타이머와 찌꺼기들을 확실하게 파괴하고 시작! (더블 스피드 폭주 완벽 차단)
-  clearInterval(gameTimerInterval); 
-  clearInterval(cdInterval);
-  isGamePaused = false; // 🚀 [먹통 방지 픽스] 이전 게임에서 멈춤 상태가 풀리지 않았더라도 새 게임 시작 시 강제로 터치 잠금 해제!
-  showScreen(screenId); document.getElementById("top-left-controls").style.display = "flex";
-  const overlay = document.getElementById("game-countdown-overlay"); const textEl = document.getElementById("countdown-text");
-  overlay.style.display = "flex"; gameTimeRemaining = minutes * 60; gameScore = 0; globalScoreMultiplier = 1;
-  document.getElementById("pile-double_current").innerHTML = ""; document.getElementById("pile-half_current").innerHTML = ""; document.getElementById("pile-double_future").innerHTML = ""; 
+  // 🚀 [안전 방어막] 혹시라도 시간 데이터가 깨지거나 누락되면 강제로 3분 분량을 확보하여 즉시 종료를 막습니다!
+  const validMinutes = parseInt(minutes) || 3; 
+
+  if (typeof gameTimerInterval !== 'undefined') clearInterval(gameTimerInterval); 
+  if (typeof cdInterval !== 'undefined') clearInterval(cdInterval);
+  if (window.cdInterval) clearInterval(window.cdInterval);
   
-  let count = 5; textEl.innerText = count;
-  cdInterval = setInterval(() => {
+  isGamePaused = false; 
+  showScreen(screenId); 
+  document.getElementById("top-left-controls").style.display = "flex";
+  
+  // 🚀 [뒤로가기 증발 패치] 멀티플레이 학생용 화면에서는 뒤로가기 버튼을 완벽히 지웁니다.
+  const inGameBackBtn = document.getElementById("back-to-menu-btn");
+  if (inGameBackBtn) {
+      inGameBackBtn.style.display = (typeof myLobbyDocId !== 'undefined' && myLobbyDocId) ? "none" : "block";
+  }
+
+  const overlay = document.getElementById("game-countdown-overlay"); 
+  const textEl = document.getElementById("countdown-text");
+  overlay.style.display = "flex"; 
+  
+  gameTimeRemaining = validMinutes * 60; 
+  gameScore = 0; 
+  globalScoreMultiplier = 1;
+  
+  const p1 = document.getElementById("pile-double_current"); if(p1) p1.innerHTML = ""; 
+  const p2 = document.getElementById("pile-half_current"); if(p2) p2.innerHTML = ""; 
+  const p3 = document.getElementById("pile-double_future"); if(p3) p3.innerHTML = ""; 
+  
+  let count = 5; 
+  textEl.innerText = count;
+  window.cdInterval = setInterval(() => {
     count--;
-    if (count > 0) { playSound("click"); textEl.style.animation = "none"; void textEl.offsetWidth; textEl.style.animation = null; textEl.innerText = count; } 
-    else { clearInterval(cdInterval); overlay.style.display = "none"; playSound("success"); lastMatchTime = Date.now(); logicCallback(); }
+    if (count > 0) { 
+        playSound("click"); textEl.style.animation = "none"; void textEl.offsetWidth; textEl.style.animation = null; textEl.innerText = count; 
+    } else { 
+        clearInterval(window.cdInterval); 
+        overlay.style.display = "none"; 
+        playSound("success"); 
+        lastMatchTime = Date.now(); 
+        logicCallback(); 
+    }
   }, 1000);
 }
 
@@ -1422,9 +1467,17 @@ let sqCurrentWord = null;
 function updateSpeedUI() {
   const m = String(Math.floor(gameTimeRemaining / 60)).padStart(2, "0"); const s = String(gameTimeRemaining % 60).padStart(2, "0");
   document.getElementById("speed-timer").innerText = `🕒 ${m}:${s}`; 
-  document.getElementById("speed-score").innerHTML = `점수: ${gameScore}${getGroupScoreText()}`; 
-  if (currentGameMode === "speed") window.syncScoreToServer(); // 🚀 쿨타임 엔진 적용
-}function startSpeedLogic() {
+  
+  // 🌟 보스전일 때는 데미지로, 일반 게임일 때는 점수로 글자가 바뀝니다!
+  if (typeof isBossRaid !== "undefined" && isBossRaid) {
+      document.getElementById("speed-score").innerHTML = `내 총 데미지: ${gameScore}`; 
+  } else {
+      document.getElementById("speed-score").innerHTML = `점수: ${gameScore}${getGroupScoreText()}`; 
+  }
+  
+  if (currentGameMode === "speed" || currentGameMode === "boss") window.syncScoreToServer();
+}
+function startSpeedLogic() {
   updateSpeedUI();
   gameTimerInterval = setInterval(() => {
     if (globalMultiEndTime) {
@@ -1557,6 +1610,7 @@ function moveFishes(currentTime) {
 // 🚀 [3/4] 결과 화면: 멀티플레이 2초 대기 동기화 및 획득 JR 정산
 // 🚀 [3/4] 결과 화면: 멀티플레이 2초 대기 동기화 및 획득 JR 정산
 async function goResult() {
+  
   // 🚀 픽스: 게임 종료 시 열려있을 수 있는 '모든 방해 레이어(블라인드, 공격창 등)'를 강제로 즉시 소각! (먹통 100% 방지)
   ["group-blocker-overlay", "sq-penalty-overlay", "treasure-overlay", "buff-msg-overlay", "multi-target-modal", "multi-blind-overlay"].forEach(id => {
       const el = document.getElementById(id);
@@ -1676,24 +1730,26 @@ bindClick("tab-today", () => { playSound("click"); showRankings("today", current
 bindClick("tab-class", () => { playSound("click"); showRankings("class", currentRankingMode); });
 bindClick("tab-all", () => { playSound("click"); showRankings("all", currentRankingMode); });
 // 🚀 3. 명예의 전당 화면의 '메뉴로 돌아가기' 버튼 (멀티 대기실 연동)
+// 🚀 3. 명예의 전당 화면의 '메뉴로 돌아가기' 버튼 (교사/학생 완벽 분리 연동)
 bindClick("ranking-home-btn", () => { 
   playSound("click"); 
   document.getElementById("confetti-canvas").style.display = "none"; 
-  if (myLobbyDocId) {
+  
+  if (isTeacherMode) {
+      showScreen("teacher-lobby-screen"); // 🚀 교사는 교사 대기실로 복귀!
+  } else if (myLobbyDocId) {
       showScreen("multi-lobby-screen");
   } else {
       showScreen("menu-screen"); 
   }
 });
-
 async function showRankings(tab, mode = currentRankingMode) {
   currentRankingMode = mode; showScreen("ranking-screen");
   document.querySelectorAll(".rank-tab").forEach(btn => btn.classList.remove("active"));
   document.getElementById(`tab-${tab}`).classList.add("active");
 
   // 🚀 픽스: 무한 퀴즈 게임 이름 추가
-  const modeNames = { "fc": "🃏 깜빡이 학습", "memory": "🔠 메모 게임", "speed-match": "🧩 스피드 짝맞추기", "speed": "⚡ 심플 스피드퀴즈", "fish": "🎣 이모지 낚시하기", "chunk": "🧩 문장 해석 게임", "custom_infinite": "♾️ 무한 퀴즈 게임" };
-  document.getElementById("ranking-mode-title").innerText = `[ ${currentSetTitle} ]\n${modeNames[mode] || "전체"} 순위`;
+  const modeNames = { "fc": "🃏 깜빡이 학습", "memory": "🔠 메모 게임", "speed-match": "🧩 스피드 짝맞추기", "speed": "⚡ 심플 스피드퀴즈", "fish": "🎣 이모지 낚시하기", "chunk": "🧩 문장 해석 게임", "custom_infinite": "♾️ 무한 퀴즈 게임", "boss_raid": "👹 보스 레이드 (타격 데미지)" };
 
   const quotes = ["Wanna try again? 🚀", "You're a star! ⭐", "Keep it up! 🔥", "Fantastic job! 🎉", "Challenge the top! 🏆"];
   document.getElementById("ranking-encourage").innerText = quotes[Math.floor(Math.random() * quotes.length)];
@@ -1757,16 +1813,20 @@ function renderConfetti() {
 // ==========================================
 // 씬 6: 문장 해석 게임 (Chunk Matching)
 // ==========================================
-// ==========================================
-// 씬 6: 문장 해석 게임 (Chunk Matching)
-// ==========================================
 let chunkAnswers = []; let chunkLength = 0; let currentChunkIndex = 0;
 let chunkTimeout = null; // 🚀 [무결성 픽스] 먹통 방지를 위한 전용 타이머 변수 설치!
 function updateChunkUI() {
   const m = String(Math.floor(gameTimeRemaining / 60)).padStart(2, "0"); const s = String(gameTimeRemaining % 60).padStart(2, "0");
   document.getElementById("chunk-timer").innerText = `🕒 ${m}:${s}`; 
-  document.getElementById("chunk-score").innerHTML = `점수: ${gameScore}${getGroupScoreText()}`; 
-  if (currentGameMode === "chunk") window.syncScoreToServer(); // 🚀 쿨타임 엔진 적용
+  
+  // 🌟 보스전일 때는 데미지로, 일반 게임일 때는 점수로 글자가 바뀝니다!
+  if (typeof isBossRaid !== "undefined" && isBossRaid) {
+      document.getElementById("chunk-score").innerHTML = `내 총 데미지: ${gameScore}`; 
+  } else {
+      document.getElementById("chunk-score").innerHTML = `점수: ${gameScore}${getGroupScoreText()}`; 
+  }
+  
+  if (currentGameMode === "chunk" || currentGameMode === "boss") window.syncScoreToServer();
 }
 
 function startChunkLogic() {
@@ -1883,7 +1943,7 @@ async function enterMultiLobbyAsStudent() {
     });
   } catch(e) { console.error("로비 입장 등록 실패:", e); }
 
-  // 🚀 [초강력 다이어트] 학생 대기실 유저/채팅 감시 켜기/끄기 헬퍼 함수
+  // 🚀 학생 대기실 유저/채팅 감시 켜기/끄기 헬퍼 함수
   window.toggleStudentLobbyListeners = function(turnOn) {
       if (turnOn) {
           if (!lobbyUsersUnsubscribe) {
@@ -1928,8 +1988,10 @@ async function enterMultiLobbyAsStudent() {
       }
   };
 
-  // 대기실 처음 입장 시 감시 켜기!
   toggleStudentLobbyListeners(true); 
+
+  // 🚀 멀티플레이어 중복 가동 차단 글로벌 뮤텍스 선언
+  window.isMultiGameActive = false;
 
   multiRoomUnsubscribe = onSnapshot(doc(db, "gameData", "multiRoom"), async (docSnap) => {
     if (docSnap.exists()) {
@@ -1938,13 +2000,15 @@ async function enterMultiLobbyAsStudent() {
       currentMultiRoomGroupPlayMode = room.groupPlayMode || null;
       currentMultiRoomRepresentatives = room.representatives || null;
       
-      if (room.status === "playing") {
-         // 🚀 [핵심 픽스 1] 게임 시작 시 대기실 감시를 완전히 꺼서 통신량 95% 절약!
+if (room.status === "playing") {
+            // 🚀 [튕김 버그 완전 박멸] 게임 중복 실행 방지!
+            // 🚨 [무결성 패치 1] 단, '하이파이브(조편성)' 모드는 스마트폰 화면이 꺼졌다 켜져도 무조건 강제 소환하도록 예외 처리!
+            if (window.isMultiGameActive && room.gameMode !== "highfive") return;
+            window.isMultiGameActive = true;
+
          toggleStudentLobbyListeners(false); 
          
          let selectedSet = wordSets.find(s => s.id === room.setId);
-         
-         // 🚀 [어제 버그 픽스] 선생님이 방금 만든 세트라서 학생 기기에 없다면? 서버에서 즉시 다운!
          if (!selectedSet && room.setId !== "custom_creation") {
              try {
                  const setSnap = await getDoc(doc(db, "gameData", "wordSets"));
@@ -1956,37 +2020,59 @@ async function enterMultiLobbyAsStudent() {
          }
 
          if (selectedSet) { wordList = selectedSet.words; currentSetId = room.setId; currentSetTitle = room.setTitle; }
-         currentGameMode = room.gameMode; multiUseSpecialItems = (room.useSpecialItems === "on");
+         
+         currentGameMode = room.gameMode; 
+         multiUseSpecialItems = (room.useSpecialItems === "on");
          window.multiUseBuffItems = (room.useBuffItems === "on");
          globalMultiEndTime = room.endTime; 
          
          if (currentGroupingActive && currentMultiRoomGroupPlayMode === "one-player" && room.gameMode !== "highfive") {
-             const rep = currentMultiRoomRepresentatives[myCurrentGroupId];
+             const rep = currentMultiRoomRepresentatives?.[myCurrentGroupId];
              if (rep && rep.stdId !== currentUser.stdId) {
                  document.getElementById("group-blocker-msg").innerHTML = `지금은 <b>${rep.name}</b> 친구의 화면에서<br>조원들과 다 함께 상의하며 플레이하세요!`;
                  document.getElementById("group-blocker-overlay").style.display = "flex";
              }
          }
 
-        if (room.gameMode === "speed") { startCountdown(room.duration, "speed-screen", () => { startSpeedLogic(); }); } 
-         else if (room.gameMode === "speed-match") { startCountdown(room.duration, "speed-match-screen", () => { startSpeedMatchLogic(); }); } // 🚀 스피드 짝맞추기 멀티 추가
-         else if (room.gameMode === "chunk") { startCountdown(room.duration, "chunk-screen", () => { startChunkLogic(); }); }
-         else if (room.gameMode === "highfive") { startHighFiveLogic(room.endTime); }
-         else if (room.gameMode === "create") { startCreateLogic(room); }
-         else if (room.gameMode === "custom_infinite") { startCountdown(room.duration, "custom-infinite-screen", () => { startCustomInfiniteLogic(); }); }
-         else if (room.gameMode === "showcase") { startShowcaseLogic(room.showcaseChar); }
+         if (room.gameMode === "boss") {
+             isBossRaid = true;
+             multiUseSpecialItems = false; // 보스전 팀킬 금지
+             if (room.subMode === "speed") { currentGameMode = "speed"; startCountdown(room.duration, "speed-screen", () => { startSpeedLogic(); }); }
+             else if (room.subMode === "chunk") { currentGameMode = "chunk"; startCountdown(room.duration, "chunk-screen", () => { startChunkLogic(); }); }
+             else if (room.subMode === "custom_infinite") { currentGameMode = "custom_infinite"; startCountdown(room.duration, "custom-infinite-screen", () => { startCustomInfiniteLogic(); }); }
+         } else {
+             isBossRaid = false; 
+             if (room.gameMode === "speed") { startCountdown(room.duration, "speed-screen", () => { startSpeedLogic(); }); } 
+             else if (room.gameMode === "speed-match") { startCountdown(room.duration, "speed-match-screen", () => { startSpeedMatchLogic(); }); } 
+             else if (room.gameMode === "chunk") { startCountdown(room.duration, "chunk-screen", () => { startChunkLogic(); }); }
+             else if (room.gameMode === "highfive") { startHighFiveLogic(room.endTime); }
+             else if (room.gameMode === "create") { startCreateLogic(room); }
+             else if (room.gameMode === "custom_infinite") { startCountdown(room.duration, "custom-infinite-screen", () => { startCustomInfiniteLogic(); }); }
+             else if (room.gameMode === "showcase") { startShowcaseLogic(room.showcaseChar); }
+         }
       } 
       else if (room.status === "waiting") {
-        // 🚀 [핵심 픽스 2] 대기실로 돌아오면 다시 감시 켜기!
+        // 🚀 대기실로 돌아왔을 때만 안전하게 실행되는 찐 종료 로직!
+        window.isMultiGameActive = false;
         toggleStudentLobbyListeners(true); 
         
-// 🚀 기존 조건문에 || currentGameMode === "showcase" 를 추가하고 문구를 바꿉니다!
-        if (currentGameMode === "speed" || currentGameMode === "speed-match" || currentGameMode === "chunk" || currentGameMode === "create" || currentGameMode === "custom_infinite" || currentGameMode === "showcase") {
-            resetGameStates(); globalMultiEndTime = null; 
-            let alertMsg = currentGameMode === "showcase" ? "✨ 쇼케이스가 종료되었습니다. 대기실로 이동합니다." : "👑 선생님이 활동을 종료하셨습니다!\n실시간 대기실로 이동합니다.";
-            currentGameMode = "";
-            alert(alertMsg);
-            showScreen("multi-lobby-screen");
+        if (currentGameMode === "speed" || currentGameMode === "speed-match" || currentGameMode === "chunk" || currentGameMode === "create" || currentGameMode === "custom_infinite" || currentGameMode === "showcase" || isBossRaid) {
+            
+            if (isBossRaid) {
+                isBossRaid = false;
+                currentUser.score = gameScore; 
+                resetGameStates(); 
+                globalMultiEndTime = null;
+                document.getElementById("result-detail").innerText = `보스에게 입힌 총 데미지입니다!`; 
+                goResult();
+            } else {
+                resetGameStates(); 
+                globalMultiEndTime = null; 
+                let alertMsg = currentGameMode === "showcase" ? "✨ 쇼케이스가 종료되었습니다. 대기실로 이동합니다." : "👑 선생님이 활동을 종료하셨습니다!\n실시간 대기실로 이동합니다.";
+                currentGameMode = "";
+                alert(alertMsg);
+                showScreen("multi-lobby-screen");
+            }
         }
         if (room.groupingActive && document.getElementById("highfive-result-screen").classList.contains("active")) {
             document.getElementById("confetti-canvas").style.display = "none";
@@ -1996,7 +2082,6 @@ async function enterMultiLobbyAsStudent() {
     }
   });
 }
-
 bindClick("lobby-exit-btn", async () => { playSound("click"); await exitLobby(); showScreen("lobby-mode-screen"); });
 
 async function exitLobby() {
@@ -2025,6 +2110,7 @@ function enterMultiLobbyAsTeacher() {
   if (setSelect) { setSelect.innerHTML = wordSets.filter(s => !s.isCustomSet).map(set => `<option value="${set.id}">${set.title} (${set.words.length}개)</option>`).join(""); }
   const customSetSelect = document.getElementById("teacher-custom-set-select");
   if (customSetSelect) { customSetSelect.innerHTML = wordSets.filter(s => s.isCustomSet).map(set => `<option value="${set.id}">✨ ${set.title} (${set.words.length}문제)</option>`).join(""); }
+  
   lobbyUsersUnsubscribe = onSnapshot(collection(db, "lobbyUsers"), (snapshot) => {
     const tCountEl = document.getElementById("teacher-user-count");
     let players = []; let count = 0;
@@ -2047,7 +2133,7 @@ function enterMultiLobbyAsTeacher() {
           const data = docSnap.data();
           currentGroupingActive = data.groupingActive || false;
           window.teacherGroupPlayMode = data.groupPlayMode || null;
-          currentGameMode = data.gameMode || ""; // 🚀 핵심 픽스 1: 모드를 기억하게 합니다!
+          currentGameMode = data.gameMode || ""; 
           updateTeacherMenuVisibility(); 
           
           if (data.status === "playing" && data.gameMode !== "highfive") {
@@ -2058,6 +2144,9 @@ function enterMultiLobbyAsTeacher() {
               
               if (data.gameMode === "showcase") {
                   startShowcaseLogic(data.showcaseChar);
+              } else if (data.gameMode === "boss") {
+                  // 👈 보스전 렌더링 시작!
+                  setupTeacherBossMatch(data);
               } else {
                   setupTeacherLiveMatch(data.endTime);
                   if (data.gameMode === "create") {
@@ -2070,17 +2159,31 @@ function enterMultiLobbyAsTeacher() {
               }
           } else {
               window.teacherLobbyStatus = "waiting";
+              window.isTeacherBossMatchRunning = false; 
               cleanupTeacherLiveMatch();
               
               // 🎵 대기실로 돌아오면 대기실 BGM 자동 재생!
               playTeacherBGM("lobby");
               
-              if (currentGameMode === "showcase") {
-                  showScreen("teacher-lobby-screen");
+if (currentGameMode === "showcase" || currentGameMode === "boss") {
+                  let wasBoss = (currentGameMode === "boss");
+                  currentGameMode = ""; 
+                  
+                  if (wasBoss) {
+                      // 🚀 교사는 바로 대기실로 가지 않고, 학생 점수가 서버에 저장될 시간을 3초 벌어준 뒤 랭킹을 봅니다!
+                      showScreen("loading-screen");
+                      document.querySelector("#loading-screen h2").innerText = "학생들의 타격 데미지를 집계 중입니다...";
+                      document.querySelector("#loading-screen p").innerText = "잠시만 기다려주세요 (약 3초)";
+                      setTimeout(() => {
+                          showRankings("today", "boss_raid");
+                      }, 3000); 
+                  } else {
+                      showScreen("teacher-lobby-screen");
+                  }
               }
               renderTeacherVisualLobby(window.globalLobbyPlayers); 
           }
-      }
+      } // 💡 에러의 원인이었던 잃어버린 괄호를 찾아서 넣었습니다!
   });
 
   if(teacherRenderInterval) clearInterval(teacherRenderInterval);
@@ -2100,6 +2203,7 @@ function updateTeacherMenuVisibility() {
     const isHf = (mode === "highfive");
     const isCreate = (mode === "create");
     const isCustom = (mode === "custom_game");
+    const isBoss = (mode === "boss"); // 👈 이거 추가!
     
     const toggleDisplay = (id, condition) => {
         const el = document.getElementById(id);
@@ -2109,9 +2213,10 @@ function updateTeacherMenuVisibility() {
     // 조 해제 버튼 보이기 (조편성이 되어있을 때만)
     toggleDisplay("teacher-disband-group-btn", currentGroupingActive);
 
-    toggleDisplay("teacher-time-container", !(isHf || isCreate));
-    toggleDisplay("teacher-item-container", !(isHf || isCreate));
-    toggleDisplay("teacher-set-container", !(isHf || isCreate || isCustom));
+toggleDisplay("teacher-boss-options-container", isBoss); // 👈 이거 추가!
+    toggleDisplay("teacher-time-container", !(isHf || isCreate || isBoss)); // 👈 isBoss 추가!
+    toggleDisplay("teacher-item-container", !(isHf || isCreate || isBoss)); // 👈 isBoss 추가!
+    toggleDisplay("teacher-set-container", !(isHf || isCreate || isCustom || (isBoss && document.getElementById("teacher-boss-submode-select").value === "custom_infinite"))); // 👈 세트 선택 제어 수정
     toggleDisplay("teacher-custom-options-container", isCustom);
     toggleDisplay("teacher-group-count-container", isHf);
     toggleDisplay("teacher-create-time-container", isCreate);
@@ -2175,6 +2280,32 @@ bindClick("teacher-game-start-btn", async () => {
           setDoc(doc(db, "lobbyUsers", d.id), { score: 0, items: "", createdCount: 0, isSubmitted: false }, { merge: true }).catch(e=>e);
       });
   } catch(e) { console.error("점수 초기화 에러", e); }
+  
+  if (mode === "boss") {
+      const bossHp = parseInt(document.getElementById("teacher-boss-hp-select").value);
+      const subMode = document.getElementById("teacher-boss-submode-select").value;
+      const duration = document.getElementById("teacher-game-time-select")?.value || 3;
+      
+      let finalSetId, finalSetTitle;
+      if (subMode === "custom_infinite") {
+          finalSetId = document.getElementById("teacher-custom-set-select").value;
+          if(!finalSetId) return alert("보스전(학생출제 모드)용 세트를 선택해 주세요!");
+          finalSetTitle = wordSets.find(s => s.id === finalSetId)?.title;
+      } else {
+          finalSetId = document.getElementById("teacher-game-set-select").value;
+          if(!finalSetId) return alert("보스전을 진행할 학습 세트를 선택해 주세요!");
+          finalSetTitle = wordSets.find(s => s.id === finalSetId)?.title;
+      }
+
+      const tEnd = Date.now() + 5000 + (duration * 60 * 1000); // 5초 인트로
+      await setDoc(doc(db, "gameData", "multiRoom"), { 
+          status: "playing", gameMode: "boss", subMode: subMode, duration: duration, 
+          setId: finalSetId, setTitle: finalSetTitle, 
+          bossHp: bossHp, bossMaxHp: bossHp, endTime: tEnd, groupingActive: false,
+          useBuffItems: "on", useSpecialItems: "off" // 보스전에선 팀킬 불가!
+      }, { merge: true });
+      return;
+  }
 
   if (mode === "highfive") {
      const targetEndTime = Date.now() + 15000;
@@ -2221,6 +2352,9 @@ bindClick("teacher-game-start-btn", async () => {
       const cSetId = document.getElementById("teacher-custom-set-select").value;
       if(!cSetId) return alert("학생이 출제한 세트를 선택해 주세요!");
       const cSet = wordSets.find(s => s.id === cSetId);
+      if (!cSet || !Array.isArray(cSet.words) || cSet.words.length === 0) return alert("학생 출제 세트에 문제가 없습니다. 먼저 문제 만들기를 종료해서 세트를 생성해 주세요.");
+      const hasBrokenProblem = cSet.words.some(w => { try { JSON.parse(w.en); return false; } catch(e) { return true; } });
+      if (hasBrokenProblem) return alert("학생 출제 세트 안에 손상된 문제가 있습니다. 새로 문제 만들기 세트를 생성해 주세요.");
 
       let gPlayMode = null; let reps = {};
       if (playStyle === "group") {
@@ -2447,7 +2581,8 @@ bindClick("teacher-match-abort-btn", async () => {
     playSound("click");
     if (currentGameMode === "create") {
         if(confirm("문제 만들기를 종료합니다.\n학생들이 제출한 문제들로 '새로운 학습 세트'를 생성하시겠습니까?")) {
-            await saveCreatedProblemsToSet();
+            const saved = await saveCreatedProblemsToSet();
+            if (!saved) return;
             await setDoc(doc(db, "gameData", "multiRoom"), { status: "waiting" }, { merge: true });
             alert("종료 및 세트 생성이 완료되었습니다!");
         }
@@ -2459,6 +2594,8 @@ bindClick("teacher-match-abort-btn", async () => {
 });
 
 async function saveCreatedProblemsToSet() {
+    // 🚀 [안정성 패치] 와이파이가 느린 학생의 문제까지 모두 취합하도록 3.5초 대기
+    await new Promise(resolve => setTimeout(resolve, 3500));
     const snap = await getDocs(collection(db, "lobbyUsers"));
     const customWords = [];
     let firstClassId = "테스트";
@@ -2491,7 +2628,7 @@ async function saveCreatedProblemsToSet() {
         }
     });
 
-    if (customWords.length === 0) return;
+    if (customWords.length === 0) { alert("아직 저장된 학생 문제가 없습니다. 잠시 후 다시 종료 버튼을 눌러 주세요."); return false; }
 
     const now = new Date();
     const title = `${firstClassId}반 ${now.getMonth()+1}월 ${now.getDate()}일 ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -2505,6 +2642,7 @@ async function saveCreatedProblemsToSet() {
     if (setSelect) { setSelect.innerHTML = wordSets.filter(s => !s.isCustomSet).map(set => `<option value="${set.id}">${set.title} (${set.words.length}개)</option>`).join(""); }
     const customSetSelect = document.getElementById("teacher-custom-set-select");
     if (customSetSelect) { customSetSelect.innerHTML = wordSets.filter(s => s.isCustomSet).map(set => `<option value="${set.id}">✨ ${set.title} (${set.words.length}문제)</option>`).join(""); }
+    return true;
 }
 
 // 🚀 교사 대기실 나가기 버튼 핸들러 연결
@@ -2583,13 +2721,13 @@ function startHighFiveLogic(endTime) {
              submitHighFive(Date.now());
          }
          
-         timerEl.innerText = "종료!";
+timerEl.innerText = "종료!";
          btn.style.display = "none";
          status.style.display = "block";
-         status.innerText = "조편성 결과 집계 중... (약 2초)";
+         status.innerText = "조편성 결과 완벽 집계 중... (약 4초)";
          
-         // 데이터 동기화를 위해 2.5초 대기 후 결과창 이동
-         setTimeout(() => { processHighFiveResult(); }, 2500);
+         // 🚀 [안정성 패치] 22명 동시 접속 시 누락 없도록 4초 대기!
+         setTimeout(() => { processHighFiveResult(); }, 4000);
      }
   }, 500);
 }
@@ -2628,18 +2766,42 @@ async function processHighFiveResult() {
     const roomDoc = await getDoc(doc(db, "gameData", "multiRoom"));
     if(roomDoc.exists() && roomDoc.data().groupCount) groupCount = roomDoc.data().groupCount;
 
-    const q = query(collection(db, "scores"), orderBy("timestamp", "desc"), limit(200));
-    const qSnap = await getDocs(q);
-    let hfScores = [];
-    const thirtySecondsAgo = Date.now() - 30000; 
-    qSnap.forEach(d => {
-        const s = d.data();
-        if(s.mode === "highfive" && s.timestamp > thirtySecondsAgo) hfScores.push(s);
-    });
+    const lobbySnap = await getDocs(collection(db, "lobbyUsers"));
+    const lobbyPlayers = [];
+    lobbySnap.forEach(d => lobbyPlayers.push({ docId: d.id, ...d.data() }));
 
     let uniqueTop = {};
-    hfScores.forEach(s => { 
-        if(!uniqueTop[s.stdId] || uniqueTop[s.stdId].score > s.score) uniqueTop[s.stdId] = s; 
+    const thirtySecondsAgo = Date.now() - 45000;
+
+    for (let attempt = 0; attempt < 5; attempt++) {
+        const q = query(collection(db, "scores"), orderBy("timestamp", "desc"), limit(300));
+        const qSnap = await getDocs(q);
+        qSnap.forEach(d => {
+            const s = d.data();
+            if (s.mode === "highfive" && s.timestamp > thirtySecondsAgo) {
+                if (!uniqueTop[s.stdId] || uniqueTop[s.stdId].score > s.score) uniqueTop[s.stdId] = s;
+            }
+        });
+        if (Object.keys(uniqueTop).length >= lobbyPlayers.length) break;
+        await new Promise(resolve => setTimeout(resolve, 700));
+    }
+
+    lobbyPlayers.forEach((p, idx) => {
+        if (!uniqueTop[p.stdId]) {
+            uniqueTop[p.stdId] = {
+                stdId: p.stdId,
+                realName: p.realName,
+                nickname: p.nickname,
+                character: p.character,
+                score: (roomDoc.exists() && roomDoc.data().endTime ? roomDoc.data().endTime : Date.now()) + idx,
+                timestamp: Date.now(),
+                mode: "highfive"
+            };
+        } else {
+            uniqueTop[p.stdId].realName = uniqueTop[p.stdId].realName || p.realName;
+            uniqueTop[p.stdId].nickname = uniqueTop[p.stdId].nickname || p.nickname;
+            uniqueTop[p.stdId].character = uniqueTop[p.stdId].character || p.character;
+        }
     });
     
     let sorted = Object.values(uniqueTop).sort((a, b) => a.score - b.score);
@@ -2719,14 +2881,37 @@ bindClick("hf-result-play-btn", async () => {
     
     // 로비에 있는 모든 유저에게 조(groupId) 부여하기
     const lobbySnap = await getDocs(collection(db, "lobbyUsers"));
+    const groupUpdatePromises = [];
+    
+    // 각 조별 현재 배정된 인원수를 추적
+    let groupCounts = new Array(window.latestGroups.length).fill(0);
+    
     lobbySnap.forEach(docSnap => {
         const d = docSnap.data();
         let gId = null;
         for (let i = 0; i < window.latestGroups.length; i++) {
-            if (window.latestGroups[i].find(m => m.stdId === d.stdId)) { gId = i + 1; break; }
+            if (window.latestGroups[i].find(m => m.stdId === d.stdId)) { 
+                gId = i + 1; 
+                groupCounts[i]++;
+                break; 
+            }
         }
-        if (gId) setDoc(docSnap.ref, { groupId: gId }, { merge: true });
+        
+        // 🚨 [무결성 패치 2] 튕겨서 새로고침하는 바람에 조 명단에서 누락된 학생 실시간 구제!
+        // 가장 인원이 적은 조를 찾아 자동으로 강제 배정합니다.
+        if (!gId && d.stdId) {
+            let minIndex = 0;
+            for (let i = 1; i < groupCounts.length; i++) {
+                if (groupCounts[i] < groupCounts[minIndex]) minIndex = i;
+            }
+            gId = minIndex + 1;
+            groupCounts[minIndex]++;
+            console.log(`[누락생 구제] ${d.nickname} 학생을 ${gId}조에 자동 배정했습니다.`);
+        }
+        
+        if (gId) groupUpdatePromises.push(setDoc(docSnap.ref, { groupId: gId }, { merge: true }));
     });
+    await Promise.all(groupUpdatePromises);
 
     currentGroupingActive = true;
     await setDoc(doc(db, "gameData", "multiRoom"), { status: "waiting", groupingActive: true }, { merge: true });
@@ -3140,8 +3325,17 @@ bindClick("create-submit-btn", async () => {
     document.querySelector("#loading-screen h2").innerText = "제출 및 보상 정산 중...";
 
     const actualProblems = myCreatedProblems.filter(p => p !== null);
-    if (myLobbyDocId) {
-        await setDoc(doc(db, "lobbyUsers", myLobbyDocId), { createdProblems: actualProblems, isSubmitted: true, createdCount: actualProblems.length }, { merge: true });
+    try {
+        if (myLobbyDocId) {
+            await setDoc(doc(db, "lobbyUsers", myLobbyDocId), { createdProblems: actualProblems, isSubmitted: true, createdCount: actualProblems.length }, { merge: true });
+        }
+    } catch (e) {
+        console.error("문제 제출 저장 실패:", e);
+        alert("제출 저장에 실패했습니다. 와이파이를 확인한 뒤 다시 제출해 주세요.");
+        showScreen("student-create-screen");
+        const controls = document.getElementById("top-left-controls");
+        if (controls) controls.style.display = "flex";
+        return;
     }
 
     // 💰 보상 지급 로직 (1문제당 1000 JR)
@@ -3280,11 +3474,26 @@ let ciCurrentProb = null;
 function updateCiUI() {
   const m = String(Math.floor(gameTimeRemaining / 60)).padStart(2, "0"); const s = String(gameTimeRemaining % 60).padStart(2, "0");
   document.getElementById("ci-timer").innerText = `🕒 ${m}:${s}`; 
-  document.getElementById("ci-score").innerHTML = `점수: ${gameScore}${getGroupScoreText()}`; 
-  if (currentGameMode === "custom_infinite") window.syncScoreToServer(); // 🚀 쿨타임 엔진 적용
+  
+  // 🌟 보스전일 때는 데미지로, 일반 게임일 때는 점수로 글자가 바뀝니다!
+  if (typeof isBossRaid !== "undefined" && isBossRaid) {
+      document.getElementById("ci-score").innerHTML = `내 총 데미지: ${gameScore}`; 
+  } else {
+      document.getElementById("ci-score").innerHTML = `점수: ${gameScore}${getGroupScoreText()}`; 
+  }
+  
+  if (currentGameMode === "custom_infinite" || currentGameMode === "boss") window.syncScoreToServer();
 }
 
 function startCustomInfiniteLogic() {
+  wordList = (wordList || []).filter(w => {
+    try { JSON.parse(w.en); return true; } catch(e) { return false; }
+  });
+  if (wordList.length === 0) {
+    alert("진행할 학생 출제 문제가 없습니다. 선생님께 다시 세트를 선택해 달라고 알려 주세요.");
+    showScreen("multi-lobby-screen");
+    return;
+  }
   updateCiUI();
   gameTimerInterval = setInterval(() => {
     if (globalMultiEndTime) {
@@ -3297,7 +3506,19 @@ function startCustomInfiniteLogic() {
 
 function loadNextCiQuiz() {
   const wordObj = wordList[Math.floor(Math.random() * wordList.length)];
-  ciCurrentProb = JSON.parse(wordObj.en);
+  try {
+    ciCurrentProb = JSON.parse(wordObj.en);
+  } catch(e) {
+    console.error("학생 출제 문제 파싱 실패:", e);
+    wordList = wordList.filter(w => w !== wordObj);
+    if (wordList.length === 0) {
+      alert("남아 있는 학생 출제 문제가 없습니다. 대기실로 돌아갑니다.");
+      showScreen("multi-lobby-screen");
+      return;
+    }
+    loadNextCiQuiz();
+    return;
+  }
   
   document.getElementById("ci-author-badge").innerText = wordObj.author;
   const box = document.getElementById("ci-question-box");
@@ -3568,6 +3789,7 @@ window.playTeacherBGM = function(mode) {
     else if (mode === "create") trackSrc = "bgm/create.mp3";
     else if (mode === "highfive") trackSrc = "bgm/highfive.mp3";
     else if (mode === "showcase") trackSrc = "bgm/showcase.mp3";
+    else if (mode === "boss") trackSrc = "bgm/boss.mp3";
     // 2. 그 외 실제 게임을 플레이하는 모드인지 판정
     else if (mode === "speed" || mode === "speed-match" || mode === "chunk" || (mode && mode.startsWith("custom_"))) {
         isGameMode = true; 
@@ -3608,4 +3830,270 @@ if(oldMuteBtn) {
             playTeacherBGM(currentGameMode || "lobby");
         }
     });
+}
+// 📢 보스 전용 사운드 재생 함수 (HTML 수정 필요 없음!)
+function playBossSound(soundName) {
+    const audio = new Audio(`boss/${soundName}.mp3`); // 만약 원본 파일이 wav면 .wav로 수정해주세요!
+    audio.volume = 0.4; // 🚀 [볼륨 픽스] 효과음이 너무 크지 않게 40%로 일괄 고정합니다! (더 줄이려면 0.3 등으로 변경)
+    audio.play().catch(e => console.log("효과음 재생 에러:", e));
+}
+// ==========================================
+// 👹 보스 레이드 코어 엔진 (등장 연출 & 인공지능 패턴 + 유령화 방지)
+// ==========================================
+let bossInterval = null;
+let bossDamageQueue = []; 
+let isBossDefeated = false;
+let previousPlayerScores = {};
+let bossSpriteTimer = null;
+let bossPatternTimeout = null; 
+let bossX = -100; 
+window.isTeacherBossMatchRunning = false; // 🌟 핵심: 보스가 여러 마리 겹치는 것 완벽 방지!
+
+// 제공된 스프라이트 설정
+const bossSprites = {
+    idle: { url: "boss/Golem/Golem_1_idle.png", frames: 8 },
+    walk: { url: "boss/Golem/Golem_1_walk.png", frames: 10 },
+    attack: { url: "boss/Golem/Golem_1_attack.png", frames: 11 },
+    hurt: { url: "boss/Golem/Golem_1_hurt.png", frames: 4 },
+    die: { url: "boss/Golem/Golem_1_die.png", frames: 12 }
+};
+
+// 강제 종료 버튼 연결
+bindClick("teacher-boss-abort-btn", async () => {
+    playSound("click");
+    if(confirm("진행 중인 보스전을 강제로 종료하시겠습니까?")) {
+        await endBossMatch(false); // 타임오버 처리로 강제종료
+    }
+});
+
+function playBossAnimation(state, speedMs = 100, loop = true) {
+    clearInterval(bossSpriteTimer);
+    const spriteEl = document.getElementById("boss-sprite");
+    if (!spriteEl) return;
+
+    const anim = bossSprites[state];
+    spriteEl.style.backgroundImage = `url('${anim.url}')`;
+    spriteEl.style.backgroundSize = `${anim.frames * 100}% 100%`;
+    spriteEl.style.imageRendering = "pixelated"; 
+
+    let frame = 0;
+    const boxWidth = spriteEl.clientWidth; // 현재 보스 박스의 정확한 픽셀 크기 (예: 400px)
+    
+    // 🚀 첫 프레임 즉시 고정 (초기화)
+    spriteEl.style.backgroundPosition = "0px 0px";
+
+    bossSpriteTimer = setInterval(() => {
+        frame++;
+        if (frame >= anim.frames) {
+            if (!loop) { clearInterval(bossSpriteTimer); return; }
+            frame = 0;
+        }
+        // 🚀 % 대신 '정확한 픽셀(px)' 단위로 필름을 넘깁니다! 
+        // 0px -> -400px -> -800px 로 이동하며 절대 미끄러지지(흘러가지) 않습니다.
+        spriteEl.style.backgroundPosition = `-${frame * boxWidth}px 0px`;
+    }, speedMs);
+}
+
+window.setupTeacherBossMatch = function(roomData) {
+    if (window.isTeacherBossMatchRunning) return; 
+    window.isTeacherBossMatchRunning = true;
+    // 🚀 [이모지 퇴근 픽스] 보스전 시작 시 렉을 유발하는 이모지 상자를 아예 숨겨버립니다.
+    const emojiBox = document.getElementById("emoji-container");
+    if (emojiBox) emojiBox.style.display = "none";
+    showScreen("teacher-boss-screen");
+    isBossDefeated = false;
+    bossDamageQueue = [];
+    previousPlayerScores = {};
+    bossX = 0; // 🚀 정중앙 정렬
+    
+    document.getElementById("boss-outro-overlay").style.display = "none";
+    document.getElementById("boss-hp-fill").style.width = "100%";
+    document.getElementById("boss-hp-text").innerText = `${roomData.bossMaxHp} / ${roomData.bossMaxHp}`;
+    
+    const introOverlay = document.getElementById("boss-intro-overlay");
+    const containerEl = document.getElementById("boss-sprite-container"); // 🚀 위치 이동용 부모
+    const spriteEl = document.getElementById("boss-sprite"); // 🚀 방향 뒤집기용 자식
+    
+    introOverlay.style.display = "none";
+    playSound("treasure");
+    
+    // 🌟 1. 보스를 하늘 위로 숨겨둠 (지붕 뚫고 대기)
+    containerEl.style.transition = "none";
+    containerEl.style.bottom = "110vh"; 
+    containerEl.style.left = "50%";
+    spriteEl.style.transform = "scaleX(1)"; // 정면 바라보기
+    playBossAnimation("idle", 150, true);
+    
+    // 🌟 2. 부드럽고 묵직하게 땅으로 가속 낙하 (쿵!)
+    setTimeout(() => {
+        containerEl.style.transition = "bottom 0.7s cubic-bezier(0.6, -0.28, 0.735, 0.045)";
+        containerEl.style.bottom = "15vh"; // 바닥 안착 위치
+    }, 100);
+
+    // 🌟 3. 바닥에 닿았을 때 화면 진동 및 암전 오버레이 등장
+    setTimeout(() => {
+        playSound("pop"); 
+        const screen = document.getElementById("teacher-boss-screen");
+        screen.classList.add("shake-screen-effect"); // 화면 전체 진동
+        setTimeout(() => screen.classList.remove("shake-screen-effect"), 500);
+
+        introOverlay.style.display = "flex";
+        
+        // 🌟 4. 3.5초 뒤 인트로 종료 및 본 게임(AI 패턴) 가동
+        setTimeout(() => {
+            introOverlay.style.display = "none";
+            containerEl.style.transition = "left 2s linear";
+            startBossGameLoop(roomData.endTime, roomData.bossMaxHp);
+            runBossAIPattern(); 
+        }, 3500);
+    }, 800);
+};
+
+// 🤖 보스 움직임 인공지능 (무한 루프)
+async function runBossAIPattern() {
+    const containerEl = document.getElementById("boss-sprite-container");
+    const spriteEl = document.getElementById("boss-sprite");
+    
+    while (!isBossDefeated && window.isTeacherBossMatchRunning) {
+        // 1. 가만히 숨쉬기
+        playBossAnimation("idle", 150, true);
+        const idleTime = Math.random() * 2000 + 2000;
+        await new Promise(r => { bossPatternTimeout = setTimeout(r, idleTime); });
+        if(isBossDefeated || !window.isTeacherBossMatchRunning) break;
+        
+        // 2. 우측으로 걸어가기
+        playBossAnimation("walk", 120, true);
+        spriteEl.style.transform = "scaleX(1)"; // 🚀 자식이 방향 전환 (종이처럼 꼬이지 않고 즉시 휙!)
+        bossX += 150; 
+        containerEl.style.left = `calc(50% + ${bossX}px)`; // 🚀 부모만 부드럽게 위치 이동
+        await new Promise(r => { bossPatternTimeout = setTimeout(r, 2000); });
+        if(isBossDefeated || !window.isTeacherBossMatchRunning) break;
+        
+// 3. 학교 공격!
+        playBossAnimation("attack", 100, false);
+        const roars = ["boss_roar_1", "boss_roar_2", "boss_roar_3"];
+        playBossSound(roars[Math.floor(Math.random() * roars.length)]); // 🚀 3가지 포효음 중 랜덤 재생!
+        await new Promise(r => { bossPatternTimeout = setTimeout(r, 1500); });
+        
+        // 4. 뒤로 물러나기 (좌측으로 이동)
+        playBossAnimation("walk", 120, true);
+        spriteEl.style.transform = "scaleX(-1)"; // 🚀 자식이 방향 전환 (즉시 휙!)
+        bossX -= 150; 
+        containerEl.style.left = `calc(50% + ${bossX}px)`; 
+        await new Promise(r => { bossPatternTimeout = setTimeout(r, 2000); });
+        if(isBossDefeated || !window.isTeacherBossMatchRunning) break;
+        
+        spriteEl.style.transform = "scaleX(1)"; // 방향 원래대로 복구
+    }
+}
+
+function startBossGameLoop(endTime, maxHp) {
+    let currentHp = maxHp;
+    
+    clearInterval(bossInterval);
+    bossInterval = setInterval(() => {
+        if (isBossDefeated || !window.isTeacherBossMatchRunning) return;
+
+        const remaining = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
+        const m = String(Math.floor(remaining / 60)).padStart(2, "0");
+        const s = String(remaining % 60).padStart(2, "0");
+        document.getElementById("boss-timer").innerText = `🕒 ${m}:${s}`;
+        
+        if (remaining <= 0) {
+            endBossMatch(false);
+            return;
+        }
+
+        let totalDamageThisTick = 0;
+        if (window.globalLobbyPlayers) {
+            window.globalLobbyPlayers.forEach(p => {
+                const prev = previousPlayerScores[p.stdId] || 0;
+                const curr = p.score || 0;
+                const diff = curr - prev;
+                if (diff > 0) {
+                    totalDamageThisTick += diff;
+                    bossDamageQueue.push({ amount: diff, name: p.nickname });
+                    previousPlayerScores[p.stdId] = curr;
+                }
+            });
+        }
+
+        if (totalDamageThisTick > 0) {
+            currentHp -= totalDamageThisTick;
+            if (currentHp <= 0) currentHp = 0;
+            
+            const hpPercent = Math.max(0, (currentHp / maxHp) * 100);
+            document.getElementById("boss-hp-fill").style.width = `${hpPercent}%`;
+            document.getElementById("boss-hp-text").innerText = `${currentHp} / ${maxHp}`;
+            
+            if (currentHp <= 0) endBossMatch(true); 
+        }
+    }, 1000); 
+
+    const effectInterval = setInterval(() => {
+        if (isBossDefeated || !window.isTeacherBossMatchRunning) { clearInterval(effectInterval); return; }
+        if (bossDamageQueue.length > 0) {
+            const hit = bossDamageQueue.shift();
+            spawnDamageFloater(hit.amount, hit.name);
+            
+            const spriteEl = document.getElementById("boss-sprite");
+            // 🚀 안전한 피격 애니메이션으로 변경 (순간이동 박멸!)
+            spriteEl.classList.remove("boss-hit-anim");
+            void spriteEl.offsetWidth;
+            spriteEl.classList.add("boss-hit-anim");
+            
+            playBossAnimation("hurt", 100, false);
+            setTimeout(() => { if(!isBossDefeated) playBossAnimation("idle", 150, true); }, 400);
+            
+            const hits = ["boss_hit_1", "boss_hit_2", "boss_hit_3"];
+            playBossSound(hits[Math.floor(Math.random() * hits.length)]); // 🚀 3가지 타격음 중 찰지게 랜덤 재생!
+        }
+    }, 150);
+}
+
+function spawnDamageFloater(amount, name) {
+    const arena = document.getElementById("boss-arena");
+    const floater = document.createElement("div");
+    floater.className = "damage-floater";
+    floater.innerHTML = `<span class="damage-amount">-${amount}</span><span class="damage-player">${name}</span>`;
+    
+    const offsetX = (Math.random() - 0.5) * 250;
+    const offsetY = -Math.random() * 100 - 150;
+    floater.style.left = `calc(50% + ${offsetX}px)`;
+    floater.style.top = `calc(100% + ${offsetY}px)`;
+    
+    arena.appendChild(floater);
+    setTimeout(() => floater.remove(), 1000); 
+}
+
+async function endBossMatch(isVictory) {
+    if (isBossDefeated) return; 
+    isBossDefeated = true;
+    window.isTeacherBossMatchRunning = false; 
+    
+    clearInterval(bossInterval);
+    clearTimeout(bossPatternTimeout); 
+    
+    const spriteEl = document.getElementById("boss-sprite");
+    // 🚀 부모/자식 분리에 따른 안전한 초기화
+    spriteEl.style.transform = `scaleX(1)`; 
+
+const outroTitle = document.getElementById("boss-outro-title");
+    if (isVictory) {
+        playBossSound("boss_die"); // 🚀 보스 쓰러지는 효과음 추가!
+        playBossAnimation("die", 150, false);
+        outroTitle.innerText = "보스 격파 성공!!";
+        outroTitle.style.color = "#4CAF50";
+    } else {
+        playBossAnimation("attack", 150, true);
+        outroTitle.innerText = "타임 오버... 방어 실패";
+        outroTitle.style.color = "#F44336";
+    }
+
+    const outro = document.getElementById("boss-outro-overlay");
+    outro.style.display = "flex";
+    
+    setTimeout(async () => {
+        await setDoc(doc(db, "gameData", "multiRoom"), { status: "waiting" }, { merge: true });
+    }, 3500);
 }

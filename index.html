@@ -308,6 +308,25 @@
               <option value="highfive">✋ 하이파이브 조편성 (팀 짜기)</option>
               <option value="create">📝 문제 만들기 (학생 출제 모드)</option>
               <option value="custom_game">✨ 학생 출제 세트로 게임하기</option>
+              <option value="boss">👹 보스 레이드</option>
+            </select>
+          </div>
+          <div id="teacher-boss-options-container" style="display: none; background: rgba(0,0,0,0.8); padding: 15px; border-radius: 8px; border: 2px dashed #f44336; margin-bottom: 10px;">
+            <label style="font-weight: bold; color: #f44336; display: block; margin-bottom: 5px;">👹 보스 체력 설정</label>
+            <select id="teacher-boss-hp-select" style="width: 100%; margin-bottom:10px; font-size:16px; padding:8px; border-radius:8px; font-family:inherit;">
+              <option value="10000">1만 (테스트용)</option>
+              <option value="100000">10만</option>
+              <option value="500000">50만</option>
+              <option value="1000000" selected>100만 (권장)</option>
+              <option value="5000000">500만</option>
+              <option value="10000000">1000만 (지옥)</option>
+            </select>
+
+            <label style="font-weight: bold; color: #FFEB3B; display: block; margin-bottom: 5px;">⚔️ 세부 게임 모드</label>
+            <select id="teacher-boss-submode-select" style="width: 100%; font-size:16px; padding:8px; border-radius:8px; font-family:inherit;">
+              <option value="speed">⚡ 심플 스피드퀴즈</option>
+              <option value="chunk">🧩 문장 해석 게임</option>
+              <option value="custom_infinite">✨ 학생 출제 무한 퀴즈</option>
             </select>
           </div>
           <div id="teacher-custom-options-container" style="display: none; background: rgba(255,255,255,0.7); padding: 15px; border-radius: 8px; border: 2px dashed #9C27B0; margin-bottom: 10px;">
@@ -768,5 +787,37 @@
       <div style="margin-top: 20px; font-size: 16px; color: #888;">타이머가 종료되면 자동으로 결과창으로 이동합니다.</div>
     </div>
     <script type="module" src="index.mjs"></script>
+    <div id="teacher-boss-screen" class="screen" style="background: url('school.jpg') center/cover no-repeat; padding: 0; align-items: stretch; justify-content: flex-start; overflow: hidden; background-color: #2c3e50;">
+      <div style="position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 1;"></div>
+      <button id="teacher-boss-abort-btn" style="position: absolute; top: 15px; left: 15px; z-index: 100; background: #f44336; padding: 10px 20px; border-radius: 10px; color: white; border: none; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 0 #d32f2f;">⏹️ 보스전 강제 종료</button>
+      <div style="position: relative; z-index: 10; padding: 20px; display: flex; flex-direction: column; align-items: center; width: 100%; box-sizing: border-box;">
+        <div style="display: flex; justify-content: space-between; width: 100%; max-width: 1000px; color: white; margin-bottom: 10px;">
+          <h2 style="color: #FFEB3B; margin: 0; text-shadow: 2px 2px 5px #000; font-size: 35px;">🚨 주례여중 방어전</h2>
+          <span id="boss-timer" style="font-size: 35px; font-weight: bold; color: white; background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 10px;">🕒 00:00</span>
+        </div>
+        
+        <div style="width: 100%; max-width: 1000px; background: rgba(0,0,0,0.8); border: 4px solid #333; border-radius: 20px; height: 40px; position: relative; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.5);">
+          <div id="boss-hp-fill" style="width: 100%; height: 100%; background: linear-gradient(90deg, #f44336, #e91e63); transition: width 0.3s ease-out;"></div>
+          <div id="boss-hp-text" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; color: white; font-weight: 900; font-size: 20px; text-shadow: 1px 1px 2px #000;">1000000 / 1000000</div>
+        </div>
+      </div>
+
+      <div id="boss-intro-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 50; display: none; flex-direction: column; justify-content: center; align-items: center;">
+        <h1 class="bounce" style="color: #f44336; font-size: 100px; text-shadow: 0 0 20px #f44336; margin-bottom: 20px;">WARNING</h1>
+        <h2 style="color: white; font-size: 50px;">보스가 주례여중에 나타났습니다!</h2>
+        <p style="color: #FFEB3B; font-size: 30px;">문제를 맞춰 학교를 지켜내세요!!!!</p>
+      </div>
+
+      <div id="boss-outro-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 50; display: none; flex-direction: column; justify-content: center; align-items: center;">
+        <h1 id="boss-outro-title" class="bounce" style="color: #4CAF50; font-size: 100px; text-shadow: 0 0 20px #4CAF50;">보스 격파!</h1>
+        <h2 style="color: white; font-size: 40px; margin-top: 20px;">잠시 후 결과 화면으로 이동합니다...</h2>
+      </div>
+
+<div id="boss-arena" style="flex: 1; position: relative; z-index: 5; display: flex; justify-content: center; align-items: flex-end; padding-bottom: 50px; overflow: hidden;">
+        <div id="boss-sprite-container" style="position: absolute; bottom: 15vh; left: 50%; transform: translateX(-50%); width: 400px; height: 400px; z-index: 40; transition: left 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94); display: flex; align-items: center; justify-content: center;">
+           <div id="boss-sprite" style="width: 100%; height: 100%; background-size: cover; image-rendering: pixelated; image-rendering: crisp-edges;"></div>
+        </div>
+      </div>
+    </div>
   </body>
 </html>
