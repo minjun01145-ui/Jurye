@@ -542,9 +542,11 @@ function resetGameStates() {
       
       lastSyncedScore = -1; lastSyncedItems = null;
   
-  // 🚀 [좀비 점수 소각 픽스 2] 학생 기기에서도 DB에 자신의 점수를 명시적으로 0으로 덮어씀
+// 🚀 [0점 증발 버그 완벽 픽스!] 
+  // 학생 폰이 너무 성급하게 0점으로 지워버리던 치명적인 코드를 수정했습니다!
+  // 이제 0점이 아니라, "방금까지 딴 진짜 최종 점수"를 서버에 한 번 더 확실하게 쐐기를 박고 끝냅니다.
   if (myLobbyDocId) {
-      setDoc(doc(db, "lobbyUsers", myLobbyDocId), { score: 0, items: "", createdCount: 0, isSubmitted: false }, { merge: true }).catch(e=>e);
+      setDoc(doc(db, "lobbyUsers", myLobbyDocId), { score: currentUser.score || 0, items: "", createdCount: 0, isSubmitted: false }, { merge: true }).catch(e=>e);
   }
   
   // 🚀 문제 만들기 상태 초기화
@@ -2022,12 +2024,25 @@ if (!docSnap.exists()) {
       currentMultiRoomRepresentatives = room.representatives || null;
       
 if (room.status === "playing") {
-            // 🚀 [튕김 버그 완전 박멸] 게임 중복 실행 방지!
-            // 🚨 [무결성 패치 1] 단, '하이파이브(조편성)' 모드는 스마트폰 화면이 꺼졌다 켜져도 무조건 강제 소환하도록 예외 처리!
-            if (window.isMultiGameActive && room.gameMode !== "highfive") return;
+            // 🚀 [미아 방지 완벽 픽스 1] 새 게임 판독기! 
+            // 폰이 잠든 사이 이전 게임 종료 신호를 놓쳤더라도, 선생님이 새로 시작한 게임의 고유 종료 시간(endTime)이 
+            // 내 폰이 기억하는 시간과 다르다면 '완전히 새로운 게임'으로 인식하고 잠금을 강제 해제합니다.
+            if (globalMultiEndTime && room.endTime && globalMultiEndTime !== room.endTime) {
+                window.isMultiGameActive = false; 
+            }
+
+            // 🚀 [미아 방지 완벽 픽스 2] 대기실 탈출기!
+            // 내부 시스템이 꼬여서 눈에 보이는 화면은 '대기실'이나 '결과창'인데, 폰 혼자 게임 중이라 착각하는 상태를 감지합니다.
+            const isStuckOut = document.getElementById("multi-lobby-screen").classList.contains("active") || 
+                               document.getElementById("result-screen").classList.contains("active") ||
+                               document.getElementById("highfive-result-screen").classList.contains("active");
+
+            // 하이파이브 모드거나, 실제 화면이 게임 밖(대기실/결과창)에 갇혀있는 경우에는 묻지도 따지지도 않고 무조건 강제 소환!
+            if (window.isMultiGameActive && room.gameMode !== "highfive" && !isStuckOut) return;
+            
             window.isMultiGameActive = true;
 
-         toggleStudentLobbyListeners(false); 
+         toggleStudentLobbyListeners(false);
          
          let selectedSet = wordSets.find(s => s.id === room.setId);
          if (!selectedSet && room.setId !== "custom_creation") {
@@ -2077,15 +2092,22 @@ if (room.status === "playing") {
         window.isMultiGameActive = false;
         toggleStudentLobbyListeners(true); 
         
-        if (currentGameMode === "speed" || currentGameMode === "speed-match" || currentGameMode === "chunk" || currentGameMode === "create" || currentGameMode === "custom_infinite" || currentGameMode === "showcase" || isBossRaid) {
+if (currentGameMode === "speed" || currentGameMode === "speed-match" || currentGameMode === "chunk" || currentGameMode === "create" || currentGameMode === "custom_infinite" || currentGameMode === "showcase" || isBossRaid) {
             
             if (isBossRaid) {
-                isBossRaid = false;
                 currentUser.score = gameScore; 
-                resetGameStates(); 
                 globalMultiEndTime = null;
                 document.getElementById("result-detail").innerText = `보스에게 입힌 총 데미지입니다!`; 
-                goResult();
+                
+                // 🚀 [명예의 전당 DB 픽스] 저장될 모드를 'boss_raid'로 강제 덮어쓰고 저장!
+                let originalMode = currentGameMode;
+                currentGameMode = "boss_raid";
+                
+                goResult().then(() => {
+                    currentGameMode = originalMode; // 원래대로 복구
+                    isBossRaid = false;
+                    resetGameStates();
+                });
             } else {
                 resetGameStates(); 
 let alertMsg = currentGameMode === "showcase" ? "✨ 쇼케이스가 종료되었습니다. 대기실로 이동합니다." : "👑 선생님이 활동을 종료하셨습니다!\n실시간 대기실로 이동합니다.";
@@ -2190,14 +2212,43 @@ if (currentGameMode === "showcase" || currentGameMode === "boss") {
                   let wasBoss = (currentGameMode === "boss");
                   currentGameMode = ""; 
                   
-                  if (wasBoss) {
-                      // 🚀 교사는 바로 대기실로 가지 않고, 학생 점수가 서버에 저장될 시간을 3초 벌어준 뒤 랭킹을 봅니다!
-                      showScreen("loading-screen");
-                      document.querySelector("#loading-screen h2").innerText = "학생들의 타격 데미지를 집계 중입니다...";
-                      document.querySelector("#loading-screen p").innerText = "잠시만 기다려주세요 (약 3초)";
-                      setTimeout(() => {
-                          showRankings("today", "boss_raid");
-                      }, 3000); 
+if (wasBoss) {
+                      showScreen("teacher-lobby-screen");
+                      document.getElementById("teacher-viewer-title").innerText = "🏆 보스전 최종 타격 데미지 랭킹";
+                      document.getElementById("teacher-visual-lobby-grid").style.display = "none";
+                      document.getElementById("teacher-live-leaderboard").style.display = "block";
+                      
+                      // 🚀 [0점 증발 버그 울트라 픽스] 
+                      // 학생 폰에서 무슨 일이 일어나든 상관없이, 교사 PC가 보스를 때리던 도중 기록해둔 '진짜 최고 데미지(previousPlayerScores)'를 뼈대로 사용합니다!
+                      let finalBossScores = window.globalLobbyPlayers.map(p => {
+                          let newP = JSON.parse(JSON.stringify(p));
+                          newP.score = Math.max(newP.score || 0, previousPlayerScores[p.stdId] || 0);
+                          return newP;
+                      });
+                      renderTeacherLiveLeaderboard(finalBossScores); 
+                      
+                      // 🚀 늦게 통신되는 학생 점수까지 반영되도록 10초간 리더보드 자동 갱신
+                      let refreshCount = 0;
+                      let bossRankInterval = setInterval(() => {
+                          if (window.teacherLobbyStatus === "playing") { clearInterval(bossRankInterval); return; }
+                          
+                          window.globalLobbyPlayers.forEach(p => {
+                              let existing = finalBossScores.find(f => f.stdId === p.stdId);
+                              let bestScore = Math.max(p.score || 0, previousPlayerScores[p.stdId] || 0);
+                              
+                              if (existing) {
+                                  if (bestScore > (existing.score || 0)) existing.score = bestScore;
+                              } else {
+                                  let newP = JSON.parse(JSON.stringify(p));
+                                  newP.score = bestScore;
+                                  finalBossScores.push(newP);
+                              }
+                          });
+                          
+                          renderTeacherLiveLeaderboard(finalBossScores);
+                          refreshCount++;
+                          if(refreshCount > 5) clearInterval(bossRankInterval);
+                      }, 2000);
                   } else {
                       showScreen("teacher-lobby-screen");
                   }
@@ -2217,31 +2268,39 @@ if (currentGameMode === "showcase" || currentGameMode === "boss") {
 }
 
 // 🚀 교사 메뉴 숨김/표시 자동 갱신 로직 (조별 문제출제 지원 버전)
-function updateTeacherMenuVisibility() {
-    const modeSelect = document.getElementById("teacher-game-mode-select");
-    if(!modeSelect) return;
-    const mode = modeSelect.value;
-    const isHf = (mode === "highfive");
-    const isCreate = (mode === "create");
-    const isCustom = (mode === "custom_game");
-    const isBoss = (mode === "boss"); // 👈 이거 추가!
-    
-    const toggleDisplay = (id, condition) => {
-        const el = document.getElementById(id);
-        if (el) el.style.display = condition ? "block" : "none";
-    };
+    function updateTeacherMenuVisibility() {
+        const modeSelect = document.getElementById("teacher-game-mode-select");
+        if(!modeSelect) return;
+        const mode = modeSelect.value;
+        const isHf = (mode === "highfive");
+        const isCreate = (mode === "create");
+        const isCustom = (mode === "custom_game");
+        const isBoss = (mode === "boss"); 
+        const bossSub = document.getElementById("teacher-boss-submode-select")?.value;
+        
+        const toggleDisplay = (id, condition) => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = condition ? "block" : "none";
+        };
 
-    // 조 해제 버튼 보이기 (조편성이 되어있을 때만)
-    toggleDisplay("teacher-disband-group-btn", currentGroupingActive);
+        // 🚀 [보스전 세트 픽스] 보스전 하위 모드가 '학생출제 무한모드'일 때, 일반 세트 드롭다운에 '학생 세트'를 덮어씌웁니다!
+        const setSelect = document.getElementById("teacher-game-set-select");
+        if (setSelect) {
+            if (isBoss && bossSub === "custom_infinite") {
+                setSelect.innerHTML = wordSets.filter(s => s.isCustomSet).map(set => `<option value="${set.id}">✨ ${set.title} (${set.words.length}문제)</option>`).join("");
+            } else {
+                setSelect.innerHTML = wordSets.filter(s => !s.isCustomSet).map(set => `<option value="${set.id}">${set.title} (${set.words.length}개)</option>`).join("");
+            }
+        }
 
-toggleDisplay("teacher-boss-options-container", isBoss); // 👈 이거 추가!
-    toggleDisplay("teacher-time-container", !(isHf || isCreate || isBoss)); // 👈 isBoss 추가!
-    toggleDisplay("teacher-item-container", !(isHf || isCreate || isBoss)); // 👈 isBoss 추가!
-    toggleDisplay("teacher-set-container", !(isHf || isCreate || isCustom || (isBoss && document.getElementById("teacher-boss-submode-select").value === "custom_infinite"))); // 👈 세트 선택 제어 수정
-    toggleDisplay("teacher-custom-options-container", isCustom);
-    toggleDisplay("teacher-group-count-container", isHf);
-    toggleDisplay("teacher-create-time-container", isCreate);
-    toggleDisplay("teacher-create-type-container", isCreate);
+        // 조 해제 버튼 보이기 (조편성이 되어있을 때만)
+        toggleDisplay("teacher-disband-group-btn", currentGroupingActive);
+
+        toggleDisplay("teacher-boss-options-container", isBoss); 
+        toggleDisplay("teacher-time-container", !(isHf || isCreate)); // 🚀 [보스전 강제종료 픽스] 보스전에서도 타이머 시간을 조절할 수 있도록 해제!
+        toggleDisplay("teacher-item-container", !(isHf || isCreate || isBoss)); 
+        toggleDisplay("teacher-set-container", !(isHf || isCreate || isCustom)); // 🚀 보스전에서도 무조건 세트 선택창 표시
+
 
     // 커스텀 게임용 조별전 드롭다운 제어
     const customGroupOpt = document.getElementById("custom-group-option");
@@ -2281,8 +2340,11 @@ if(groupPlayModeBox) groupPlayModeBox.addEventListener("change", updateTeacherMe
 // 🚀 모드 선택 시 메뉴 변경
 const modeSelect = document.getElementById("teacher-game-mode-select");
 if(modeSelect) modeSelect.addEventListener("change", updateTeacherMenuVisibility);
-
+// 🚀 보스전 하위 모드가 바뀔 때 세트 드롭다운을 갱신하도록 이벤트 추가!
+const bossSubBox = document.getElementById("teacher-boss-submode-select");
+if(bossSubBox) bossSubBox.addEventListener("change", updateTeacherMenuVisibility);
 // 🚀 게임 시작 및 모드 처리 (옵션 분리 버전)
+// 🚀 교사 전용: 게임 시작 버튼 핸들러 (버그 및 학생 세트 연동 완전 해결판)
 bindClick("teacher-game-start-btn", async () => {
   const modeSelect = document.getElementById("teacher-game-mode-select");
   if (!modeSelect) return;
@@ -2307,16 +2369,10 @@ bindClick("teacher-game-start-btn", async () => {
       const subMode = document.getElementById("teacher-boss-submode-select").value;
       const duration = document.getElementById("teacher-game-time-select")?.value || 3;
       
-      let finalSetId, finalSetTitle;
-      if (subMode === "custom_infinite") {
-          finalSetId = document.getElementById("teacher-custom-set-select").value;
-          if(!finalSetId) return alert("보스전(학생출제 모드)용 세트를 선택해 주세요!");
-          finalSetTitle = wordSets.find(s => s.id === finalSetId)?.title;
-      } else {
-          finalSetId = document.getElementById("teacher-game-set-select").value;
-          if(!finalSetId) return alert("보스전을 진행할 학습 세트를 선택해 주세요!");
-          finalSetTitle = wordSets.find(s => s.id === finalSetId)?.title;
-      }
+      // 🚀 [보스전 세트 픽스] 메인 드롭다운에서 선택된 세트(학생 출제작 포함)를 깔끔하게 읽어옵니다.
+      let finalSetId = document.getElementById("teacher-game-set-select").value;
+      if(!finalSetId) return alert("보스전을 진행할 학습 세트를 선택해 주세요!");
+      let finalSetTitle = wordSets.find(s => s.id === finalSetId)?.title;
 
       const tEnd = Date.now() + 5000 + (duration * 60 * 1000); // 5초 인트로
       await setDoc(doc(db, "gameData", "multiRoom"), { 
@@ -2462,10 +2518,20 @@ function setupTeacherLiveMatch(endTime) {
         const m = String(Math.floor(remaining / 60)).padStart(2, "0");
         const s = String(remaining % 60).padStart(2, "0");
         document.getElementById("teacher-match-timer").innerText = `🕒 ${m}:${s}`;
-        if (remaining <= 0) {
+if (remaining <= 0) {
             clearInterval(teacherMatchInterval);
             document.getElementById("teacher-match-timer").innerText = "게임 종료!";
-            if(abortBtn) abortBtn.style.display = "none";
+            
+            // 🚀 [기능 개선] 게임 종료 시 버튼을 숨기지 않고 초록색 복귀 버튼으로 멋지게 변신!
+            if (abortBtn) {
+                if (currentGameMode === "create") {
+                    abortBtn.innerHTML = "🏁 문제 만들기 마감 및 세트 저장하기";
+                } else {
+                    abortBtn.innerHTML = "🏁 활동 정산 및 대기실로 복귀하기";
+                }
+                abortBtn.style.backgroundColor = "#4CAF50";
+                abortBtn.style.boxShadow = "0 4px 0 #388E3C";
+            }
         }
     }, 500);
 }
@@ -2600,16 +2666,30 @@ function renderTeacherLiveLeaderboard(players) {
 // 🛑 진행 중인 게임 강제 종료 및 문제 세트 자동 생성 버튼
 bindClick("teacher-match-abort-btn", async () => {
     playSound("click");
+    
+    // 🚀 현재 게임이 자연스럽게 끝난 상태인지 타이머 글자로 똑똑하게 감지합니다.
+    const isGameFinished = document.getElementById("teacher-match-timer").innerText === "게임 종료!";
+
     if (currentGameMode === "create") {
-        if(confirm("문제 만들기를 종료합니다.\n학생들이 제출한 문제들로 '새로운 학습 세트'를 생성하시겠습니까?")) {
+        const confirmMsg = isGameFinished 
+            ? "문제 만들기가 마감되었습니다.\n학생들이 제출한 문제들로 '새로운 학습 세트'를 생성하시겠습니까?"
+            : "문제 만들기를 종료합니다.\n학생들이 제출한 문제들로 '새로운 학습 세트'를 생성하시겠습니까?";
+            
+        if(confirm(confirmMsg)) {
             const saved = await saveCreatedProblemsToSet();
             if (!saved) return;
             await setDoc(doc(db, "gameData", "multiRoom"), { status: "waiting" }, { merge: true });
-            alert("종료 및 세트 생성이 완료되었습니다!");
+            window.customAlert("종료 및 세트 생성이 완료되었습니다!");
         }
     } else {
-        if(confirm("진행 중인 게임을 즉시 종료하고 아이들을 대기실로 부르시겠습니까?")) {
+        if (isGameFinished) {
+            // 🚀 이미 시간이 다 가고 게임이 끝난 상태라면 확인창 없이 즉시 대기실로 안전하게 전원 복귀!
             await setDoc(doc(db, "gameData", "multiRoom"), { status: "waiting" }, { merge: true });
+        } else {
+            // 게임 도중 교사가 중간에 강제로 끌 때만 경고 확인창을 띄워 실수를 방지합니다.
+            if(confirm("진행 중인 게임을 즉시 종료하고 아이들을 대기실로 부르시겠습니까?")) {
+                await setDoc(doc(db, "gameData", "multiRoom"), { status: "waiting" }, { merge: true });
+            }
         }
     }
 });
@@ -4009,6 +4089,14 @@ async function runBossAIPattern() {
 
 function startBossGameLoop(endTime, maxHp) {
     let currentHp = maxHp;
+    
+    // 🚀 [원샷킬 버그 완벽 픽스] 보스 체력 루프 시작 시점에, 학생들의 이전 점수를 '현재 서버 점수'로 정확히 리셋!
+    // 이렇게 해야 시작 전에 누적된 옛날 점수(유령 딜)가 보스에게 한꺼번에 들어가는 현상을 막습니다.
+    if (window.globalLobbyPlayers) {
+        window.globalLobbyPlayers.forEach(p => {
+            previousPlayerScores[p.stdId] = p.score || 0;
+        });
+    }
     
     clearInterval(bossInterval);
     bossInterval = setInterval(() => {
