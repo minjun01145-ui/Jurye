@@ -542,11 +542,10 @@ function resetGameStates() {
       
       lastSyncedScore = -1; lastSyncedItems = null;
   
-window.myProblemStats = {}; // 🚀 [오답률 패치] 게임 시작 시 내 오답 장부 초기화!
-  
-  // 🚀 [0점 증발 버그 완벽 픽스!] 
+// 🚀 [오답 장부 삭제 방지 픽스] 게임이 끝났을 때 오답 장부를 지우지 않고 그대로 둡니다.
+  // (그래야 선생님이 게임 종료 후 대기실에서 분석 버튼을 눌러 데이터를 취합할 수 있습니다!)
   if (myLobbyDocId) {
-      setDoc(doc(db, "lobbyUsers", myLobbyDocId), { score: currentUser.score || 0, items: "", createdCount: 0, isSubmitted: false, problemStats: {} }, { merge: true }).catch(e=>e);
+      setDoc(doc(db, "lobbyUsers", myLobbyDocId), { score: currentUser.score || 0, items: "", createdCount: 0, isSubmitted: false }, { merge: true }).catch(e=>e);
   }
   
   // 🚀 문제 만들기 상태 초기화
@@ -2039,8 +2038,11 @@ if (room.status === "playing") {
                                document.getElementById("result-screen").classList.contains("active") ||
                                document.getElementById("highfive-result-screen").classList.contains("active");
 
-            // 하이파이브 모드거나, 실제 화면이 게임 밖(대기실/결과창)에 갇혀있는 경우에는 묻지도 따지지도 않고 무조건 강제 소환!
+// 하이파이브 모드거나, 실제 화면이 게임 밖(대기실/결과창)에 갇혀있는 경우에는 묻지도 따지지도 않고 무조건 강제 소환!
             if (window.isMultiGameActive && room.gameMode !== "highfive" && !isStuckOut) return;
+            
+            // 🚀 [오답 장부 초기화] 섞이지 않도록, 완전히 새로운 게임이 시작될 때만 내 오답 장부를 깨끗하게 비웁니다!
+            window.myProblemStats = {};
             
             window.isMultiGameActive = true;
 
@@ -2269,40 +2271,52 @@ if (wasBoss) {
   }, 500); 
 }
 
-// 🚀 교사 메뉴 숨김/표시 자동 갱신 로직 (조별 문제출제 지원 버전)
-    function updateTeacherMenuVisibility() {
-        const modeSelect = document.getElementById("teacher-game-mode-select");
-        if(!modeSelect) return;
-        const mode = modeSelect.value;
-        const isHf = (mode === "highfive");
-        const isCreate = (mode === "create");
-        const isCustom = (mode === "custom_game");
-        const isBoss = (mode === "boss"); 
-        const bossSub = document.getElementById("teacher-boss-submode-select")?.value;
-        
-        const toggleDisplay = (id, condition) => {
-            const el = document.getElementById(id);
-            if (el) el.style.display = condition ? "block" : "none";
-        };
+// 🚀 [UI 통합 혁신] 두 개로 쪼개져서 버그를 일으키던 세트 선택창을 '하나의 메인 드롭다운'으로 완벽 통합합니다!
+function updateTeacherMenuVisibility() {
+    const modeSelect = document.getElementById("teacher-game-mode-select");
+    if(!modeSelect) return;
+    const mode = modeSelect.value;
+    const isHf = (mode === "highfive");
+    const isCreate = (mode === "create");
+    const isCustom = (mode === "custom_game");
+    const isBoss = (mode === "boss"); 
+    const bossSub = document.getElementById("teacher-boss-submode-select")?.value;
+    
+    const toggleDisplay = (id, condition) => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = condition ? "block" : "none";
+    };
 
-        // 🚀 [보스전 세트 픽스] 보스전 하위 모드가 '학생출제 무한모드'일 때, 일반 세트 드롭다운에 '학생 세트'를 덮어씌웁니다!
-        const setSelect = document.getElementById("teacher-game-set-select");
-        if (setSelect) {
-            if (isBoss && bossSub === "custom_infinite") {
-                setSelect.innerHTML = wordSets.filter(s => s.isCustomSet).map(set => `<option value="${set.id}">✨ ${set.title} (${set.words.length}문제)</option>`).join("");
-            } else {
-                setSelect.innerHTML = wordSets.filter(s => !s.isCustomSet).map(set => `<option value="${set.id}">${set.title} (${set.words.length}개)</option>`).join("");
-            }
+    // 🚀 모드에 따라 하나의 드롭다운에 일반 세트 / 학생 출제 세트를 스마트하게 번갈아 갈아끼웁니다!
+    const setSelect = document.getElementById("teacher-game-set-select");
+    if (setSelect) {
+        if (isCustom || (isBoss && bossSub === "custom_infinite")) {
+            setSelect.innerHTML = wordSets.filter(s => s.isCustomSet).map(set => `<option value="${set.id}">✨ ${set.title} (${set.words.length}문제)</option>`).join("");
+        } else {
+            setSelect.innerHTML = wordSets.filter(s => !s.isCustomSet).map(set => `<option value="${set.id}">${set.title} (${set.words.length}개)</option>`).join("");
         }
+    }
 
-        // 조 해제 버튼 보이기 (조편성이 되어있을 때만)
-        toggleDisplay("teacher-disband-group-btn", currentGroupingActive);
+    // 조 해제 버튼 보이기 (조편성이 되어있을 때만)
+    toggleDisplay("teacher-disband-group-btn", currentGroupingActive);
 
-        toggleDisplay("teacher-boss-options-container", isBoss); 
-        toggleDisplay("teacher-time-container", !(isHf || isCreate)); // 🚀 [보스전 강제종료 픽스] 보스전에서도 타이머 시간을 조절할 수 있도록 해제!
-        toggleDisplay("teacher-item-container", !(isHf || isCreate || isBoss)); 
-        toggleDisplay("teacher-set-container", !(isHf || isCreate || isCustom)); // 🚀 보스전에서도 무조건 세트 선택창 표시
+    toggleDisplay("teacher-boss-options-container", isBoss); 
+    toggleDisplay("teacher-time-container", !(isHf || isCreate)); 
+    toggleDisplay("teacher-item-container", !(isHf || isCreate || isBoss)); 
+    
+    // 🚀 하이파이브와 문제만들기를 제외하고는 무조건 세트 창을 통합 노출시킵니다! (증발 버그 완전 해결)
+    toggleDisplay("teacher-set-container", !(isHf || isCreate)); 
+    toggleDisplay("teacher-custom-options-container", isCustom);
 
+    // 중복되는 구형 커스텀 드롭다운 요소들은 강제로 숨김 처리
+    const customSetSelect = document.getElementById("teacher-custom-set-select");
+    if (customSetSelect) customSetSelect.style.display = "none";
+    const customSetLabels = document.querySelectorAll("#teacher-custom-options-container label");
+    if (customSetLabels.length >= 3) customSetLabels[2].style.display = "none";
+
+    toggleDisplay("teacher-group-count-container", isHf);
+    toggleDisplay("teacher-create-time-container", isCreate);
+    toggleDisplay("teacher-create-type-container", isCreate);
 
     // 커스텀 게임용 조별전 드롭다운 제어
     const customGroupOpt = document.getElementById("custom-group-option");
@@ -2316,14 +2330,12 @@ if (wasBoss) {
         }
     }
 
-    // 🚀 플레이 방식(1인 폰 vs 전원 접속) 컨테이너 표시 로직
     let showPlayMode = false;
     if (isCustom) showPlayMode = (customPlaySelect && customPlaySelect.value === "group");
-    else if (isCreate) showPlayMode = currentGroupingActive; // 문제출제 모드도 조편성 시 플레이 방식 선택!
+    else if (isCreate) showPlayMode = currentGroupingActive; 
     else showPlayMode = (currentGroupingActive && !isHf);
     toggleDisplay("teacher-group-play-mode-container", showPlayMode);
 
-    // 🚀 문항 수 선택 로직 (문제만들기 + 조편성 + 다같이(all-sum) 모드일 땐 문항수 숨김! 1인 1문제 고정)
     const playMode = document.getElementById("teacher-group-play-mode-select")?.value;
     if (isCreate && currentGroupingActive && playMode === "all-sum") {
         toggleDisplay("teacher-create-count-container", false);
@@ -2447,11 +2459,12 @@ bindClick("teacher-game-start-btn", async () => {
   const buffOption = document.getElementById("teacher-game-buff-select")?.value || "on"; 
   const attackOption = document.getElementById("teacher-game-attack-select")?.value || "off"; 
 
-  // 🚀 2. 특수 세트(무한 모드) 시작 로직
+// 🚀 2. 특수 세트(무한 모드) 시작 로직
   if (mode === "custom_game") {
       const rule = document.getElementById("teacher-custom-rule-select").value; 
       const playStyle = document.getElementById("teacher-custom-play-select").value; 
-      const cSetId = document.getElementById("teacher-custom-set-select").value;
+      // 🟢 통합 메인 드롭다운에서 학생 세트 번호를 안전하게 읽어옵니다.
+      const cSetId = document.getElementById("teacher-game-set-select").value;
       if(!cSetId) return alert("학생이 출제한 세트를 선택해 주세요!");
       const cSet = wordSets.find(s => s.id === cSetId);
       if (!cSet || !Array.isArray(cSet.words) || cSet.words.length === 0) return alert("학생 출제 세트에 문제가 없습니다. 먼저 문제 만들기를 종료해서 세트를 생성해 주세요.");
@@ -4243,21 +4256,11 @@ const outroTitle = document.getElementById("boss-outro-title");
     }, 3500);
 }
 // ==========================================
-// 🚀 [신규 기능] 학생 출제 문제 오답률 분석 엔진
+// 🚀 [신규 기능 - 불사조 버튼 완벽 픽스판] 학생 출제 문제 오답률 분석 엔진
 // ==========================================
-setTimeout(() => {
-    // 1. 교사 화면 리더보드 옆에 '문제 분석' 버튼 주입
-    const titleContainer = document.getElementById("teacher-viewer-title");
-    if (titleContainer && !document.getElementById("open-analysis-btn")) {
-        const btn = document.createElement("button");
-        btn.id = "open-analysis-btn";
-        btn.innerHTML = "📊 학생출제 문제 분석";
-        btn.style.cssText = "display: none; background: #E91E63; color: white; border: none; border-radius: 8px; padding: 6px 15px; font-size: 15px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 0 #C2185B; margin-left: 20px; vertical-align: middle; animation: popIn 0.3s ease-out;";
-        btn.onclick = window.openProblemAnalysis;
-        titleContainer.appendChild(btn);
-    }
 
-    // 2. 오답률 랭킹 및 확대 모달창 HTML 주입
+// 1. 오답률 랭킹 및 확대 모달창 HTML 주입 (모달창은 화면 최상단에 안전하게 붙입니다)
+setTimeout(() => {
     if (!document.getElementById("teacher-analysis-modal")) {
         const modalHtml = `
         <div id="teacher-analysis-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 100000; flex-direction: column; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box;">
@@ -4284,7 +4287,7 @@ setTimeout(() => {
     }
 }, 1500);
 
-// 3. 통계 분석 및 화면 렌더링 함수
+// 2. 통계 분석 및 화면 렌더링 함수
 window.openProblemAnalysis = function() {
     if(typeof playSound === "function") playSound("click");
     const container = document.getElementById("analysis-list-container");
@@ -4305,8 +4308,12 @@ window.openProblemAnalysis = function() {
     }
 
     let analysisList = [];
-    if(typeof wordList !== "undefined" && wordList) {
-        wordList.forEach(w => {
+    const currentSetId = document.getElementById("teacher-game-set-select")?.value;
+    const currentSet = wordSets.find(s => s.id === currentSetId);
+    const targetWordList = currentSet ? currentSet.words : [];
+
+    if(targetWordList && targetWordList.length > 0) {
+        targetWordList.forEach(w => {
             let stats = aggregatedStats[w.en];
             if (stats && stats.total > 0) {
                 let rate = Math.round((stats.wrong / stats.total) * 100);
@@ -4330,12 +4337,11 @@ window.openProblemAnalysis = function() {
         });
     }
 
-    // 🚀 오답률 높은 순서대로 1차 정렬 -> 같으면 많이 틀린 횟수 2차 정렬
     analysisList.sort((a, b) => b.rate - a.rate || b.wrong - a.wrong);
 
     container.innerHTML = "";
     if (analysisList.length === 0) {
-        container.innerHTML = "<div style='text-align:center; padding: 30px; font-size: 20px; color: #666;'>이번 게임에서 학생들이 푼 문제 기록이 없습니다.</div>";
+        container.innerHTML = "<div style='text-align:center; padding: 30px; font-size: 20px; color: #666;'>이번 게임에서 학생들이 문제를 푼 기록(데이터)이 아직 실시간으로 반영되지 않았거나 없습니다.</div>";
         return;
     }
 
@@ -4369,16 +4375,36 @@ window.openProblemAnalysis = function() {
     });
 };
 
-// 4. 게임 종료 시 조건에 따라 자동으로 "문제 분석하기" 버튼 띄우기
+// 3. 버튼 렌더링 및 자동 복구 엔진 (innerText 파괴 방어막)
 setInterval(() => {
-    const btn = document.getElementById("open-analysis-btn");
+    let btn = document.getElementById("open-analysis-btn");
+    const titleContainer = document.getElementById("teacher-viewer-title");
+    
+    // 🚀 [핵심 픽스 1: 불사조 로직] 제목이 바뀌면서 버튼이 날아가면, 제목 글자 '바깥'에 버튼을 새로 만들어서 붙입니다!
+    if (!btn && titleContainer && titleContainer.parentElement) {
+        btn = document.createElement("button");
+        btn.id = "open-analysis-btn";
+        btn.innerHTML = "📊 학생출제 문제 분석";
+        // 위치를 타이머 바로 왼쪽으로 예쁘게 띄워줍니다.
+        btn.style.cssText = "display: none; background: #E91E63; color: white; border: none; border-radius: 8px; padding: 6px 15px; font-size: 15px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 0 #C2185B; margin-left: auto; margin-right: 15px; vertical-align: middle; animation: popIn 0.3s ease-out;";
+        btn.onclick = window.openProblemAnalysis;
+        
+        // 제목 안(appendChild)이 아니라 제목 '옆(동생)'으로 붙여서 절대 지워지지 않게 만듭니다!
+        titleContainer.parentElement.insertBefore(btn, titleContainer.nextSibling);
+    }
+
     if (btn && window.teacherLobbyStatus === "waiting") {
-        // 현재 선택된 세트가 '학생 출제' 데이터일 때만 버튼 활성화
-        const isCustomMode = typeof wordList !== "undefined" && wordList && wordList.length > 0 && wordList[0].isCustomData;
-        if (isCustomMode && window.globalLobbyPlayers && window.globalLobbyPlayers.some(p => p.problemStats)) {
+        const currentSetId = document.getElementById("teacher-game-set-select")?.value;
+        const currentSet = wordSets.find(s => s.id === currentSetId);
+        
+        // 🚀 [핵심 픽스 2: 무조건 띄우기] 선택된 세트가 '학생 출제' 세트라면 데이터 유무, 강제종료 여부 안 따지고 무조건 띄웁니다!
+        const isCustomMode = currentSet && currentSet.isCustomSet;
+        if (isCustomMode) {
             btn.style.display = "inline-block";
         } else {
             btn.style.display = "none";
         }
+    } else if (btn) {
+        btn.style.display = "none";
     }
 }, 1000);
