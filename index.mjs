@@ -1734,8 +1734,29 @@ let earnedJR = Math.floor(currentUser.score / 100);
   setTimeout(() => { showBuffMsg("💰 보상 획득!", `게임 보상: +${earnedJR} JR${rankMsg}\n(현재 잔액: ${currentUser.jr} JR)`, 33, 150, 243); }, 800);
 }
 
-bindClick("go-feedback-btn", () => { playSound("click"); document.getElementById("feedback-text").value = ""; showScreen("feedback-screen"); });
-bindClick("cancel-feedback-btn", () => { playSound("click"); showScreen("result-screen"); });
+// 🚀 [피드백 경로 추적기] 어디서 버튼을 눌렀는지 기억합니다!
+window.feedbackReturnScreen = "result-screen"; // 기본값
+
+// 결과창에서 누른 경우
+bindClick("go-feedback-btn", () => { 
+    playSound("click"); 
+    window.feedbackReturnScreen = "result-screen"; 
+    document.getElementById("feedback-text").value = ""; 
+    showScreen("feedback-screen"); 
+});
+
+// 🚀 대기실에서 누른 경우
+bindClick("lobby-go-feedback-btn", () => { 
+    playSound("click"); 
+    window.feedbackReturnScreen = "multi-lobby-screen"; 
+    document.getElementById("feedback-text").value = ""; 
+    showScreen("feedback-screen"); 
+});
+
+bindClick("cancel-feedback-btn", () => { 
+    playSound("click"); 
+    showScreen(window.feedbackReturnScreen); // 🚀 원래 있던 화면으로 복귀!
+});
 
 bindClick("submit-feedback-btn", async () => {
   playSound("click");
@@ -1745,7 +1766,8 @@ bindClick("submit-feedback-btn", async () => {
     await addDoc(collection(db, "feedback"), {
       stdId: currentUser.stdId, nickname: currentUser.nickname, emoji: currentUser.emoji, text: text, timestamp: Date.now()
     });
-    alert("소중한 의견 감사합니다!"); showScreen("result-screen");
+    alert("소중한 의견 감사합니다!"); 
+    showScreen(window.feedbackReturnScreen); // 🚀 제출 후 원래 화면으로 복귀!
   } catch(e) { alert("전송에 실패했습니다."); }
 });
 
