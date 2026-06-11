@@ -217,6 +217,17 @@ function showScreen(screenId) {
       container.style.opacity = "1"; 
     }
   }
+updatePlayerStatusBadge();
+
+// 🛒 대기실 상점 팝업이 게임 화면 위에 남지 않도록 화면 전환 시 자동으로 닫습니다.
+const lobbyShopModal = document.getElementById("lobby-inline-shop-container");
+if (lobbyShopModal && screenId !== "multi-lobby-screen") {
+  lobbyShopModal.style.display = "none";
+}
+
+if (screenId === "multi-lobby-screen") {
+  ensureLobbyShopButtonAndModal();
+}
 }
 
 function bindClick(id, callback) {
@@ -224,6 +235,53 @@ function bindClick(id, callback) {
   if (el) el.onclick = callback;
   else console.warn(`주의: HTML에서 '${id}' 버튼 찾기 실패 (무시됨)`);
 }
+// 💰 [공통 상태 배지] 어느 화면이든 현재 JR/캐릭터를 우하단에 표시합니다.
+function getSimpleCharacterName(charFolder) {
+  if (!charFolder) return "없음";
+  if (charFolder.includes("(")) return charFolder.split("(")[0].trim();
+  return charFolder;
+}
+
+function updatePlayerStatusBadge() {
+  let badge = document.getElementById("player-status-badge");
+
+  if (!badge) {
+    badge = document.createElement("div");
+    badge.id = "player-status-badge";
+    badge.style.cssText = `
+      position: fixed;
+      right: 12px;
+      bottom: 12px;
+      z-index: 9998;
+      background: rgba(255,255,255,0.92);
+      border: 3px solid #00BCD4;
+      border-radius: 16px;
+      padding: 8px 12px;
+      font-size: 14px;
+      color: #333;
+      text-align: left;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+      pointer-events: none;
+      line-height: 1.35;
+      max-width: 220px;
+    `;
+    document.body.appendChild(badge);
+  }
+
+  if (!currentUser || !currentUser.stdId) {
+    badge.style.display = "none";
+    return;
+  }
+
+  badge.style.display = "block";
+  badge.innerHTML = `
+    <div>💰 JR: <b>${currentUser.jr || 0}</b></div>
+    <div>🎭 ${getSimpleCharacterName(currentUser.character)}</div>
+  `;
+}
+
+// 구매/보상 직후에도 자동 반영되도록 가볍게 갱신합니다.
+setInterval(updatePlayerStatusBadge, 1000);
 
 // 🚀 실제 로딩 단계 표시용 함수
 function updateLoadingProgress(percent, title, detail, showWarning = false) {
@@ -251,6 +309,9 @@ function withTimeout(promise, ms, label) {
     })
   ]);
 }
+
+
+
 // 🧪 테스트용 10초 모드를 포함한 제한시간 계산 함수
 // 일반 값 3, 5, 10은 "분"으로 처리하고, test10만 정확히 10초로 처리합니다.
 function getDurationSeconds(durationValue, fallbackSeconds = 180) {
@@ -512,6 +573,10 @@ let walkingEmojis = [];
 
 // 🌟 배경 걸어다니는 이모지 시스템 (슈퍼마리오 물리엔진 - 🚀 GPU 가속 최적화 완료)
 function initWalkingEmojis() {
+  // 🚀 [크롬북 안정성 우선] 배경 이모지 물리 애니메이션은 장식 기능이라 비활성화합니다.
+  // 우하단 JR/캐릭터 상태 배지로 대체합니다.
+  return;
+
   const container = document.createElement("div");
   container.id = "walking-emoji-container";
   container.style.cssText = "position:fixed; bottom:0; left:0; width:100%; height:100%; z-index:15; pointer-events:none; overflow:hidden; transition: opacity 0.5s ease-in-out;";
@@ -683,8 +748,9 @@ async function loadAllFromDB() {
     }
   }
 
-  if (success) {
+if (success) {
     updateLoadingProgress(100, "준비 완료!", "로그인 화면으로 이동합니다...");
+    
     setTimeout(() => {
       showScreen("auth-screen"); 
     }, 300);
@@ -2900,6 +2966,7 @@ bindClick("teacher-game-start-btn", async () => {
 
   playSound("success");
 
+
   // 🧹 [좀비 점수 소각 픽스 1] 
   // 새로운 게임 시작 버튼을 누르는 순간, 대기실에 있는 모든 학생의 DB 점수를 0으로 완벽 초기화!
   try {
@@ -2941,7 +3008,7 @@ if (mode === "boss") {
           window.customAlert("보스전은 개인전으로 진행됩니다!\n(편성되었던 조가 자동 해제되었습니다.)");
       }
 
-      const tEnd = Date.now() + 5000 + (durationSeconds * 1000); // 5초 인트로 + 실제 제한시간
+const tEnd = Date.now() + 5000 + (durationSeconds * 1000);// 5초 인트로 + 실제 제한시간
       await setDoc(doc(db, "gameData", "multiRoom"), { 
           status: "playing", gameMode: "boss", subMode: subMode, duration: duration, 
           setId: finalSetId, setTitle: finalSetTitle, 
@@ -3415,6 +3482,7 @@ if (inGameBackBtn) {
 let hfClicked = false;
 let currentHighFiveRoundId = null;
 let hfResultTimeout = null;
+let hfProcessGuardTimeout = null;
 
 function startHighFiveLogic(endTime) {
   hfClicked = false;
@@ -3503,10 +3571,32 @@ async function submitHighFive(timestamp) {
 }
 
 // 🚀 하이파이브 결과 처리 (학번/실명 표시 및 데이터 저장)
+
 async function processHighFiveResult() {
     showScreen("loading-screen");
     document.querySelector("#loading-screen h2").innerText = "마음이 통하는 친구들을 찾고 있습니다...";
-    
+
+    // 🚑 [하이파이브 로딩 멈춤 방지]
+    // 결과 계산 중 네트워크가 멈춰도 학생이 로딩 화면에 영원히 갇히지 않게 합니다.
+    if (hfProcessGuardTimeout) clearTimeout(hfProcessGuardTimeout);
+    hfProcessGuardTimeout = setTimeout(() => {
+        const loadingScreen = document.getElementById("loading-screen");
+        const isStillLoading = loadingScreen && loadingScreen.classList.contains("active");
+
+        if (!isTeacherMode && isStillLoading && currentGameMode === "highfive") {
+            console.warn("하이파이브 결과 계산이 지연되어 대기실로 복구합니다.");
+            hfProcessGuardTimeout = null;
+            if (hfResultTimeout) {
+                clearTimeout(hfResultTimeout);
+                hfResultTimeout = null;
+            }
+            clearInterval(gameTimerInterval);
+            currentGameMode = "";
+            window.isMultiGameActive = false;
+            window.customAlert("하이파이브 결과를 불러오는 중 네트워크가 지연되었습니다.\n대기실로 복구합니다.");
+            showScreen("multi-lobby-screen");
+        }
+    }, 14000);
     let groupCount = 2;
     const roomDoc = await getDoc(doc(db, "gameData", "multiRoom"));
     const roomData = roomDoc.exists() ? roomDoc.data() : {};
@@ -3630,12 +3720,15 @@ async function processHighFiveResult() {
     }
     studentWaitMsg.style.display = isTeacherMode ? "none" : "block";
 
+    if (hfProcessGuardTimeout) {
+        clearTimeout(hfProcessGuardTimeout);
+        hfProcessGuardTimeout = null;
+    }
+
     showScreen("highfive-result-screen");
     playSound("success");
     fireConfetti();
-    showScreen("highfive-result-screen");
-    playSound("success");
-    fireConfetti();
+
     if(isTeacherMode) stopTeacherBGM(); // 🎵 결과 발표 때는 BGM 끄기
 }
 
@@ -4204,8 +4297,8 @@ bindClick("create-submit-btn", async () => {
 });
 
 // 🚀 기다리는 동안 상점 열기 및 구매 기능 완벽 이식 (인라인)
-function renderInlineShop() {
-    const shopContainer = document.getElementById("inline-shop-list");
+function renderInlineShop(targetListId = "inline-shop-list") {
+    const shopContainer = document.getElementById(targetListId);
     if (!shopContainer) return;
     shopContainer.innerHTML = "";
     
@@ -4234,7 +4327,7 @@ function renderInlineShop() {
             if (isOwned) {
                 currentUser.character = charFolder; 
                 alert(`[${charName}] 캐릭터를 장착했습니다!`);
-                renderInlineShop(); // 화면 즉시 갱신
+                renderInlineShop(targetListId); // 화면 즉시 갱신
             } else {
                 if (confirm(`[${charName}] 캐릭터를 2000 JR에 구매하시겠습니까?\n(현재 내 JR: ${currentUser.jr} JR)`)) {
                     if (currentUser.jr < 2000) return alert("JR이 부족합니다! 게임을 플레이하여 JR을 더 모아오세요.");
@@ -4257,7 +4350,7 @@ function renderInlineShop() {
                     
                     const jrDisp = document.getElementById("user-jr-display"); if(jrDisp) jrDisp.innerText = currentUser.jr;
                     alert(`🎉 구매 성공! [${charName}] 캐릭터를 장착했습니다!`);
-                    renderInlineShop();
+                    renderInlineShop(targetListId);
                 }
             }
         };
@@ -4279,6 +4372,77 @@ bindClick("close-inline-shop-btn", () => {
     document.getElementById("inline-shop-container").style.display = "none";
     document.getElementById("create-show-shop-btn").style.display = "block";
 });
+// 🛒 [멀티 대기실 상점]
+// 문제 만들기 대기 화면의 인라인 상점을 학생 멀티 대기실에서도 팝업으로 재사용합니다.
+function ensureLobbyShopButtonAndModal() {
+  if (document.getElementById("lobby-show-shop-btn")) return;
+
+  const repairBtn = document.getElementById("lobby-repair-btn");
+  const targetBox = repairBtn ? repairBtn.parentElement : null;
+
+  const shopBtn = document.createElement("button");
+  shopBtn.id = "lobby-show-shop-btn";
+  shopBtn.innerText = "🛒 상점 보기";
+  shopBtn.style.cssText = `
+    background-color: #9C27B0;
+    box-shadow: 0 4px 0 #7B1FA2;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 8px 15px;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+    margin: 0;
+  `;
+
+  if (targetBox) {
+    targetBox.appendChild(shopBtn);
+  }
+
+  const modal = document.createElement("div");
+  modal.id = "lobby-inline-shop-container";
+  modal.style.cssText = `
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 99980;
+    background: rgba(0,0,0,0.55);
+    align-items: center;
+    justify-content: center;
+    padding: 15px;
+    box-sizing: border-box;
+  `;
+
+  modal.innerHTML = `
+    <div style="width: 100%; max-width: 520px; height: 70vh; background: rgba(255,255,255,0.96); border: 4px solid #9C27B0; border-radius: 20px; display: flex; flex-direction: column; padding: 15px; box-sizing: border-box; box-shadow: 0 10px 25px rgba(0,0,0,0.25);">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px dashed #9C27B0; padding-bottom: 10px; margin-bottom: 10px; flex-shrink: 0;">
+        <h3 style="margin: 0; color: #9C27B0;">🛒 캐릭터 상점</h3>
+        <button id="close-lobby-inline-shop-btn" style="background: #f44336; box-shadow: 0 4px 0 #d32f2f; color: white; padding: 8px 15px; font-size: 14px; border: none; border-radius: 8px; cursor: pointer; margin: 0;">❌ 닫기</button>
+      </div>
+      <div id="lobby-inline-shop-list" style="overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 15px;"></div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  shopBtn.onclick = () => {
+    playSound("click");
+    modal.style.display = "flex";
+    renderInlineShop("lobby-inline-shop-list");
+  };
+
+  const closeBtn = modal.querySelector("#close-lobby-inline-shop-btn");
+  if (closeBtn) {
+    closeBtn.onclick = () => {
+      playSound("click");
+      modal.style.display = "none";
+    };
+  }
+}
 // ==========================================
 // 🚀 씬 9: 학생 출제 세트 - 무한 퀴즈 모드 (다형성 엔진)
 // ==========================================
