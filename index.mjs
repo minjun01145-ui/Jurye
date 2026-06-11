@@ -2175,7 +2175,7 @@ async function rescueJoinCurrentGameIfPlaying(reason = "direct-check") {
     window.multiUseBuffItems = (room.useBuffItems === "on");
     globalMultiEndTime = room.endTime;
 
-    if (currentGroupingActive && currentMultiRoomGroupPlayMode === "one-player" && room.gameMode !== "highfive") {
+if (currentGroupingActive && currentMultiRoomGroupPlayMode === "one-player" && !["highfive", "showcase"].includes(room.gameMode)) {
       const rep = currentMultiRoomRepresentatives?.[myCurrentGroupId];
       if (rep && rep.stdId !== currentUser.stdId) {
         const blockerMsg = document.getElementById("group-blocker-msg");
@@ -2488,7 +2488,7 @@ if (room.status === "playing") {
          window.multiUseBuffItems = (room.useBuffItems === "on");
          globalMultiEndTime = room.endTime; 
          
-         if (currentGroupingActive && currentMultiRoomGroupPlayMode === "one-player" && room.gameMode !== "highfive") {
+if (currentGroupingActive && currentMultiRoomGroupPlayMode === "one-player" && !["highfive", "showcase"].includes(room.gameMode)) {
              const rep = currentMultiRoomRepresentatives?.[myCurrentGroupId];
              if (rep && rep.stdId !== currentUser.stdId) {
                  document.getElementById("group-blocker-msg").innerHTML = `지금은 <b>${rep.name}</b> 친구의 화면에서<br>조원들과 다 함께 상의하며 플레이하세요!`;
@@ -4725,6 +4725,10 @@ bindClick("teacher-showcase-end-btn", async () => {
 });
 
 window.startShowcaseLogic = function(charFolder) {
+    // 🛡️ 쇼케이스는 관전 가리개와 무관하므로, 이전 조별 게임의 화면 가리개가 남아 있으면 즉시 닫습니다.
+    const blockerOverlay = document.getElementById("group-blocker-overlay");
+    if (blockerOverlay) blockerOverlay.style.display = "none";
+
     isGamePaused = true; // 아이들 폰이 이상하게 터치되는 것을 방지
     let charName = charFolder; let creatorName = "알 수 없음";
     if (charFolder.includes("(") && charFolder.includes(")")) {
