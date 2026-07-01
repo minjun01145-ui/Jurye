@@ -732,6 +732,73 @@ export function getTypingPromptFromWord(
   return cleanTypingPrompt(rawText);
 }
 
+
+/**
+ * 기존 JRCRAFT 세트를 타자게임용 짝 문항으로 변환합니다.
+ *
+ * 영어 모드:
+ * - target: 영어
+ * - helper: 우리말 뜻
+ *
+ * 우리말 모드:
+ * - target: 우리말
+ * - helper: 영어 문장
+ */
+export function buildTypingItemsFromSet(
+  set,
+  language = "en"
+) {
+  if (
+    !set ||
+    set.isCustomSet ||
+    !Array.isArray(set.words)
+  ) {
+    return [];
+  }
+
+  const targetField =
+    language === "ko" ? "ko" : "en";
+
+  const helperField =
+    language === "ko" ? "en" : "ko";
+
+  return set.words
+    .map((word) => {
+      if (
+        !word ||
+        typeof word !== "object" ||
+        word.isCustomData
+      ) {
+        return null;
+      }
+
+      const target =
+        cleanTypingPrompt(
+          word[targetField]
+        );
+
+      /*
+       * 타자로 칠 문장이 없는 항목은
+       * 게임 문항에서 제외합니다.
+       */
+      if (!target) {
+        return null;
+      }
+
+      const helper =
+        cleanTypingPrompt(
+          word[helperField]
+        );
+
+      return {
+        target,
+        helper
+      };
+    })
+    .filter(Boolean);
+}
+
+
 /**
  * 기존 JRCRAFT 세트를
  * 타자게임용 문자열 배열로 변환합니다.
@@ -746,22 +813,10 @@ export function buildTypingPromptsFromSet(
   set,
   language = "en"
 ) {
-  if (
-    !set ||
-    set.isCustomSet ||
-    !Array.isArray(set.words)
-  ) {
-    return [];
-  }
-
-  return set.words
-    .map((word) => {
-      return getTypingPromptFromWord(
-        word,
-        language
-      );
-    })
-    .filter((text) => text.length > 0);
+  return buildTypingItemsFromSet(
+    set,
+    language
+  ).map((item) => item.target);
 }
 
 /**

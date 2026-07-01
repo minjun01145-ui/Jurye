@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JRCRAFT Platform Shell Prototype</title>
+  <style>
+    :root {
+      --bg:#f4f6fa; --surface:#fff; --surface-soft:#f8fafc; --line:#e3e8f0;
+      --text:#172033; --muted:#697386; --primary:#3b5bfd; --accent:#7c3aed;
+      --success:#14a36f; --radius-sm:10px; --radius-md:16px; --radius-lg:24px;
+      --shadow-sm:0 2px 8px rgba(24,35,58,.06);
+      --shadow-md:0 12px 32px rgba(24,35,58,.10);
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-width:1024px;min-height:100%;font-family:sans-serif;color:var(--text);background:var(--bg)}
+    button,input,select{font:inherit} button{border:0;cursor:pointer}
+    .app-header{position:sticky;top:0;z-index:30;height:68px;display:flex;align-items:center;background:rgba(255,255,255,.96);border-bottom:1px solid var(--line);backdrop-filter:blur(12px)}
+    .header-inner{width:min(1360px,calc(100% - 48px));height:100%;margin:0 auto;display:grid;grid-template-columns:220px 1fr auto;align-items:center;gap:24px}
+    .brand{display:inline-flex;align-items:center;gap:11px;text-decoration:none;color:var(--text);font-weight:800;letter-spacing:-.02em}
+    .brand-mark{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;color:white;font-size:19px;background:linear-gradient(135deg,#3657f6,#8b5cf6);box-shadow:0 8px 18px rgba(59,91,253,.25)}
+    .brand-text{display:flex;flex-direction:column;line-height:1.05}.brand-name{font-size:19px}.brand-sub{margin-top:4px;color:var(--muted);font-size:11px;font-weight:600}
+    .global-nav{height:100%;display:flex;justify-content:center;align-items:stretch;gap:4px}
+    .global-nav button{position:relative;min-width:84px;padding:0 15px;background:transparent;color:#5e687b;font-size:15px;font-weight:700}
+    .global-nav button:hover{color:var(--text);background:#f7f8fb}.global-nav button.active{color:var(--primary)}
+    .global-nav button.active::after{content:"";position:absolute;left:18px;right:18px;bottom:0;height:3px;border-radius:3px 3px 0 0;background:var(--primary)}
+    .account-area{display:flex;align-items:center;gap:10px}
+    .jr-chip{display:flex;align-items:center;gap:7px;height:38px;padding:0 13px;border:1px solid #e4e9f2;border-radius:999px;background:#fbfcfe;color:#3f495a;font-size:14px;font-weight:750}
+    .profile-chip{display:flex;align-items:center;gap:9px;height:44px;padding:4px 12px 4px 5px;border:1px solid var(--line);border-radius:999px;background:white;box-shadow:var(--shadow-sm)}
+    .profile-avatar{width:34px;height:34px;object-fit:contain;image-rendering:pixelated;border-radius:50%;background:#edf2ff}
+    .profile-name{max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#313b4d;font-size:13px;font-weight:750}
+    .section-nav{position:sticky;top:68px;z-index:25;height:52px;display:flex;align-items:center;background:#fff;border-bottom:1px solid var(--line)}
+    .section-inner{width:min(1360px,calc(100% - 48px));height:100%;margin:0 auto;display:flex;align-items:center;gap:4px;overflow:hidden}
+    .section-title{margin-right:18px;color:#9aa3b2;font-size:12px;font-weight:800;letter-spacing:.08em}
+    .section-nav button{height:34px;padding:0 14px;border-radius:9px;background:transparent;color:#647084;font-size:14px;font-weight:700}
+    .section-nav button:hover{color:var(--text);background:#f3f5f9}.section-nav button.active{color:var(--primary);background:#eef1ff}
+    .page{width:min(1360px,calc(100% - 48px));margin:0 auto;padding:28px 0 44px}
+    .page-heading{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:20px}
+    .page-heading h1{margin:0;font-size:28px;letter-spacing:-.035em}.page-heading p{margin:8px 0 0;color:var(--muted);font-size:14px}
+    .status-note{display:inline-flex;align-items:center;gap:7px;color:#566074;font-size:13px;font-weight:700}
+    .status-dot{width:8px;height:8px;border-radius:50%;background:var(--success);box-shadow:0 0 0 4px rgba(20,163,111,.12)}
+    .hero-layout{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(290px,.65fr);gap:18px;min-height:330px}
+    .hero-banner{position:relative;min-height:330px;overflow:hidden;border-radius:var(--radius-lg);color:white;background:radial-gradient(circle at 78% 24%,rgba(255,255,255,.24),transparent 25%),radial-gradient(circle at 91% 78%,rgba(255,255,255,.16),transparent 24%),linear-gradient(125deg,#243cbd 0%,#4b5ef5 48%,#8458e8 100%);box-shadow:var(--shadow-md)}
+    .hero-noise{position:absolute;inset:0;opacity:.18;pointer-events:none;background-image:linear-gradient(rgba(255,255,255,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.08) 1px,transparent 1px);background-size:34px 34px;mask-image:linear-gradient(90deg,black,transparent 86%)}
+    .hero-copy{position:relative;z-index:4;width:58%;padding:42px 0 36px 42px}
+    .eyebrow{display:inline-flex;align-items:center;min-height:26px;padding:0 10px;border:1px solid rgba(255,255,255,.35);border-radius:999px;background:rgba(255,255,255,.12);font-size:11px;font-weight:850;letter-spacing:.08em}
+    .hero-title{margin:18px 0 12px;font-size:clamp(30px,3vw,45px);line-height:1.08;letter-spacing:-.045em;word-break:keep-all}
+    .hero-desc{max-width:560px;margin:0;color:rgba(255,255,255,.82);font-size:15px;line-height:1.7;word-break:keep-all}
+    .hero-actions{display:flex;gap:10px;margin-top:26px}
+    .btn{min-height:43px;padding:0 17px;border-radius:11px;font-weight:800;transition:transform .15s ease,background .15s ease}.btn:hover{transform:translateY(-1px)}
+    .btn-primary{background:white;color:#314cd8}.btn-secondary{background:rgba(255,255,255,.13);color:white;border:1px solid rgba(255,255,255,.35)}
+    .hero-character-stage{position:absolute;right:2%;bottom:-2px;width:40%;height:96%;display:flex;align-items:flex-end;justify-content:center;z-index:3}
+    .hero-character-glow{position:absolute;width:260px;height:260px;bottom:8px;border-radius:50%;background:rgba(255,255,255,.18);filter:blur(2px);box-shadow:0 0 80px rgba(255,255,255,.16)}
+    .hero-character{position:relative;z-index:2;height:235px;max-width:260px;object-fit:contain;image-rendering:pixelated;filter:drop-shadow(0 18px 20px rgba(12,18,65,.35));animation:characterFloat 2.6s ease-in-out infinite}
+    @keyframes characterFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+    .hero-dots{position:absolute;left:42px;bottom:22px;z-index:6;display:flex;gap:7px}.hero-dot{width:8px;height:8px;padding:0;border-radius:999px;background:rgba(255,255,255,.38)}.hero-dot.active{width:24px;background:white}
+    .side-stack{display:grid;grid-template-rows:1fr 1fr;gap:18px}
+    .info-card{position:relative;overflow:hidden;padding:22px;border:1px solid var(--line);border-radius:var(--radius-lg);background:var(--surface);box-shadow:var(--shadow-sm)}
+    .info-card h3{margin:0;font-size:17px;letter-spacing:-.025em}.info-card p{margin:8px 0 0;color:var(--muted);font-size:13px;line-height:1.6}
+    .info-value{margin-top:22px;font-size:28px;font-weight:850;letter-spacing:-.04em}.info-foot{position:absolute;right:18px;bottom:18px;color:#8a94a6;font-size:12px;font-weight:700}
+    .content-grid{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:18px;margin-top:18px}
+    .panel{border:1px solid var(--line);border-radius:var(--radius-lg);background:var(--surface);box-shadow:var(--shadow-sm)}
+    .panel-head{min-height:64px;padding:0 22px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}.panel-head h2{margin:0;font-size:18px;letter-spacing:-.025em}
+    .text-link{background:transparent;color:var(--primary);font-size:13px;font-weight:800}
+    .game-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:18px}
+    .game-card{min-height:145px;padding:18px;border:1px solid var(--line);border-radius:var(--radius-md);background:#fbfcfe;text-align:left;transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease}
+    .game-card:hover{transform:translateY(-2px);border-color:#bac5ff;box-shadow:0 10px 22px rgba(40,57,125,.09)}
+    .game-icon{width:38px;height:38px;display:grid;place-items:center;margin-bottom:15px;border-radius:11px;background:#eef1ff;font-size:20px}
+    .game-card strong{display:block;color:var(--text);font-size:15px}.game-card span{display:block;margin-top:7px;color:var(--muted);font-size:12px;line-height:1.5}
+    .activity-list{padding:6px 18px 18px}.activity-row{display:grid;grid-template-columns:42px 1fr auto;align-items:center;gap:11px;min-height:63px;border-bottom:1px solid #edf0f5}.activity-row:last-child{border-bottom:0}
+    .activity-icon{width:36px;height:36px;display:grid;place-items:center;border-radius:11px;background:#f2f4f8}
+    .activity-main strong{display:block;font-size:13px}.activity-main span{display:block;margin-top:4px;color:var(--muted);font-size:11px}
+    .activity-badge{padding:5px 8px;border-radius:999px;color:#25634c;background:#e9f8f2;font-size:11px;font-weight:800}
+    .prototype-label{position:fixed;right:18px;bottom:18px;z-index:50;padding:8px 11px;border:1px solid var(--line);border-radius:999px;color:#6c7689;background:rgba(255,255,255,.92);box-shadow:var(--shadow-sm);font-size:11px;font-weight:750}
+    @media(max-width:1120px){.global-nav button{min-width:72px;padding:0 9px}.hero-copy{width:62%}.game-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.profile-name{display:none}}
+  </style>
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-inner">
+      <a class="brand" href="#">
+        <span class="brand-mark">J</span>
+        <span class="brand-text"><span class="brand-name">JRCRAFT</span><span class="brand-sub">CLASSROOM GAME PLATFORM</span></span>
+      </a>
+      <nav class="global-nav">
+        <button class="active" data-main-nav="home">홈</button>
+        <button data-main-nav="games">게임</button>
+        <button data-main-nav="sets">학습 세트</button>
+        <button data-main-nav="shop">상점</button>
+        <button data-main-nav="ranking">랭킹</button>
+      </nav>
+      <div class="account-area">
+        <div class="jr-chip">💰 <span>3,200 JR</span></div>
+        <button class="profile-chip">
+          <img id="profile-avatar" class="profile-avatar" alt="">
+          <span class="profile-name">영어천재</span><span>⌄</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="section-nav">
+    <div class="section-inner">
+      <span class="section-title">GAME LIBRARY</span>
+      <button class="active">추천</button><button>깜박이</button><button>메모리</button><button>짝맞추기</button>
+      <button>스피드</button><button>낚시</button><button>문장 해석</button><button>타자게임</button>
+    </div>
+  </nav>
+
+  <main class="page">
+    <div class="page-heading">
+      <div><h1>오늘도 즐겁게 학습해 볼까요?</h1><p>게임과 캐릭터, 학습 기록을 한곳에서 확인하는 JRCRAFT 홈입니다.</p></div>
+      <div class="status-note"><span class="status-dot"></span> 서비스 정상</div>
+    </div>
+
+    <section class="hero-layout">
+      <article class="hero-banner">
+        <div class="hero-noise"></div>
+        <div class="hero-copy">
+          <span id="hero-eyebrow" class="eyebrow">CHARACTER SPOTLIGHT</span>
+          <h2 id="hero-title" class="hero-title">오늘의 캐릭터를<br>만나 보세요</h2>
+          <p id="hero-desc" class="hero-desc">JRCRAFT의 개성 넘치는 캐릭터와 함께 학습 게임을 시작해 보세요.</p>
+          <div class="hero-actions">
+            <button id="hero-primary" class="btn btn-primary">상점에서 보기</button>
+            <button class="btn btn-secondary">자세히 보기</button>
+          </div>
+        </div>
+        <div class="hero-character-stage">
+          <div class="hero-character-glow"></div>
+          <img id="hero-character" class="hero-character" alt="">
+        </div>
+        <div id="hero-dots" class="hero-dots"></div>
+      </article>
+
+      <aside class="side-stack">
+        <article class="info-card"><h3>오늘의 학습</h3><p>최근 선택한 세트에서 바로 이어서 시작할 수 있습니다.</p><div class="info-value">2과 본문</div><div class="info-foot">최근 플레이 · 문장 해석</div></article>
+        <article class="info-card"><h3>이번 주 기록</h3><p>이번 주에 달성한 개인 최고 기록입니다.</p><div class="info-value">284타</div><div class="info-foot">타자게임 · 개인 최고</div></article>
+      </aside>
+    </section>
+
+    <section class="content-grid">
+      <article class="panel">
+        <div class="panel-head"><h2>추천 게임</h2><button class="text-link">전체 게임 보기 →</button></div>
+        <div class="game-grid">
+          <button class="game-card"><span class="game-icon">⌨️</span><strong>타자 대결</strong><span>실시간 타수와 정확도를 겨뤄 보세요.</span></button>
+          <button class="game-card"><span class="game-icon">🧩</span><strong>문장 해석</strong><span>문장 구조를 익히며 점수를 올려 보세요.</span></button>
+          <button class="game-card"><span class="game-icon">🧠</span><strong>메모리 게임</strong><span>단어와 뜻의 짝을 빠르게 찾아보세요.</span></button>
+          <button class="game-card"><span class="game-icon">⚡</span><strong>스피드 퀴즈</strong><span>순간 판단과 기억력을 동시에 시험합니다.</span></button>
+          <button class="game-card"><span class="game-icon">🎣</span><strong>이모지 낚시</strong><span>정답을 맞히고 특별한 아이템을 모아보세요.</span></button>
+          <button class="game-card"><span class="game-icon">🃏</span><strong>깜박이 카드</strong><span>반복 학습으로 단어를 빠르게 익혀보세요.</span></button>
+        </div>
+      </article>
+
+      <aside class="panel">
+        <div class="panel-head"><h2>최근 소식</h2><button class="text-link">더보기</button></div>
+        <div class="activity-list">
+          <div class="activity-row"><div class="activity-icon">🎁</div><div class="activity-main"><strong>오늘의 출석 보상</strong><span>로그인 보상이 지급되었습니다.</span></div><span class="activity-badge">+1,000 JR</span></div>
+          <div class="activity-row"><div class="activity-icon">✨</div><div class="activity-main"><strong>캐릭터 스포트라이트</strong><span>무작위 캐릭터를 자동으로 소개합니다.</span></div><span class="activity-badge">LIVE</span></div>
+          <div class="activity-row"><div class="activity-icon">🏆</div><div class="activity-main"><strong>주간 챔피언</strong><span>실제 기록 연결은 다음 단계에서 진행합니다.</span></div><span class="activity-badge">DEMO</span></div>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <div class="prototype-label">DESKTOP PROTOTYPE · 1366×768 기준</div>
+
+  <script>
+    const charFrames=["stand1_0.png","stand1_1.png","stand1_2.png","stand1_3.png"];
+    let currentFrame=0,characters=[],activeBannerIndex=0,heroInterval=null;
+    const banners=[
+      {type:"character",eyebrow:"CHARACTER SPOTLIGHT",title:"오늘의 캐릭터를<br>만나 보세요",description:"저장된 캐릭터 중 하나를 자동으로 골라 소개합니다. 별도의 영상 제작은 필요하지 않습니다.",primary:"상점에서 보기"},
+      {type:"typing",eyebrow:"NEW GAME MODE",title:"실시간 타수 대결<br>준비 중",description:"속도와 정확도를 함께 겨루는 새로운 멀티플레이 타자게임을 만나 보세요.",primary:"타자게임 살펴보기"},
+      {type:"champion",eyebrow:"WEEKLY CHAMPION · DEMO",title:"지난주의 최고 기록<br>284타 달성",description:"나중에는 Firestore의 실제 기록을 읽어 주간 챔피언 배너를 자동 생성합니다.",primary:"랭킹 보러 가기"}
+    ];
+    const cleanCharacterName=f=>String(f||"").split("(")[0].trim()||"JRCRAFT 캐릭터";
+    const getRandomCharacter=()=>characters.length?characters[Math.floor(Math.random()*characters.length)]:"";
+    function setCharacterImage(img,folder,frame=0){if(!img||!folder)return;img.dataset.charFolder=folder;img.src=`char/${folder}/${charFrames[frame]}`;img.alt=cleanCharacterName(folder)}
+    function renderDots(){const c=document.getElementById("hero-dots");c.replaceChildren();banners.forEach((_,i)=>{const d=document.createElement("button");d.className="hero-dot"+(i===activeBannerIndex?" active":"");d.type="button";d.onclick=()=>{activeBannerIndex=i;renderBanner();restartBannerTimer()};c.appendChild(d)})}
+    function renderBanner(){
+      const b=banners[activeBannerIndex],img=document.getElementById("hero-character");
+      document.getElementById("hero-eyebrow").textContent=b.eyebrow;
+      document.getElementById("hero-desc").textContent=b.description;
+      document.getElementById("hero-primary").textContent=b.primary;
+      let folder=getRandomCharacter(),title=b.title;
+      if(b.type==="character"&&folder) title=`${cleanCharacterName(folder)}<br>캐릭터 스포트라이트`;
+      else if(b.type==="typing") folder=characters[1]||characters[0]||"";
+      else if(b.type==="champion") folder=characters[2]||characters[0]||"";
+      document.getElementById("hero-title").innerHTML=title;
+      if(folder){setCharacterImage(img,folder,currentFrame);img.style.display="block"}else img.style.display="none";
+      renderDots();
+    }
+    function restartBannerTimer(){clearInterval(heroInterval);heroInterval=setInterval(()=>{activeBannerIndex=(activeBannerIndex+1)%banners.length;renderBanner()},7000)}
+    async function loadCharacters(){
+      try{
+        const r=await fetch(`char/folder_list.txt?t=${Date.now()}`);
+        if(!r.ok)throw new Error("folder_list.txt not found");
+        characters=(await r.text()).split(/?
+/).map(x=>x.trim()).filter(Boolean);
+        if(characters[0])setCharacterImage(document.getElementById("profile-avatar"),characters[0],0);
+      }catch(e){console.warn("캐릭터 목록을 불러오지 못했습니다.",e)}
+      renderBanner();
+    }
+    document.querySelectorAll("[data-main-nav]").forEach(b=>b.onclick=()=>{document.querySelectorAll("[data-main-nav]").forEach(x=>x.classList.remove("active"));b.classList.add("active")});
+    document.querySelectorAll(".section-nav button").forEach(b=>b.onclick=()=>{document.querySelectorAll(".section-nav button").forEach(x=>x.classList.remove("active"));b.classList.add("active")});
+    setInterval(()=>{currentFrame=(currentFrame+1)%charFrames.length;document.querySelectorAll("[data-char-folder]").forEach(img=>setCharacterImage(img,img.dataset.charFolder,currentFrame))},250);
+    loadCharacters();restartBannerTimer();
+  </script>
+</body>
+</html>

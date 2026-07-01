@@ -205,7 +205,39 @@
   text-shadow:
     0 1px 4px rgba(22, 163, 74, 0.25);
 }
+/* 타자로 입력하지 않는 반대 언어의 보조 문장 */
+#companion-text {
+  display: none;
+  width: 100%;
+  margin: -8px 0 18px;
+  padding: 12px 16px;
+  border: 2px solid #dbeafe;
+  border-radius: 15px;
+  background: #eff6ff;
+  color: #475569;
+  text-align: center;
+  font-size: 16px;
+  line-height: 1.55;
+  word-break: keep-all;
+}
 
+/* '뜻', '영어' 표시 */
+#companion-label {
+  display: inline-block;
+  margin-right: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+#companion-content {
+  color: #334155;
+  vertical-align: middle;
+}
     #typing-input {
       width: 100%;
       height: 64px;
@@ -373,7 +405,10 @@
 </div>
 
     <div id="target-text"></div>
-
+<div id="companion-text">
+  <span id="companion-label">뜻</span>
+  <span id="companion-content"></span>
+</div>
     <input
       id="typing-input"
       type="text"
@@ -445,6 +480,7 @@ import {
   createTypingSpeedTracker,
   getTypingGlowLevel,
   buildTypingPromptsFromSet,
+  buildTypingItemsFromSet,
   getTypingReadySets,
   isTypingAnswerComplete
 } from "./src/utils/typing.js";
@@ -495,7 +531,20 @@ import {
     document.getElementById(
       "target-text"
     );
+const companionTextElement =
+  document.getElementById(
+    "companion-text"
+  );
 
+const companionLabelElement =
+  document.getElementById(
+    "companion-label"
+  );
+
+const companionContentElement =
+  document.getElementById(
+    "companion-content"
+  );
   const typingInput =
     document.getElementById(
       "typing-input"
@@ -547,7 +596,7 @@ const ignorePunctuationOption =
 
   let wordSets = [];
   let availableSets = [];
-  let currentPrompts = [];
+let currentItems = [];
 
   let promptIndex = 0;
   let targetText = "";
@@ -571,7 +620,11 @@ const ignorePunctuationOption =
   ) {
     targetTextElement.textContent =
       title;
+companionTextElement.style.display =
+  "none";
 
+companionContentElement.textContent =
+  "";
     feedback.textContent =
       message;
 
@@ -616,8 +669,14 @@ const ignorePunctuationOption =
       setSelect.appendChild(option);
       setSelect.disabled = true;
 
-      currentPrompts = [];
-      targetText = "";
+      currentItems = [];
+targetText = "";
+
+companionTextElement.style.display =
+  "none";
+
+companionContentElement.textContent =
+  "";
 
       setLoadingMessage(
         "사용할 수 있는 문항이 없습니다.",
@@ -668,70 +727,111 @@ const ignorePunctuationOption =
    * 현재 선택된 세트를
    * 타자게임용 문장 배열로 만듭니다.
    */
-  function prepareSelectedSet() {
-    const selectedSet =
-      getSelectedSet();
+function prepareSelectedSet() {
+  const selectedSet =
+    getSelectedSet();
 
-    if (!selectedSet) {
-      currentPrompts = [];
+  if (!selectedSet) {
+    currentItems = [];
 
-      setLoadingMessage(
-        "세트를 선택해 주세요.",
-        "타자 연습에 사용할 세트가 필요합니다."
-      );
+    companionTextElement.style.display =
+      "none";
 
-      return;
-    }
+    companionContentElement.textContent =
+      "";
 
-    currentPrompts =
-      buildTypingPromptsFromSet(
-        selectedSet,
-        languageSelect.value
-      );
-
-    resetTest();
-  }
-
-  function loadPrompt() {
-    if (currentPrompts.length === 0) {
-      targetText = "";
-
-      setLoadingMessage(
-        "문항이 없습니다.",
-        "선택한 세트와 언어를 확인하세요."
-      );
-
-      return;
-    }
-
-    targetText =
-      currentPrompts[
-        promptIndex %
-        currentPrompts.length
-      ];
-
-    maxPrefixLength = 0;
-
-    typingInput.value = "";
-    typingInput.disabled = false;
-
-    typingInput.classList.remove(
-      "has-error"
+    setLoadingMessage(
+      "세트를 선택해 주세요.",
+      "타자 연습에 사용할 세트가 필요합니다."
     );
 
-    resetButton.disabled = false;
-
-    feedback.textContent =
-      "정확하게 입력한 뒤 Enter를 누르세요.";
-
-    accuracyElement.textContent =
-      "100%";
-
-    renderTarget();
-    updateStats();
-
-    typingInput.focus();
+    return;
   }
+
+  currentItems =
+    buildTypingItemsFromSet(
+      selectedSet,
+      languageSelect.value
+    );
+
+  resetTest();
+}
+
+  function loadPrompt() {
+  if (currentItems.length === 0) {
+    targetText = "";
+
+    companionTextElement.style.display =
+      "none";
+
+    companionContentElement.textContent =
+      "";
+
+    setLoadingMessage(
+      "문항이 없습니다.",
+      "선택한 세트와 언어를 확인하세요."
+    );
+
+    return;
+  }
+
+  const currentItem =
+    currentItems[
+      promptIndex %
+      currentItems.length
+    ];
+
+  targetText =
+    currentItem.target;
+
+  const helperText =
+    currentItem.helper;
+
+  /*
+   * 영어를 입력할 때는 우리말 뜻,
+   * 우리말을 입력할 때는 영어 문장을 보여 줍니다.
+   */
+  companionLabelElement.textContent =
+    languageSelect.value === "en"
+      ? "뜻"
+      : "영어";
+
+  if (helperText) {
+    companionContentElement.textContent =
+      helperText;
+
+    companionTextElement.style.display =
+      "block";
+  } else {
+    companionContentElement.textContent =
+      "";
+
+    companionTextElement.style.display =
+      "none";
+  }
+
+  maxPrefixLength = 0;
+
+  typingInput.value = "";
+  typingInput.disabled = false;
+
+  typingInput.classList.remove(
+    "has-error"
+  );
+
+  resetButton.disabled = false;
+
+  feedback.textContent =
+    "정확하게 입력한 뒤 Enter를 누르세요.";
+
+  accuracyElement.textContent =
+    "100%";
+
+  renderTarget();
+  updateStats();
+
+  typingInput.focus();
+}
 
   /**
    * 문장 배치는 고정하고

@@ -1,15 +1,4 @@
-@font-face {
-  font-family: "Paperlogy-4Regular";
-  src: url("https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-4Regular.woff2") format("woff2");
-  font-weight: 400; font-style: normal;
-}
-/* 🌟 글꼴 볼드(굵게) 강제 해제 (Paperlogy 폰트 고유의 얇고 예쁜 느낌 살리기) */
-* {
-  font-weight: 400 !important;
-}
-b, strong {
-  font-weight: 400 !important;
-}
+
 /* 👆 여기까지 👆 */
 /* 🌟 배경: 카훗/블루킷 스타일의 부드럽게 움직이는 그라데이션 */
 @keyframes gradientBG {
@@ -19,8 +8,9 @@ b, strong {
 }
 
 body {
-  margin: 0; overflow: hidden;
-  font-family: "Paperlogy-4Regular", sans-serif;
+  margin: 0;
+  overflow: hidden;
+  font-family: sans-serif;
   background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 30%, #fbc2eb 70%, #ff9a9e 100%);
   background-size: 400% 400%;
   animation: gradientBG 15s ease infinite;
@@ -507,4 +497,16 @@ b, strong {
 }
 .shake-screen-effect {
   animation: screenShake 0.4s ease-in-out;
+}
+
+
+/* =====================================================
+   JRCRAFT 공통 기본 고딕 글꼴
+   typing-test.html과 같은 브라우저 기본 sans-serif 사용
+===================================================== */
+
+html,
+body,
+body * {
+  font-family: sans-serif !important;
 }
