@@ -1,7 +1,28 @@
-//1. 파이어베이스 라이브러리 불러오기
-// 1. 파이어베이스 라이브러리 불러오기 (🔥 initializeFirestore 를 추가로 적어줍니다)
+// =====================================================
+// [00] Firebase 초기화 / 전역 상태 / 기본 설정
+// -----------------------------------------------------
+// - Firebase 앱 및 Firestore 연결
+// - long-polling 안정성 설정
+// - 게임 전체에서 공유하는 전역 변수
+// - currentUser, wordSets, studentList 등 핵심 상태
+// =====================================================
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
 import { initializeFirestore, getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, onSnapshot, query, orderBy, limit, deleteDoc } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
+import {
+  getDurationSeconds as getDurationSecondsCore,
+  withTimeout as withTimeoutCore
+} from "./src/utils/timer.js";
+import { normalizeShortAnswer as normalizeShortAnswerCore } from "./src/utils/text.js";
+import {
+  getSimpleCharacterName as getSimpleCharacterNameCore,
+  getAvatarHtml as getAvatarHtmlCore
+} from "./src/utils/character.js";
+import {
+  bindClick as bindClickCore,
+  getStarClass as getStarClassCore,
+  autoFontSize as autoFontSizeCore
+} from "./src/utils/ui.js";
 
 //2. 파이어베이스 세팅
 const firebaseConfig = {
@@ -91,7 +112,16 @@ let multiRoomUnsubscribe = null;
 let teacherLiveUnsubscribe = null;
 let teacherMatchInterval = null;
 
-// 🚀 char/folder_list.txt 파일을 읽어서 배열을 자동 생성하는 함수
+
+// =====================================================
+// [01] 캐릭터 / JR / 학생 프로필 기본 시스템
+// -----------------------------------------------------
+// - 캐릭터 폴더 목록 로딩
+// - 기본 캐릭터 표시
+// - JR, ownedCharacters, character 상태 관리
+// - 캐릭터 이미지 HTML 생성
+// =====================================================
+
 async function loadCharacterList() {
   try {
     const response = await fetch("char/folder_list.txt?t=" + Date.now());
@@ -201,9 +231,19 @@ window.customAlert = function(msg, callback) {
     if (callback) callback();
   }
 };
-// ==========================================
-// 5. UI 유틸리티
-// ==========================================
+
+
+// =====================================================
+// [02] 화면 전환 / 공통 UI / 상태 배지
+// -----------------------------------------------------
+// - showScreen()으로 모든 화면 전환 처리
+// - 대기실 상점 팝업 자동 닫기
+// - 우하단 JR/캐릭터 상태 배지
+// - 로딩 진행률 표시
+// - 공통 버튼 바인딩
+// =====================================================
+
+
 function showScreen(screenId) {
   document.querySelectorAll(".screen").forEach((s) => { s.style.display = "none"; s.classList.remove("active"); });
   if (screenId) { const screen = document.getElementById(screenId); if(screen) { screen.style.display = "flex"; screen.classList.add("active"); } }
@@ -231,15 +271,10 @@ if (screenId === "multi-lobby-screen") {
 }
 
 function bindClick(id, callback) {
-  const el = document.getElementById(id);
-  if (el) el.onclick = callback;
-  else console.warn(`주의: HTML에서 '${id}' 버튼 찾기 실패 (무시됨)`);
+  return bindClickCore(id, callback);
 }
-// 💰 [공통 상태 배지] 어느 화면이든 현재 JR/캐릭터를 우하단에 표시합니다.
 function getSimpleCharacterName(charFolder) {
-  if (!charFolder) return "없음";
-  if (charFolder.includes("(")) return charFolder.split("(")[0].trim();
-  return charFolder;
+  return getSimpleCharacterNameCore(charFolder);
 }
 
 function updatePlayerStatusBadge() {
@@ -302,26 +337,15 @@ function updateLoadingProgress(percent, title, detail, showWarning = false) {
 
 // 🚀 Firestore 요청이 무한정 멈춰 있는 것을 막는 타임아웃 장치
 function withTimeout(promise, ms, label) {
-  return Promise.race([
-    promise,
-    new Promise((_, reject) => {
-      setTimeout(() => reject(new Error(`${label} 응답 시간 초과`)), ms);
-    })
-  ]);
+  return withTimeoutCore(promise, ms, label);
 }
 
 
 
-// 🧪 테스트용 10초 모드를 포함한 제한시간 계산 함수
-// 일반 값 3, 5, 10은 "분"으로 처리하고, test10만 정확히 10초로 처리합니다.
 function getDurationSeconds(durationValue, fallbackSeconds = 180) {
-  if (durationValue === "test10") return 10;
-
-  const n = Number(durationValue);
-  if (!Number.isFinite(n) || n <= 0) return fallbackSeconds;
-
-  return Math.round(n * 60);
+  return getDurationSecondsCore(durationValue, fallbackSeconds);
 }
+
 // ==========================================
 // 🚀 2. 2D 픽셀 캐릭터 4프레임 애니메이션 엔진
 // ==========================================
@@ -346,8 +370,7 @@ setInterval(() => {
 }, 250);
 
 function getAvatarHtml(charFolder, size = "45px") {
-  if(!charFolder) return "😎"; 
-  return `<img src="char/${charFolder}/stand1_0.png" class="anim-avatar" data-char-id="${charFolder}" style="height:${size}; vertical-align:middle; margin-right:5px; filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.15));">`;
+  return getAvatarHtmlCore(charFolder, size);
 }
 
 // ==========================================
@@ -636,6 +659,17 @@ function initWalkingEmojis() {
 }
 initWalkingEmojis();
 
+
+// =====================================================
+// [03] 게임 상태 초기화 / 오버레이 정리 / 안전 복구
+// -----------------------------------------------------
+// - 게임 타이머와 카운트다운 정리
+// - 방해 레이어, 보물상자, 타겟창, 블라인드 제거
+// - 게임 점수, 아이템, 상태값 초기화
+// - 멀티 복귀 전 기본 청소 담당
+// =====================================================
+
+
 function resetGameStates() {
   // 🚀 [멀티 자물쇠 완전 해제] 게임 초기화 시 상태를 깨끗이 비워줍니다.
   window.isMultiGameActive = false; 
@@ -689,6 +723,18 @@ bindClick("home-btn", () => {
       showScreen("menu-screen"); 
   }
 });
+
+
+// =====================================================
+// [04] 초기 데이터 로딩 / 로그인 / 학생 인증
+// -----------------------------------------------------
+// - wordSets, studentList 불러오기
+// - 로딩 타임아웃 및 재시도
+// - 학번/이름 인증
+// - 출석 JR 보상
+// - 닉네임 저장 후 로비 진입
+// =====================================================
+
 
 async function loadAllFromDB() {
   let maxRetries = 3; 
@@ -894,6 +940,18 @@ const setBtnColors = [
   { bg: "#FFE0B2", shadow: "#FFB300", color: "#333" },
   { bg: "#FFCCBC", shadow: "#FF8A65", color: "#333" }
 ];
+
+
+// =====================================================
+// [05] 학습 세트 선택 / 관리자 / 단어 목록
+// -----------------------------------------------------
+// - 개인 게임용 세트 선택
+// - 학생 명단 관리
+// - 단어 세트 생성/수정/삭제
+// - 단어 목록 보기
+// - 별표/가리기 기능
+// =====================================================
+
 
 function renderSetSelectList() {
   const container = document.getElementById("set-select-list"); container.innerHTML = "";
@@ -1114,12 +1172,7 @@ bindClick("toggle-mean-btn", () => {
 });
 
 function getStarClass(count) {
-  if (count === 0) return "fire-0";
-  if (count === 1) return "fire-1";
-  if (count === 2) return "fire-2";
-  if (count <= 4) return "fire-3";
-  if (count <= 7) return "fire-4";
-  return "fire-max"; 
+  return getStarClassCore(count);
 }
 
 function renderWordList() {
@@ -1205,6 +1258,7 @@ bindClick("time-3m-btn", () => { playSound("click"); routeGameStart(3); });
 bindClick("time-5m-btn", () => { playSound("click"); routeGameStart(5); });
 
 function routeGameStart(minutes) {
+    globalMultiEndTime = null;
   if(currentGameMode === "memory") startCountdown(minutes, "memory-screen", startMemoryLogic);
   else if(currentGameMode === "speed-match") startCountdown(minutes, "speed-match-screen", startSpeedMatchLogic);
   else if(currentGameMode === "speed") startCountdown(minutes, "speed-screen", startSpeedLogic);
@@ -1214,6 +1268,18 @@ function routeGameStart(minutes) {
 
 // 🚀 [타이머 폭주 방지용 글로벌 자물쇠]
 window.isCountdownActive = false; 
+
+
+
+// =====================================================
+// [06] 개인 게임 공통 시작 / 카운트다운 / 보상 UI
+// -----------------------------------------------------
+// - 10초 테스트 모드 포함 시간 계산
+// - 5초 카운트다운
+// - 게임 시작 전 상태 초기화
+// - 칭찬 문구, 버프 메시지, 아이템 UI
+// =====================================================
+
 
 function startCountdown(minutes, screenId, logicCallback) {
   // 🚀 [안전 방어막] 혹시라도 시간 데이터가 깨지거나 누락되면 강제로 3분 분량을 확보합니다.
@@ -1355,9 +1421,16 @@ function refreshGameModeUI() {
   else if(currentGameMode === "custom_infinite") updateCiUI(); 
 }
 
-// ==========================================
-// 씬 1: 깜빡이 학습
-// ==========================================
+// =====================================================
+// [07] 개인 게임 모드
+// -----------------------------------------------------
+// - 플래시카드
+// - 메모리 게임
+// - 스피드 짝맞추기
+// - 스피드 퀴즈
+// - 이모지 낚시
+// - 문장 해석 청크 게임
+// =====================================================
 let fcQueue = []; let fcCurrent = null; let fcStartTime = 0; let fcKnown = 0; let fcIsFlipped = false; let fcIsAnimating = false; let fcScore = 0; let cardAppearTime = 0; let isRetryPhase = false; let hasFlippedToCheck = false; 
 
 function startFlashcard() {
@@ -1371,7 +1444,9 @@ function startFlashcard() {
   showScreen("flashcard-screen"); nextFlashcard("fly-right-in");
 }
 
-function autoFontSize(text) { return text.length > 40 ? "18px" : (text.length > 20 ? "24px" : "32px"); }
+function autoFontSize(text) {
+  return autoFontSizeCore(text);
+}
 
 // (여기는 기존 깜빡이 학습과 실시간 낚시 엔진 로직이 수정 없이 그대로 안정되게 유지됩니다...)
 function updateFcUI() {
@@ -1539,7 +1614,7 @@ function startSpeedMatchLogic() {
          if (gameTimeRemaining <= 0) { clearInterval(gameTimerInterval); currentUser.score = gameScore; document.getElementById("result-detail").innerText = `제한 시간 종료! 획득한 점수입니다!`; goResult(); } 
        }
     }
-  }, 500); 
+  }, 1000); 
   loadSpeedMatchRound();
 }
 function loadSpeedMatchRound() {
@@ -1643,7 +1718,7 @@ function startSpeedLogic() {
          if (gameTimeRemaining <= 0) { clearInterval(gameTimerInterval); currentUser.score = gameScore; document.getElementById("result-detail").innerText = `제한 시간 종료! 획득한 퀴즈 점수입니다!`; goResult(); }
        }
     }
-  }, 500); 
+  }, 1000); 
   loadNextSpeedQuiz();
 }
 function loadNextSpeedQuiz() {
@@ -1755,13 +1830,19 @@ function moveFishes(currentTime) {
   } requestAnimationFrame(moveFishes);
 }
 
-// ==========================================
-// 9. 결과, 피드백 전송 및 랭킹
-// ==========================================
-// 🚀 [3/4] 결과 화면: 멀티플레이 2초 대기 동기화 및 획득 JR 정산
 
-// 🚀 [3/4] 결과 화면: 멀티플레이 2초 대기 동기화 및 획득 JR 정산
-// 🚀 [3/4] 결과 화면: 멀티플레이 2초 대기 동기화 및 획득 JR 정산
+// =====================================================
+// [08] 결과 화면 / 점수 저장 / 랭킹
+// -----------------------------------------------------
+// - 개인/멀티 게임 종료 처리
+// - 점수 저장
+// - JR 보상
+// - 오늘/우리반/전체 랭킹 표시
+// - 조별 점수 보너스 처리
+// =====================================================
+
+
+
 async function goResult() {
   
   // 🚀 픽스: 게임 종료 시 열려있을 수 있는 '모든 방해 레이어(블라인드, 공격창 등)'를 강제로 즉시 소각! (먹통 100% 방지)
@@ -2018,7 +2099,7 @@ function startChunkLogic() {
          if (gameTimeRemaining <= 0) { clearInterval(gameTimerInterval); currentUser.score = gameScore; document.getElementById("result-detail").innerText = `제한 시간 종료! 획득한 해석 점수입니다!`; goResult(); }
        }
     }
-  }, 500); 
+  }, 1000); 
   loadNextChunkQuiz(validChunkWords);
 }
 function loadNextChunkQuiz(validChunkWords) {
@@ -2097,8 +2178,17 @@ bindClick("mode-multi-teacher-btn", () => {
 });
 bindClick("lobby-mode-back-btn", () => { playSound("click"); showScreen("login-screen"); });
 
-// 🚑 [강화형 미아 복구] 현재 진행 중인 게임을 직접 확인해서 따라 들어가기
-// onSnapshot 신호를 놓친 학생도, 에러 고치기/재입장 후 getDoc으로 현재 방 상태를 직접 읽어 게임에 합류합니다.
+
+
+// =====================================================
+// [09] 멀티 미아 복구 / 진행 중 게임 직접 합류
+// -----------------------------------------------------
+// - onSnapshot 신호를 놓친 학생 복구
+// - 재접속 학생이 현재 진행 중인 게임을 직접 확인
+// - highfive, create, custom_infinite, boss, showcase 등으로 재합류
+// =====================================================
+
+
 async function rescueJoinCurrentGameIfPlaying(reason = "direct-check") {
   let lockTaken = false;
 
@@ -2238,7 +2328,13 @@ if (currentGroupingActive && currentMultiRoomGroupPlayMode === "one-player" && !
     }
   }
 }
-// 🚑 [하이파이브 긴급 안정화] onSnapshot이 하이파이브 시작 신호를 놓쳐도 직접 끌고 오기
+// =====================================================
+// [10] 하이파이브 긴급 안정화 / 강제 진입 보조
+// -----------------------------------------------------
+// - 하이파이브 시작 신호를 놓친 학생을 직접 복구
+// - 1초 확인 장치
+// - 하이파이브 중 강제종료/늦은 접속 대응
+// =====================================================
 function forceStartHighFiveIfNeeded(room, source = "unknown") {
   try {
     if (!room) return false;
@@ -2282,6 +2378,20 @@ function forceStartHighFiveIfNeeded(room, source = "unknown") {
     return false;
   }
 }
+
+
+// =====================================================
+// [11] 학생용 멀티 대기실
+// -----------------------------------------------------
+// - 학생 lobbyUsers 등록
+// - 유령 문서 정리
+// - 조 복구 / 적은 조 자동 배정
+// - 학생 대기실 실시간 감시
+// - 에러 고치기 버튼
+// - 게임 시작 신호 수신
+// =====================================================
+
+
 async function enterMultiLobbyAsStudent() {
   showScreen("multi-lobby-screen");
   try {
@@ -2725,6 +2835,19 @@ window.addEventListener("beforeunload", forceCleanupLobby);
 window.addEventListener("pagehide", forceCleanupLobby);
 
 window.teacherGroupPlayMode = null; // 교사용 글로벌 변수 추가
+
+
+
+// =====================================================
+// [12] 교사용 멀티 대기실 / 게임 시작 컨트롤
+// -----------------------------------------------------
+// - 교사 대기실 입장
+// - 학생 목록/조 목록 실시간 표시
+// - 하이파이브, 문제 만들기, 학생 출제 게임, 보스전 시작
+// - 조편성/조해제
+// - 교사용 실시간 중계 화면
+// =====================================================
+
 
 function enterMultiLobbyAsTeacher() {
   isTeacherMode = true; showScreen("teacher-lobby-screen");
@@ -3203,7 +3326,16 @@ function cleanupTeacherLiveMatch() {
     if(abortBtn) abortBtn.style.display = "none";
 }
 
-// ⚡ 라이브 리더보드 렌더러 (조별 모드 및 문제 만들기 지원 통합 엔진)
+
+// =====================================================
+// [13] 교사 실시간 순위표 / 조별 점수판
+// -----------------------------------------------------
+// - 학생별 실시간 점수 표시
+// - 조별 점수 합산
+// - 이름 숨기기
+// - 보스전/일반전 점수 표시 전환
+// =====================================================
+
 function renderTeacherLiveLeaderboard(players) {
     const board = document.getElementById("teacher-live-leaderboard");
     if (!board) return;
@@ -3386,6 +3518,17 @@ if (window.isBossResultShowing) {
     }
 });
 
+
+// =====================================================
+// [14] 학생 출제 문제 취합 / 학생 출제 세트 저장
+// -----------------------------------------------------
+// - lobbyUsers에 제출된 학생 문제 수집
+// - 학생 출제 세트 생성
+// - 조별/개인 만든이 기록
+// - 교사 드롭다운 새로고침
+// =====================================================
+
+
 async function saveCreatedProblemsToSet() {
     // 🚀 [안정성 패치] 와이파이가 느린 학생의 문제까지 모두 취합하도록 3.5초 대기
     await new Promise(resolve => setTimeout(resolve, 3500));
@@ -3483,6 +3626,18 @@ let hfClicked = false;
 let currentHighFiveRoundId = null;
 let hfResultTimeout = null;
 let hfProcessGuardTimeout = null;
+
+
+// =====================================================
+// [15] 하이파이브 본 게임 / 결과 처리
+// -----------------------------------------------------
+// - 학생 하이파이브 버튼 화면
+// - 클릭 시간 저장
+// - 조편성 결과 계산
+// - 하이파이브 취소/복구/결과 화면
+// =====================================================
+
+
 
 function startHighFiveLogic(endTime) {
   hfClicked = false;
@@ -4030,9 +4185,17 @@ bindClick("teacher-chat-send-btn", async () => {
 
 const tChatInput = document.getElementById("teacher-chat-input");
 if(tChatInput) { tChatInput.onkeydown = (e) => { if(e.key === "Enter") document.getElementById("teacher-chat-send-btn").click(); }; }
-// ==========================================
-// 🚀 씬 8: 문제 만들기 모드 (출제 및 세트 자동 생성)
-// ==========================================
+
+
+
+// =====================================================
+// [16] 학생 문제 만들기
+// -----------------------------------------------------
+// - 교사가 지정한 문항 수/문제 유형 반영
+// - 학생별 문제 작성 슬롯
+// - 객관식/단답/순서/짝맞추기 문제 작성
+// - 제출 및 JR 보상
+// =====================================================
 
 function startCreateLogic(room) {
     createAllowedTypes = room.allowedTypes || ["multiple", "short", "order", "match"];
@@ -4296,7 +4459,16 @@ bindClick("create-submit-btn", async () => {
     fireConfetti();
 });
 
-// 🚀 기다리는 동안 상점 열기 및 구매 기능 완벽 이식 (인라인)
+
+// =====================================================
+// [17] 대기실 상점 / 캐릭터 구매·장착 UI
+// -----------------------------------------------------
+// - 문제 만들기 중 상점
+// - 멀티 대기실 상점 팝업
+// - 캐릭터 구매/장착
+// - 게임 시작 시 상점 자동 닫힘
+// =====================================================
+
 function renderInlineShop(targetListId = "inline-shop-list") {
     const shopContainer = document.getElementById(targetListId);
     if (!shopContainer) return;
@@ -4443,22 +4615,24 @@ function ensureLobbyShopButtonAndModal() {
     };
   }
 }
-// ==========================================
-// 🚀 씬 9: 학생 출제 세트 - 무한 퀴즈 모드 (다형성 엔진)
-// ==========================================
+
+
+// =====================================================
+// [18] 학생 출제 세트 게임
+// -----------------------------------------------------
+// - 학생들이 만든 문제로 무한 퀴즈 진행
+// - 객관식/단답/순서/짝맞추기 풀이
+// - 단답형 정답 정규화
+// - 오답률 기록
+// - 조별/개인 점수 반영
+// =====================================================
+
 let ciCurrentProb = null;
 
 // 🚀 단답형 정답 비교용: 대소문자, 문장부호, 특수문자 차이는 무시합니다.
 // 예) "I have a dog." = "i have a dog" = "I have a dog!"
 function normalizeShortAnswer(text) {
-  let s = String(text ?? "");
-  try { s = s.normalize("NFKC"); } catch(e) {}
-  return s
-    .toLowerCase()
-    .replace(/[’‘]/g, "'")
-    .replace(/[^0-9a-zA-Z가-힣ㄱ-ㅎㅏ-ㅣ\s]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
+  return normalizeShortAnswerCore(text);
 }
 
 function updateCiUI() {
@@ -4685,9 +4859,16 @@ bindClick("teacher-disband-group-btn", async () => {
         }
     }
 });
-// ==========================================
-// 🚀 씬 10: 캐릭터 쇼케이스 (반값 할인 이벤트) 시스템
-// ==========================================
+
+
+// =====================================================
+// [19] 캐릭터 쇼케이스
+// -----------------------------------------------------
+// - 교사가 캐릭터를 선택해 전체 학생에게 보여주기
+// - 쇼케이스 종료 후 대기실 복귀
+// - 조별 one-player 화면 가리개와 충돌하지 않도록 분리
+// =====================================================
+
 
 bindClick("teacher-showcase-btn", () => {
     playSound("click");
@@ -4864,7 +5045,19 @@ if(oldMuteBtn) {
         }
     });
 }
-// 📢 보스 전용 사운드 재생 함수 (HTML 수정 필요 없음!)
+
+
+// =====================================================
+// [20] 보스전
+// -----------------------------------------------------
+// - 보스 등장/공격/피격/사망 애니메이션
+// - 학생 점수를 데미지로 반영
+// - 보스 HP 계산
+// - 보스전 결과 화면
+// - 교사 확인 후 학생 대기실 복귀
+// =====================================================
+
+
 function playBossSound(soundName) {
     const audio = new Audio(`boss/${soundName}.mp3`); // 만약 원본 파일이 wav면 .wav로 수정해주세요!
     audio.volume = 0.4; // 🚀 [볼륨 픽스] 효과음이 너무 크지 않게 40%로 일괄 고정합니다! (더 줄이려면 0.3 등으로 변경)
@@ -5192,7 +5385,15 @@ setTimeout(() => {
     }
 }, 1500);
 
-// 2. 통계 분석 및 화면 렌더링 함수
+
+// =====================================================
+// [21] 학생 출제 문제 오답 분석
+// -----------------------------------------------------
+// - 학생 출제 세트의 문제별 오답률 분석
+// - 만든이/정답/시도 횟수/오답 횟수 표시
+// - 교사용 분석 버튼 자동 복구
+// =====================================================
+
 window.openProblemAnalysis = function() {
     if(typeof playSound === "function") playSound("click");
     const container = document.getElementById("analysis-list-container");

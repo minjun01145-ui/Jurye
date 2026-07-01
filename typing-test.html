@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>JRCRAFT 타자 엔진 테스트</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      font-family: sans-serif;
+      background:
+        linear-gradient(
+          135deg,
+          #dbeafe,
+          #f5d0fe,
+          #fef3c7
+        );
+    }
+
+    #typing-card {
+      width: min(720px, 100%);
+      min-height: 520px;
+      padding: 28px;
+      border: 5px solid transparent;
+      border-radius: 28px;
+      background: rgba(255,255,255,0.96);
+      box-shadow:
+        0 20px 50px rgba(30, 41, 59, 0.18);
+      transition:
+        box-shadow 0.25s ease,
+        border-color 0.25s ease,
+        transform 0.15s ease;
+    }
+
+    #typing-card[data-glow="1"] {
+      border-color: #60a5fa;
+      box-shadow:
+        0 0 22px rgba(96,165,250,0.7),
+        0 20px 50px rgba(30,41,59,0.18);
+    }
+
+    #typing-card[data-glow="2"] {
+      border-color: #8b5cf6;
+      box-shadow:
+        0 0 30px rgba(59,130,246,0.65),
+        0 0 45px rgba(139,92,246,0.45);
+    }
+
+    #typing-card[data-glow="3"] {
+      animation: rainbowGlow 2s linear infinite;
+    }
+
+    #typing-card[data-glow="4"] {
+      animation:
+        rainbowGlow 1s linear infinite,
+        pulse 0.7s ease-in-out infinite alternate;
+    }
+
+    #typing-card.error {
+      animation: shake 0.25s;
+      border-color: #ef4444;
+    }
+
+    h1 {
+      margin: 0 0 18px;
+      text-align: center;
+      color: #263247;
+    }
+
+.option-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.typing-rule-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin: -6px 0 18px;
+}
+
+.typing-rule-option {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 13px;
+  border: 2px solid #cbd5e1;
+  border-radius: 13px;
+  background: rgba(255,255,255,0.88);
+  color: #475569;
+  font-size: 15px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.typing-rule-option input {
+  width: 18px;
+  height: 18px;
+  accent-color: #2563eb;
+}
+
+
+
+#set-select {
+  min-width: 260px;
+  max-width: 100%;
+}
+
+    button,
+    select {
+      min-height: 44px;
+      padding: 10px 18px;
+      border: none;
+      border-radius: 14px;
+      font-size: 17px;
+      cursor: pointer;
+    }
+
+    select {
+      background: white;
+      border: 2px solid #cbd5e1;
+    }
+
+    button {
+      color: white;
+      background: #2563eb;
+      box-shadow: 0 5px 0 #1e40af;
+    }
+
+#target-text {
+  min-height: 120px;
+  padding: 28px 22px 22px;
+  margin-bottom: 18px;
+  border-radius: 20px;
+  background: #f8fafc;
+  border: 3px solid #e2e8f0;
+  text-align: center;
+  font-size: clamp(22px, 4vw, 36px);
+  line-height: 1.9;
+  color: #334155;
+  word-break: keep-all;
+}
+
+/* 한 단어가 입력 진행에 따라 중간에서 갈라지지 않게 합니다. */
+.typing-word {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+/* 목표 문장의 각 글자 */
+.typing-char {
+  color: #334155;
+  transition:
+    color 0.12s ease,
+    text-shadow 0.12s ease;
+}
+
+/* 정확하게 입력한 글자 */
+.typing-char.correct {
+  color: #16a34a;
+  font-weight: 700;
+  text-shadow:
+    0 1px 5px rgba(22, 163, 74, 0.18);
+}
+
+/* 띄어쓰기 한 칸 */
+.typing-space {
+  position: relative;
+  display: inline-block;
+  width: 0.58em;
+  height: 1em;
+  vertical-align: baseline;
+}
+
+/* 정확하게 입력한 띄어쓰기 위에 체크 표시 */
+.typing-space.correct::before {
+  content: "✓";
+  position: absolute;
+  left: 50%;
+  top: -0.72em;
+  transform: translateX(-50%);
+  color: #16a34a;
+  font-size: 0.48em;
+  font-weight: 900;
+  line-height: 1;
+  text-shadow:
+    0 1px 4px rgba(22, 163, 74, 0.25);
+}
+
+    #typing-input {
+      width: 100%;
+      height: 64px;
+      padding: 12px 18px;
+      border: 4px solid #94a3b8;
+      border-radius: 18px;
+      outline: none;
+      font-size: 24px;
+      text-align: center;
+    }
+
+    #typing-input.has-error {
+      color: #dc2626;
+      border-color: #ef4444;
+      background: #fef2f2;
+    }
+
+    #feedback {
+      min-height: 30px;
+      margin: 12px 0;
+      text-align: center;
+      font-size: 18px;
+      color: #475569;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns:
+        repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .stat-card {
+      padding: 14px 8px;
+      border-radius: 16px;
+      background: #f1f5f9;
+      text-align: center;
+    }
+
+    .stat-title {
+      margin-bottom: 6px;
+      color: #64748b;
+      font-size: 14px;
+    }
+
+    .stat-value {
+      color: #1e3a8a;
+      font-size: 25px;
+    }
+
+    .guide {
+      margin-top: 18px;
+      color: #64748b;
+      text-align: center;
+      line-height: 1.6;
+    }
+
+    @keyframes rainbowGlow {
+      0% {
+        border-color: #ef4444;
+        box-shadow: 0 0 34px rgba(239,68,68,0.65);
+      }
+      20% {
+        border-color: #f59e0b;
+        box-shadow: 0 0 34px rgba(245,158,11,0.65);
+      }
+      40% {
+        border-color: #22c55e;
+        box-shadow: 0 0 34px rgba(34,197,94,0.65);
+      }
+      60% {
+        border-color: #3b82f6;
+        box-shadow: 0 0 34px rgba(59,130,246,0.65);
+      }
+      80% {
+        border-color: #8b5cf6;
+        box-shadow: 0 0 34px rgba(139,92,246,0.65);
+      }
+      100% {
+        border-color: #ef4444;
+        box-shadow: 0 0 34px rgba(239,68,68,0.65);
+      }
+    }
+
+    @keyframes pulse {
+      from {
+        transform: scale(1);
+      }
+      to {
+        transform: scale(1.015);
+      }
+    }
+
+    @keyframes shake {
+      0%, 100% {
+        transform: translateX(0);
+      }
+      25% {
+        transform: translateX(-8px);
+      }
+      75% {
+        transform: translateX(8px);
+      }
+    }
+
+    @media (max-width: 600px) {
+      #typing-card {
+        padding: 18px;
+      }
+
+      .stats {
+        grid-template-columns:
+          repeat(2, minmax(0, 1fr));
+      }
+
+      #typing-input {
+        font-size: 20px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main id="typing-card" data-glow="0">
+    <h1>⌨️ JRCRAFT 타자 엔진 테스트</h1>
+
+    <div class="option-row">
+  <select id="language-select">
+    <option value="en">영어</option>
+    <option value="ko">우리말</option>
+  </select>
+
+  <select id="set-select" disabled>
+    <option>세트를 불러오는 중...</option>
+  </select>
+
+  <button
+    id="reset-btn"
+    type="button"
+    disabled
+  >
+    다시 시작
+  </button>
+</div>
+
+<div class="typing-rule-row">
+  <label class="typing-rule-option">
+    <input
+      id="ignore-case-option"
+      type="checkbox"
+      checked
+    >
+    대소문자 무시
+  </label>
+
+  <label class="typing-rule-option">
+    <input
+      id="ignore-punctuation-option"
+      type="checkbox"
+      checked
+    >
+    특수문자 선택 입력
+  </label>
+</div>
+
+    <div id="target-text"></div>
+
+    <input
+      id="typing-input"
+      type="text"
+      autocomplete="off"
+      autocapitalize="off"
+      spellcheck="false"
+      placeholder="위 문장을 입력하고 Enter를 누르세요"
+    >
+
+    <div id="feedback">
+      정확하게 입력한 뒤 Enter를 누르세요.
+    </div>
+
+    <section class="stats">
+      <div class="stat-card">
+        <div class="stat-title">현재 타수</div>
+        <div
+          id="current-cpm"
+          class="stat-value"
+        >0</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-title">평균 타수</div>
+        <div
+          id="average-cpm"
+          class="stat-value"
+        >0</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-title">현재 정확도</div>
+        <div
+          id="accuracy"
+          class="stat-value"
+        >100%</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-title">완료 문항</div>
+        <div
+          id="completed-count"
+          class="stat-value"
+        >0</div>
+      </div>
+    </section>
+
+    <div class="guide">
+      오타를 연타해도 타수는 올라가지 않습니다.<br>
+      틀린 글자를 지우고 정확하게 입력하면
+      다시 정상적으로 타수가 올라갑니다.
+    </div>
+  </main>
+
+  <script type="module">
+  import {
+    initializeApp
+  } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+
+  import {
+    initializeFirestore,
+    doc,
+    getDoc
+  } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
+
+import {
+  getNewValidProgress,
+  calculateCurrentAccuracy,
+  createTypingSpeedTracker,
+  getTypingGlowLevel,
+  buildTypingPromptsFromSet,
+  getTypingReadySets,
+  isTypingAnswerComplete
+} from "./src/utils/typing.js";
+
+  // JRCRAFT와 같은 Firebase 프로젝트
+  const firebaseConfig = {
+    apiKey:
+      "AIzaSyAh3e5ruxctlhv-OwBAQl5WDds0IZooPD0",
+    authDomain:
+      "test2222-e2458.firebaseapp.com",
+    projectId:
+      "test2222-e2458",
+    storageBucket:
+      "test2222-e2458.firebasestorage.app",
+    messagingSenderId:
+      "848561047931",
+    appId:
+      "1:848561047931:web:ec05133741eb2a6ce195de",
+    measurementId:
+      "G-HV5RS45JG3"
+  };
+
+  const app =
+    initializeApp(firebaseConfig);
+
+  const db =
+    initializeFirestore(app, {
+      experimentalForceLongPolling: true,
+      experimentalLongPollingOptions: {
+        timeoutSeconds: 20
+      }
+    });
+
+  const typingCard =
+    document.getElementById("typing-card");
+
+  const languageSelect =
+    document.getElementById(
+      "language-select"
+    );
+
+  const setSelect =
+    document.getElementById(
+      "set-select"
+    );
+
+  const targetTextElement =
+    document.getElementById(
+      "target-text"
+    );
+
+  const typingInput =
+    document.getElementById(
+      "typing-input"
+    );
+
+  const feedback =
+    document.getElementById("feedback");
+
+  const currentCpmElement =
+    document.getElementById(
+      "current-cpm"
+    );
+
+  const averageCpmElement =
+    document.getElementById(
+      "average-cpm"
+    );
+
+  const accuracyElement =
+    document.getElementById(
+      "accuracy"
+    );
+
+  const completedCountElement =
+    document.getElementById(
+      "completed-count"
+    );
+
+  const resetButton =
+    document.getElementById(
+      "reset-btn"
+    );
+
+    const ignoreCaseOption =
+  document.getElementById(
+    "ignore-case-option"
+  );
+
+const ignorePunctuationOption =
+  document.getElementById(
+    "ignore-punctuation-option"
+  );
+
+  const speedTracker =
+    createTypingSpeedTracker({
+      windowMs: 30000,
+      minimumSampleMs: 5000
+    });
+
+  let wordSets = [];
+  let availableSets = [];
+  let currentPrompts = [];
+
+  let promptIndex = 0;
+  let targetText = "";
+  let maxPrefixLength = 0;
+  let completedCount = 0;
+  let isComposing = false;
+  function getTypingComparisonOptions() {
+  return {
+    ignoreCase:
+      ignoreCaseOption.checked,
+
+    ignorePunctuation:
+      ignorePunctuationOption.checked
+  };
+}
+
+
+  function setLoadingMessage(
+    title,
+    message
+  ) {
+    targetTextElement.textContent =
+      title;
+
+    feedback.textContent =
+      message;
+
+    typingInput.disabled = true;
+    resetButton.disabled = true;
+  }
+
+  function getSelectedSet() {
+    return availableSets.find((set) => {
+      return (
+        String(set.id) ===
+        setSelect.value
+      );
+    });
+  }
+
+  /**
+   * 선택한 언어를 기준으로
+   * 사용할 수 있는 세트 목록을 갱신합니다.
+   */
+  function renderSetOptions() {
+    const previousSetId =
+      setSelect.value;
+
+    availableSets =
+      getTypingReadySets(
+        wordSets,
+        languageSelect.value
+      );
+
+    setSelect.replaceChildren();
+
+    if (availableSets.length === 0) {
+      const option =
+        document.createElement("option");
+
+      option.textContent =
+        "사용할 수 있는 세트가 없습니다.";
+
+      option.value = "";
+
+      setSelect.appendChild(option);
+      setSelect.disabled = true;
+
+      currentPrompts = [];
+      targetText = "";
+
+      setLoadingMessage(
+        "사용할 수 있는 문항이 없습니다.",
+        "선택한 언어의 내용이 들어 있는 세트를 확인하세요."
+      );
+
+      return;
+    }
+
+    availableSets.forEach((set) => {
+      const option =
+        document.createElement("option");
+
+      option.value =
+        String(set.id);
+
+      const promptCount =
+        buildTypingPromptsFromSet(
+          set,
+          languageSelect.value
+        ).length;
+
+      option.textContent =
+        `${set.title} (${promptCount}개)`;
+
+      setSelect.appendChild(option);
+    });
+
+    const previousSetStillExists =
+      availableSets.some((set) => {
+        return (
+          String(set.id) ===
+          previousSetId
+        );
+      });
+
+    if (previousSetStillExists) {
+      setSelect.value =
+        previousSetId;
+    }
+
+    setSelect.disabled = false;
+
+    prepareSelectedSet();
+  }
+
+  /**
+   * 현재 선택된 세트를
+   * 타자게임용 문장 배열로 만듭니다.
+   */
+  function prepareSelectedSet() {
+    const selectedSet =
+      getSelectedSet();
+
+    if (!selectedSet) {
+      currentPrompts = [];
+
+      setLoadingMessage(
+        "세트를 선택해 주세요.",
+        "타자 연습에 사용할 세트가 필요합니다."
+      );
+
+      return;
+    }
+
+    currentPrompts =
+      buildTypingPromptsFromSet(
+        selectedSet,
+        languageSelect.value
+      );
+
+    resetTest();
+  }
+
+  function loadPrompt() {
+    if (currentPrompts.length === 0) {
+      targetText = "";
+
+      setLoadingMessage(
+        "문항이 없습니다.",
+        "선택한 세트와 언어를 확인하세요."
+      );
+
+      return;
+    }
+
+    targetText =
+      currentPrompts[
+        promptIndex %
+        currentPrompts.length
+      ];
+
+    maxPrefixLength = 0;
+
+    typingInput.value = "";
+    typingInput.disabled = false;
+
+    typingInput.classList.remove(
+      "has-error"
+    );
+
+    resetButton.disabled = false;
+
+    feedback.textContent =
+      "정확하게 입력한 뒤 Enter를 누르세요.";
+
+    accuracyElement.textContent =
+      "100%";
+
+    renderTarget();
+    updateStats();
+
+    typingInput.focus();
+  }
+
+  /**
+   * 문장 배치는 고정하고
+   * 정확하게 입력한 글자만 초록색으로 표시합니다.
+   */
+  function renderTarget() {
+    if (!targetText) {
+      targetTextElement.replaceChildren();
+      return;
+    }
+
+    const inputText =
+      typingInput.value;
+
+const progress =
+  getNewValidProgress(
+    targetText,
+    inputText,
+    maxPrefixLength,
+    getTypingComparisonOptions()
+  );
+
+    const fragment =
+      document.createDocumentFragment();
+
+    let currentWord =
+      document.createElement("span");
+
+    currentWord.className =
+      "typing-word";
+
+    for (
+      let index = 0;
+      index < targetText.length;
+      index += 1
+    ) {
+      const character =
+        targetText[index];
+
+      const isCorrect =
+        index <
+        progress.currentPrefixLength;
+
+      if (character === " ") {
+        if (
+          currentWord.childNodes.length >
+          0
+        ) {
+          fragment.appendChild(
+            currentWord
+          );
+        }
+
+        const spaceElement =
+          document.createElement("span");
+
+        spaceElement.className =
+          "typing-space";
+
+        if (isCorrect) {
+          spaceElement.classList.add(
+            "correct"
+          );
+        }
+
+        spaceElement.textContent =
+          "\u00A0";
+
+        fragment.appendChild(
+          spaceElement
+        );
+
+        currentWord =
+          document.createElement("span");
+
+        currentWord.className =
+          "typing-word";
+
+        continue;
+      }
+
+      const characterElement =
+        document.createElement("span");
+
+      characterElement.className =
+        "typing-char";
+
+      characterElement.textContent =
+        character;
+
+      if (isCorrect) {
+        characterElement.classList.add(
+          "correct"
+        );
+      }
+
+      currentWord.appendChild(
+        characterElement
+      );
+    }
+
+    if (
+      currentWord.childNodes.length >
+      0
+    ) {
+      fragment.appendChild(
+        currentWord
+      );
+    }
+
+    targetTextElement.replaceChildren(
+      fragment
+    );
+
+    typingInput.classList.toggle(
+      "has-error",
+      progress.hasError
+    );
+  }
+
+  function processInput() {
+    if (!targetText) return;
+
+    const inputText =
+      typingInput.value;
+
+const progress =
+  getNewValidProgress(
+    targetText,
+    inputText,
+    maxPrefixLength,
+    getTypingComparisonOptions()
+  );
+
+    if (progress.newlyValidText) {
+      speedTracker.addValidText(
+        progress.newlyValidText
+      );
+    }
+
+    maxPrefixLength =
+      progress.maxPrefixLength;
+
+const accuracy =
+  calculateCurrentAccuracy(
+    targetText,
+    inputText,
+    getTypingComparisonOptions()
+  );
+
+    accuracyElement.textContent =
+      `${accuracy}%`;
+
+    if (progress.hasError) {
+      feedback.textContent =
+        "❌ 빨간 부분을 지우고 다시 입력해 보세요.";
+    } else {
+      feedback.textContent =
+        "좋아요! 정확하게 입력하고 있습니다.";
+    }
+
+    renderTarget();
+    updateStats();
+  }
+
+  function updateStats() {
+    const stats =
+      speedTracker.getStats();
+
+    currentCpmElement.textContent =
+      stats.currentCpm;
+
+    averageCpmElement.textContent =
+      stats.averageCpm;
+
+    completedCountElement.textContent =
+      completedCount;
+
+    typingCard.dataset.glow =
+      String(
+        getTypingGlowLevel(
+          stats.currentCpm
+        )
+      );
+  }
+
+  function showWrongEnterEffect() {
+    feedback.textContent =
+      "❌ 아직 틀린 부분이 있습니다.";
+
+    typingCard.classList.remove(
+      "error"
+    );
+
+    void typingCard.offsetWidth;
+
+    typingCard.classList.add(
+      "error"
+    );
+
+    setTimeout(() => {
+      typingCard.classList.remove(
+        "error"
+      );
+    }, 300);
+  }
+
+  function completePrompt() {
+    completedCount += 1;
+    promptIndex += 1;
+
+    feedback.textContent =
+      "✅ 정확해요! 다음 문장으로 넘어갑니다.";
+
+    typingInput.disabled = true;
+
+    setTimeout(() => {
+      loadPrompt();
+    }, 250);
+  }
+
+  function resetTest() {
+    promptIndex = 0;
+    completedCount = 0;
+    maxPrefixLength = 0;
+
+    speedTracker.reset();
+
+    accuracyElement.textContent =
+      "100%";
+
+    loadPrompt();
+  }
+
+  /**
+   * Firestore에서 실제 JRCRAFT 세트를 읽습니다.
+   * 데이터 쓰기는 하지 않습니다.
+   */
+  async function loadTypingSets() {
+    setSelect.disabled = true;
+    languageSelect.disabled = true;
+
+    setLoadingMessage(
+      "기존 세트를 불러오는 중...",
+      "JRCRAFT 학습 세트에 연결하고 있습니다."
+    );
+
+    try {
+      const snapshot =
+        await getDoc(
+          doc(
+            db,
+            "gameData",
+            "wordSets"
+          )
+        );
+
+      if (!snapshot.exists()) {
+        throw new Error(
+          "wordSets 문서가 없습니다."
+        );
+      }
+
+      wordSets =
+        snapshot.data().sets || [];
+
+      // 기존 앱과 같은 주소에서 실행했다면
+      // 비상용 로컬 백업도 갱신합니다.
+      try {
+        localStorage.setItem(
+          "backup_wordSets",
+          JSON.stringify(wordSets)
+        );
+      } catch (error) {
+        console.warn(
+          "세트 로컬 백업 실패:",
+          error
+        );
+      }
+
+      languageSelect.disabled = false;
+
+      renderSetOptions();
+    } catch (error) {
+      console.error(
+        "기존 세트 불러오기 실패:",
+        error
+      );
+
+      /*
+       * 메인 JRCRAFT에서 저장해 둔 로컬 백업이
+       * 같은 주소에 있으면 한 번 복구를 시도합니다.
+       */
+      try {
+        const backup =
+          localStorage.getItem(
+            "backup_wordSets"
+          );
+
+        if (!backup) {
+          throw new Error(
+            "로컬 백업도 없습니다."
+          );
+        }
+
+        wordSets =
+          JSON.parse(backup);
+
+        languageSelect.disabled = false;
+
+        feedback.textContent =
+          "⚠️ 서버 연결에 실패하여 이 기기의 백업 세트를 사용합니다.";
+
+        renderSetOptions();
+      } catch (backupError) {
+        console.error(
+          "세트 백업 복구 실패:",
+          backupError
+        );
+
+        setLoadingMessage(
+          "세트를 불러오지 못했습니다.",
+          "Firebase 연결과 브라우저 콘솔을 확인하세요."
+        );
+      }
+    }
+  }
+
+  typingInput.addEventListener(
+    "compositionstart",
+    () => {
+      isComposing = true;
+    }
+  );
+
+  typingInput.addEventListener(
+    "compositionend",
+    () => {
+      isComposing = false;
+      processInput();
+    }
+  );
+
+  typingInput.addEventListener(
+    "input",
+    () => {
+      processInput();
+    }
+  );
+
+  typingInput.addEventListener(
+    "keydown",
+    (event) => {
+      if (event.key !== "Enter") {
+        return;
+      }
+
+      if (
+        isComposing ||
+        event.isComposing
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+
+if (
+  isTypingAnswerComplete(
+    targetText,
+    typingInput.value,
+    getTypingComparisonOptions()
+  )
+) {
+  completePrompt();
+} else {
+  showWrongEnterEffect();
+}
+    }
+  );
+
+  languageSelect.addEventListener(
+    "change",
+    () => {
+      renderSetOptions();
+    }
+  );
+
+  setSelect.addEventListener(
+    "change",
+    () => {
+      prepareSelectedSet();
+    }
+  );
+
+  resetButton.addEventListener(
+    "click",
+    () => {
+      resetTest();
+    }
+  );
+
+  ignoreCaseOption.addEventListener(
+  "change",
+  () => {
+    resetTest();
+  }
+);
+
+ignorePunctuationOption.addEventListener(
+  "change",
+  () => {
+    resetTest();
+  }
+);
+
+  // 입력을 멈추면 현재 타수가
+  // 자연스럽게 낮아지도록 로컬에서만 갱신합니다.
+  setInterval(
+    updateStats,
+    250
+  );
+
+  loadTypingSets();
+</script>
+</body>
+</html>
