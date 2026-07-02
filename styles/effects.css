@@ -1,0 +1,8 @@
+@keyframes shake { 0%,100%{transform:translateX(0)}25%{transform:translateX(-9px)}50%{transform:translateX(9px)}75%{transform:translateX(-7px)} }
+@keyframes popIn { from{transform:scale(.7);opacity:0} to{transform:scale(1);opacity:1} }
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+@keyframes swoosh { 0%{transform:translateX(100vw) skewX(-20deg)}20%,80%{transform:translateX(0)}100%{transform:translateX(-100vw) skewX(20deg)} }
+.wrong { animation:shake .4s; }
+.flash-card { transform-style:preserve-3d; transition:transform .45s cubic-bezier(.4,0,.2,1); }
+.card-face { backface-visibility:hidden; }.card-back { transform:rotateY(180deg); }.flash-card.is-flipped { transform:rotateY(180deg); }
+.memory-card { transform-style:preserve-3d; transition:transform .45s cubic-bezier(.4,0,.2,1); }.memory-card-face { backface-visibility:hidden; }.memory-card-back { transform:rotateY(180deg); }.memory-card.flipped { transform:rotateY(180deg); }

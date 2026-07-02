@@ -1,0 +1,29 @@
+{
+  "html_ids": 313,
+  "duplicate_ids": [
+    "teacher-live-leaderboard",
+    "teacher-match-abort-btn",
+    "teacher-match-timer"
+  ],
+  "mjs_literal_id_refs": 264,
+  "missing_literal_ids": [
+    "analysis-list-container",
+    "buy-showcase-btn",
+    "detail-answer",
+    "detail-author",
+    "detail-question",
+    "detail-stats",
+    "emoji-container",
+    "hf-student-wait-msg",
+    "lobby-inline-shop-container",
+    "lobby-mode-back-btn",
+    "lobby-show-shop-btn",
+    "open-analysis-btn",
+    "pile-",
+    "teacher-analysis-modal",
+    "teacher-lobby-exit-btn",
+    "teacher-problem-detail-modal",
+    "walking-emoji-container"
+  ],
+  "missing_count": 17
+}

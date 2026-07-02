@@ -1,0 +1,24 @@
+{
+  "node_check": {
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "required_ids": {
+    "teacher-lobby-screen": true,
+    "teacher-lobby-exit-btn": true,
+    "teacher-game-mode-select": true,
+    "teacher-game-start-btn": true,
+    "teacher-visual-lobby-grid": true,
+    "teacher-live-leaderboard": true,
+    "teacher-match-abort-btn": true,
+    "teacher-chat-input": true,
+    "teacher-chat-send-btn": true,
+    "lobby-grid-container": true,
+    "student-chat-log": true
+  },
+  "duplicate_ids": [],
+  "doctype_count": 1,
+  "old_teacher_match_screen_removed": true,
+  "missing_bind_ids": []
+}
