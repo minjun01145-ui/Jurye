@@ -1,0 +1,28 @@
+Jurye 1차 안전 정리본
+=====================
+
+목표
+- 기존 기능/화면 디자인을 최대한 유지하면서 확실한 중복·죽은 연결·정리 오류만 제거
+
+주요 수정
+1) HTML의 사용되지 않는 teacher-match-screen 제거
+   - teacher-match-timer / teacher-live-leaderboard / teacher-match-abort-btn 중복 ID도 함께 해결
+2) index.mjs의 teacher-match-screen 참조 제거
+3) 사용하지 않는 getDocFromServer import, teacherLiveUnsubscribe, modeNames 제거
+4) 개인게임 카운트다운의 window.cdInterval / cdInterval 이중 계통을 cdInterval로 통일
+5) multiRoom status=waiting 저장 2곳에 { merge: true } 적용
+6) unload/pagehide cleanup의 multiRoom 쓰기에도 { merge: true } 적용
+   - 두 이벤트 자체는 종료 시 요청 전달 신뢰성을 위해 그대로 유지
+7) 보스전 결과 연출 종료 후 bossSpriteTimer 정리
+8) styles.css에서 최종 결과에 영향 없는 중복 .anim-avatar 및 덮어써진 fadeIn 정의 일부 제거
+
+이번에 의도적으로 건드리지 않은 것
+- 개발자 빠른 테스트 버튼
+- onSnapshot + REST watchdog / heartbeat 등 멀티 안정화 이중 장치
+- 전역 font-weight:400 !important (화면 외형 변화 가능)
+- HTML inline style / head <style>와 styles.css 통합 (화면 비교가 필요한 2차 작업)
+- 미연결 styles/ 다크 UI 브랜치 및 typing.js (삭제하지 않고 보존 권장)
+
+적용
+- 기존 프로젝트의 index.html / index.mjs / styles.css를 이 파일로 교체
+- src/utils는 현재 연결된 구조를 그대로 포함했으며 내용은 변경하지 않음
