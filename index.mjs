@@ -10,6 +10,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
 import { getFirestore, doc, setDoc, updateDoc, getDoc, collection, addDoc, getDocs, onSnapshot, query, where, orderBy, limit, deleteDoc } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import { getFirestore as getFirestoreLite, doc as liteDoc, getDoc as liteGetDoc, setDoc as liteSetDoc, addDoc as liteAddDoc, deleteDoc as liteDeleteDoc, collection as liteCollection, getDocs as liteGetDocs, query as liteQuery, where as liteWhere } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore-lite.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-functions.js";
 import {
   getDurationSeconds as getDurationSecondsCore
 } from "./src/utils/timer.js";
@@ -36,6 +37,9 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
+const cloudFunctions = getFunctions(app, "us-central1");
+const testAiConnectionFunction = httpsCallable(cloudFunctions, "testAiConnection", { timeout: 60000 });
+const adminAiChatFunction = httpsCallable(cloudFunctions, "adminAiChat", { timeout: 60000 });
 
 // 🚀 [접속 안정화 FIX1]
 // Firebase JS SDK의 기본 전송 방식을 그대로 사용합니다.
@@ -2025,11 +2029,10 @@ document.getElementById("admin-attendance-period")?.addEventListener("change", e
 });
 
 const DEFAULT_AI_SETTINGS = {
-  provider: "devpass",
-  endpoint: "",
-  model: "",
-  apiKey: "",
-  useLocalProxy: false
+  endpoint: "https://api.openai.com/v1/responses",
+  model: "gpt-5.6-luna",
+  apiFormat: "responses",
+  reasoningEffort: "low"
 };
 let aiSettingsCache = null;
 
@@ -2045,11 +2048,10 @@ async function loadAdminAiSettings() {
   if (status) status.innerText = "설정을 불러오는 중...";
   try {
     const settings = await getAiSettings(true);
-    document.getElementById("admin-ai-provider").value = settings.provider;
     document.getElementById("admin-ai-endpoint").value = settings.endpoint;
     document.getElementById("admin-ai-model").value = settings.model;
-    document.getElementById("admin-ai-key").value = settings.apiKey;
-    document.getElementById("admin-ai-local-proxy").checked = false;
+    document.getElementById("admin-ai-format").value = settings.apiFormat;
+    document.getElementById("admin-ai-reasoning").value = settings.reasoningEffort;
     if (status) status.innerText = "";
   } catch (error) {
     if (status) status.innerText = "AI 설정을 불러오지 못했습니다.";
@@ -2058,11 +2060,10 @@ async function loadAdminAiSettings() {
 
 function readAdminAiSettings() {
   return {
-    provider: document.getElementById("admin-ai-provider").value,
     endpoint: document.getElementById("admin-ai-endpoint").value.trim(),
     model: document.getElementById("admin-ai-model").value.trim(),
-    apiKey: document.getElementById("admin-ai-key").value.trim(),
-    useLocalProxy: document.getElementById("admin-ai-local-proxy").checked
+    apiFormat: document.getElementById("admin-ai-format").value,
+    reasoningEffort: document.getElementById("admin-ai-reasoning").value
   };
 }
 
@@ -2071,34 +2072,18 @@ bindClick("admin-ai-save-btn", async () => {
   const status = document.getElementById("admin-ai-status");
   if (!settings.endpoint || !settings.model) { status.innerText = "API 주소와 모델명을 입력하세요."; return; }
   try {
-    const { useLocalProxy, ...savedSettings } = settings;
-    await setDoc(doc(db, "gameData", "aiSettings"), savedSettings);
-    aiSettingsCache = savedSettings;
-    status.innerText = useLocalProxy ? "설정을 저장했습니다. 로컬 프록시 선택은 이 브라우저에서만 테스트에 적용됩니다." : "설정을 저장했습니다.";
+    await setDoc(doc(db, "gameData", "aiSettings"), settings);
+    aiSettingsCache = settings;
+    setAdminAiStatus("Cloud Function용 AI 설정을 저장했습니다.", "success");
   } catch (error) { status.innerText = "설정을 저장하지 못했습니다."; }
 });
 
-function extractAiText(data, provider) {
-  if (provider === "ollama") return data?.message?.content || data?.response || "";
-  return data?.choices?.[0]?.message?.content || data?.choices?.[0]?.text || "";
-}
-
-function sanitizeAiEndpoint(endpoint) {
-  try {
-    const url = new URL(endpoint);
-    return `${url.origin}${url.pathname}${url.search}`;
-  } catch (_) { return endpoint; }
-}
-
 function getAiErrorDetail(error) {
-  if (error?.aiDetail) return error.aiDetail;
-  if (error?.name === "AbortError") return { kind: "timeout", message: "요청 시간이 30초를 초과했습니다.", retryable: true };
-  const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+  const functionDetail = error?.details && typeof error.details === "object" ? error.details : {};
   return {
-    kind: offline ? "offline" : "network-or-cors",
-    message: offline ? "브라우저가 오프라인 상태입니다." : "네트워크, TLS 인증서 또는 CORS 정책 때문에 브라우저가 응답을 읽지 못했습니다.",
-    retryable: true,
-    corsNote: !offline
+    kind: functionDetail.kind || error?.code || "cloud-function",
+    message: functionDetail.message || error?.message || "Cloud Function 호출 중 알 수 없는 오류가 발생했습니다.",
+    ...functionDetail
   };
 }
 
@@ -2108,12 +2093,10 @@ function formatAiErrorDetail(detail) {
     `메시지: ${detail.message || "알 수 없는 오류"}`
   ];
   if (detail.status) lines.push(`HTTP 상태: ${detail.status}${detail.statusText ? ` ${detail.statusText}` : ""}`);
-  if (detail.endpoint) lines.push(`요청 주소: ${detail.endpoint}`);
+  if (detail.endpoint) lines.push(`Gateway 주소: ${detail.endpoint}`);
   if (detail.serverCode) lines.push(`서버 코드: ${detail.serverCode}`);
   if (detail.requestId) lines.push(`요청 ID: ${detail.requestId}`);
-  if (detail.retryAfter) lines.push(`재시도 안내: ${detail.retryAfter}`);
   if (detail.bodyPreview) lines.push(`응답 본문: ${detail.bodyPreview}`);
-  if (detail.corsNote) lines.push("참고: CORS의 구체 원인은 보안상 JavaScript에 제공되지 않습니다. 브라우저 개발자 도구의 Console/Network 탭에서 OPTIONS 및 POST 요청을 확인하세요.");
   return lines.join("\n");
 }
 
@@ -2134,60 +2117,23 @@ function showAdminAiError(error) {
   if (details && detailText) { detailText.innerText = formatAiErrorDetail(detail); details.hidden = false; }
 }
 
-async function requestAiText(settings, messages) {
-  let endpoint;
-  try { endpoint = new URL(settings.endpoint); } catch (_) {
-    const error = new Error("유효한 URL이 아닙니다.");
-    error.aiDetail = { kind: "invalid-endpoint", message: "API 주소는 https://.../v1/chat/completions 형식의 전체 URL이어야 합니다.", endpoint: settings.endpoint, retryable: false };
-    throw error;
-  }
-  if (endpoint.protocol !== "https:" && endpoint.hostname !== "localhost") {
-    const error = new Error("HTTPS 주소가 필요합니다.");
-    error.aiDetail = { kind: "insecure-endpoint", message: "localhost가 아닌 API 주소는 HTTPS를 사용해야 합니다.", endpoint: sanitizeAiEndpoint(settings.endpoint), retryable: false };
-    throw error;
-  }
-  const headers = { "Content-Type": "application/json" };
-  if (settings.apiKey) headers.Authorization = `Bearer ${settings.apiKey}`;
-  const body = settings.provider === "ollama"
-    ? { model: settings.model, messages, stream: false }
-    : { model: settings.model, messages, temperature: 0, max_tokens: 120 };
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
-  let response;
+bindClick("admin-ai-test-btn", async () => {
+  const settings = readAdminAiSettings();
+  const testButton = document.getElementById("admin-ai-test-btn");
+  if (!settings.endpoint || !settings.model) { setAdminAiStatus("API 주소와 모델명을 입력하세요.", "error"); return; }
+  testButton.disabled = true; setAdminAiStatus("Cloud Function에서 LLM Gateway 연결을 확인하는 중...");
+  const startedAt = performance.now();
   try {
-    const requestUrl = settings.useLocalProxy ? "http://127.0.0.1:8787/ai" : settings.endpoint;
-    if (settings.useLocalProxy) headers["X-AI-Target"] = settings.endpoint;
-    response = await fetch(requestUrl, { method: "POST", headers, body: JSON.stringify(body), signal: controller.signal });
-  } catch (cause) {
-    if (cause?.name === "AbortError") throw cause;
-    const error = new Error("AI API에 연결할 수 없습니다.");
-    error.aiDetail = { kind: typeof navigator !== "undefined" && navigator.onLine === false ? "offline" : "network-or-cors", message: typeof navigator !== "undefined" && navigator.onLine === false ? "브라우저가 오프라인 상태입니다." : "네트워크, TLS 인증서 또는 CORS 정책 때문에 브라우저가 응답을 읽지 못했습니다.", endpoint: sanitizeAiEndpoint(settings.endpoint), retryable: true, corsNote: true };
-    throw error;
-  } finally { clearTimeout(timeout); }
-  const requestId = response.headers.get("x-request-id") || response.headers.get("request-id") || "";
-  const retryAfter = response.headers.get("retry-after") || "";
-  const contentType = response.headers.get("content-type") || "";
-  const rawBody = await response.text();
-  let data;
-  try { data = rawBody ? JSON.parse(rawBody) : {}; } catch (_) {
-    const error = new Error("AI API가 JSON 응답을 반환하지 않았습니다.");
-    error.aiDetail = { kind: "invalid-json", message: "응답 본문이 JSON 형식이 아닙니다.", status: response.status, statusText: response.statusText, endpoint: sanitizeAiEndpoint(settings.endpoint), requestId, bodyPreview: rawBody.slice(0, 500), retryable: false };
-    throw error;
-  }
-  if (!response.ok) {
-    const apiError = data?.error || data;
-    const error = new Error(apiError?.message || `AI API ${response.status}`);
-    error.aiDetail = { kind: "http", message: apiError?.message || `HTTP ${response.status} 응답을 받았습니다.`, status: response.status, statusText: response.statusText, endpoint: sanitizeAiEndpoint(settings.endpoint), serverCode: apiError?.code || apiError?.type || "", requestId, retryAfter: retryAfter ? `${retryAfter}초 후 다시 시도하세요.` : "", bodyPreview: JSON.stringify(data).slice(0, 500), retryable: response.status === 429 || response.status >= 500 };
-    throw error;
-  }
-  const text = String(extractAiText(data, settings.provider) || "").trim();
-  if (!text) {
-    const error = new Error("호환되는 답변 형식을 찾지 못했습니다.");
-    error.aiDetail = { kind: "invalid-response", message: "응답에 choices[0].message.content(OpenAI 호환) 또는 message.content(Ollama)가 없습니다.", status: response.status, endpoint: sanitizeAiEndpoint(settings.endpoint), requestId, bodyPreview: JSON.stringify(data).slice(0, 500), retryable: false };
-    throw error;
-  }
-  return { text, requestId, contentType };
-}
+    const response = await testAiConnectionFunction(settings);
+    const result = response.data;
+    const latencyMs = Number.isFinite(result.latencyMs) ? result.latencyMs : Math.round(performance.now() - startedAt);
+    setAdminAiStatus(`연결 성공 · ${result.model} · ${latencyMs}ms · 응답: ${result.reply}`, "success");
+    document.getElementById("admin-ai-chat-connection").innerText = `${result.model} · ${latencyMs}ms`;
+  } catch (error) {
+    console.error("Cloud Function AI 연결 테스트 실패", error);
+    showAdminAiError(error);
+  } finally { testButton.disabled = false; }
+});
 
 let adminAiChatHistory = [];
 let adminAiChatBusy = false;
@@ -2198,8 +2144,10 @@ function renderAdminAiChat() {
   log.innerHTML = "";
   if (!adminAiChatHistory.length) { log.innerHTML = '<p class="admin-ai-chat-empty">연결 테스트 후 메시지를 보내 보세요.</p>'; return; }
   adminAiChatHistory.forEach(message => {
-    const bubble = document.createElement("div"); bubble.className = `admin-ai-message ${message.role}${message.pending ? " pending" : ""}`;
-    bubble.innerText = message.content; log.appendChild(bubble);
+    const bubble = document.createElement("div");
+    bubble.className = `admin-ai-message ${message.role}${message.pending ? " pending" : ""}`;
+    bubble.innerText = message.content;
+    log.appendChild(bubble);
   });
   log.scrollTop = log.scrollHeight;
 }
@@ -2212,40 +2160,33 @@ function setAdminAiChatBusy(busy) {
   if (input) input.disabled = busy;
 }
 
-bindClick("admin-ai-test-btn", async () => {
-  const settings = readAdminAiSettings();
-  const testButton = document.getElementById("admin-ai-test-btn");
-  if (!settings.endpoint || !settings.model) { setAdminAiStatus("API 주소와 모델명을 입력하세요.", "error"); return; }
-  testButton.disabled = true; setAdminAiStatus("연결을 확인하는 중...");
-  try {
-    const response = await requestAiText(settings, [{ role: "user", content: "연결 확인입니다. OK라고만 답하세요." }]);
-    setAdminAiStatus(`AI 연결에 성공했습니다. 응답: ${response.text.slice(0, 80)}`, "success");
-  } catch (error) {
-    console.error("AI 연결 테스트 실패", error);
-    showAdminAiError(error);
-  } finally { testButton.disabled = false; }
-});
-
 bindClick("admin-ai-chat-send-btn", async () => {
   if (adminAiChatBusy) return;
   const input = document.getElementById("admin-ai-chat-input");
   const text = input?.value.trim();
   if (!text) return;
-  const settings = readAdminAiSettings();
-  if (!settings.endpoint || !settings.model) { setAdminAiStatus("채팅 전에 API 주소와 모델명을 입력하세요.", "error"); return; }
-  adminAiChatHistory.push({ role: "user", content: text }); input.value = "";
-  adminAiChatHistory.push({ role: "assistant", content: "응답을 기다리는 중...", pending: true }); renderAdminAiChat(); setAdminAiChatBusy(true);
+  adminAiChatHistory.push({role: "user", content: text});
+  input.value = "";
+  adminAiChatHistory.push({role: "assistant", content: "응답을 기다리는 중...", pending: true});
+  renderAdminAiChat();
+  setAdminAiChatBusy(true);
+  const startedAt = performance.now();
   try {
-    const messages = [{ role: "system", content: "당신은 교사용 AI 연결 점검 도우미입니다. 짧고 정확하게 답하세요." }, ...adminAiChatHistory.filter(message => !message.pending).map(({ role, content }) => ({ role, content }))];
-    const response = await requestAiText(settings, messages);
-    adminAiChatHistory[adminAiChatHistory.length - 1] = { role: "assistant", content: response.text };
-    setAdminAiStatus("AI 테스트 대화에 성공했습니다.", "success");
+    const messages = adminAiChatHistory.filter(message => !message.pending).slice(-10).map(({role, content}) => ({role, content}));
+    const response = await adminAiChatFunction({messages});
+    const result = response.data;
+    adminAiChatHistory[adminAiChatHistory.length - 1] = {role: "assistant", content: result.reply};
+    const latencyMs = Number.isFinite(result.latencyMs) ? result.latencyMs : Math.round(performance.now() - startedAt);
+    document.getElementById("admin-ai-chat-connection").innerText = `${result.model} · ${latencyMs}ms`;
   } catch (error) {
-    adminAiChatHistory[adminAiChatHistory.length - 1] = { role: "assistant", content: `오류: ${getAiErrorDetail(error).message}` };
-    console.error("AI 테스트 대화 실패", error); showAdminAiError(error);
-  } finally { renderAdminAiChat(); setAdminAiChatBusy(false); input?.focus(); }
+    adminAiChatHistory[adminAiChatHistory.length - 1] = {role: "assistant", content: `오류: ${getAiErrorDetail(error).message}`};
+    showAdminAiError(error);
+  } finally {
+    renderAdminAiChat();
+    setAdminAiChatBusy(false);
+    input?.focus();
+  }
 });
-bindClick("admin-ai-chat-clear-btn", () => { adminAiChatHistory = []; renderAdminAiChat(); });
 document.getElementById("admin-ai-chat-input")?.addEventListener("keydown", event => {
   if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) { event.preventDefault(); document.getElementById("admin-ai-chat-send-btn")?.click(); }
 });
@@ -2583,7 +2524,7 @@ async function openAiTranslate() {
   try {
     const settings = await getAiSettings(true);
     if (!settings.endpoint || !settings.model) throw new Error("AI 설정 없음");
-    await requestAiText(settings, [{ role: "user", content: "연결 확인입니다. OK라고만 답하세요." }]);
+    await testAiConnectionFunction(settings);
     aiTranslateIndex = 0;
     connecting.hidden = true; content.hidden = false;
     loadAiTranslateSentence();
@@ -2605,15 +2546,8 @@ bindClick("ai-translate-submit-btn", async () => {
   setAiTranslateBusy(true); result.innerText = "";
   const sentence = aiTranslateSentences[aiTranslateIndex];
   try {
-    const settings = await getAiSettings();
-    const aiResponse = await requestAiText(settings, [{
-      role: "system",
-      content: "You grade a Korean student's English sentence translation. Ignore punctuation, spacing, particles, word order, and minor wording differences. If the core meaning is reasonably equivalent, answer only CORRECT. If the meaning is materially wrong or missing, answer only WRONG. Do not provide feedback."
-    }, {
-      role: "user",
-      content: `English: ${String(sentence.en).split("/").join(" ")}\nReference Korean: ${String(sentence.ko).split("/").join(" ")}\nStudent Korean: ${answer}`
-    }]);
-    const correct = /^\s*CORRECT\b/i.test(aiResponse.text);
+    throw new Error("AI 문장 채점용 Cloud Function은 아직 연결되지 않았습니다.");
+    const correct = false;
     if (!correct) { result.innerText = "틀렸습니다. 다시 해석해 보세요."; return; }
     result.innerText = "맞았습니다!";
     result.classList.add("correct");
@@ -3279,7 +3213,13 @@ function triggerTreasureEvent(callback, options = {}) {
   isGamePaused = true; playSound("treasure");
   const overlay = document.getElementById("treasure-overlay");
   if (!treasureHomeParent) { treasureHomeParent = overlay.parentElement; treasureHomeNextSibling = overlay.nextSibling; }
-  const target = options.container || (soloChunkActive ? document.getElementById("chunk-game-area") : soloSpeedMatchActive ? document.getElementById("sm-game-area") : null);
+  const target = options.container || (soloChunkActive
+    ? document.getElementById("chunk-game-area")
+    : soloSpeedMatchActive
+      ? document.getElementById("sm-game-area")
+      : soloSpeedActive
+        ? document.getElementById("speed-solo-game-area")
+        : null);
   if (target) { target.appendChild(overlay); overlay.classList.add("is-contained"); }
   activeTreasureCallback = callback;
   overlay.style.display = "flex";

@@ -379,23 +379,23 @@
           <section id="admin-panel-ai" class="admin-panel">
             <header class="admin-panel-header"><h1>AI 관리</h1></header>
             <section class="admin-data-section admin-ai-settings">
-              <label for="admin-ai-provider">연결 방식</label>
-              <select id="admin-ai-provider"><option value="devpass">devpass (OpenAI 호환)</option><option value="ollama">Ollama</option></select>
-              <label for="admin-ai-endpoint">API 주소</label>
-              <input id="admin-ai-endpoint" type="text" placeholder="https://example.com/v1/chat/completions" />
+              <p class="admin-ai-cloud-notice"><strong>Firebase Cloud Function 연결</strong><span>API 키는 브라우저에 저장되지 않으며 Cloud Function의 <code>LLM_GATEWAY_API_KEY</code> Secret만 사용합니다.</span></p>
+              <label for="admin-ai-endpoint">LLM Gateway API 주소</label>
+              <input id="admin-ai-endpoint" type="url" value="https://api.openai.com/v1/responses" placeholder="https://gateway.example.com/v1/responses" />
               <label for="admin-ai-model">모델명</label>
-              <input id="admin-ai-model" type="text" placeholder="모델명" />
-               <label for="admin-ai-key">API 키</label>
-               <input id="admin-ai-key" type="password" autocomplete="off" placeholder="Ollama는 비워도 됩니다." />
-               <label class="admin-ai-proxy-option"><input id="admin-ai-local-proxy" type="checkbox" /> 로컬 CORS 프록시 사용 <span>(DevPass 테스트용)</span></label>
-               <p class="admin-ai-proxy-help">`node devpass-proxy.mjs`를 실행한 뒤 사용하세요. API 주소에는 실제 DevPass Chat Completions 주소를 그대로 입력합니다.</p>
+              <input id="admin-ai-model" type="text" value="gpt-5.6-luna" placeholder="gpt-5.6-luna" />
+              <label for="admin-ai-format">Gateway API 형식</label>
+              <select id="admin-ai-format"><option value="responses">Responses API (권장)</option><option value="chat-completions">Chat Completions 호환</option></select>
+              <label for="admin-ai-reasoning">추론 강도</label>
+              <select id="admin-ai-reasoning"><option value="none">없음</option><option value="low" selected>낮음 (테스트 권장)</option><option value="medium">보통</option><option value="high">높음</option></select>
+              <p class="admin-ai-proxy-help">Gateway가 제공하는 전체 HTTPS 주소를 입력하세요. Responses API라면 보통 <code>/v1/responses</code>, Chat Completions라면 <code>/v1/chat/completions</code>로 끝납니다. 주소의 origin은 Cloud Function의 <code>LLM_GATEWAY_ORIGIN</code>과 일치해야 합니다.</p>
                <div><button id="admin-ai-save-btn" class="admin-text-action" type="button">설정 저장</button><button id="admin-ai-test-btn" class="admin-text-action" type="button">연결 테스트</button></div>
                <p id="admin-ai-status" class="admin-ai-status"></p>
                <details id="admin-ai-error-details" class="admin-ai-error-details" hidden><summary>연결 오류 상세</summary><pre id="admin-ai-error-detail"></pre></details>
                <section class="admin-ai-chat" aria-labelledby="admin-ai-chat-title">
-                 <div class="admin-ai-chat-header"><div><h2 id="admin-ai-chat-title">AI 테스트 대화</h2><p>현재 입력한 설정으로만 테스트합니다. 대화는 저장되지 않습니다.</p></div><button id="admin-ai-chat-clear-btn" class="admin-text-action" type="button">대화 비우기</button></div>
+                 <div class="admin-ai-chat-header"><div><h2 id="admin-ai-chat-title">AI 테스트 채팅</h2><p>모든 요청은 Firebase Cloud Function을 거쳐 LLM Gateway로 전달됩니다.</p></div><span id="admin-ai-chat-connection" class="admin-ai-connection">연결 확인 전</span></div>
                  <div id="admin-ai-chat-log" class="admin-ai-chat-log" role="log" aria-live="polite"><p class="admin-ai-chat-empty">연결 테스트 후 메시지를 보내 보세요.</p></div>
-                 <div class="admin-ai-chat-compose"><textarea id="admin-ai-chat-input" rows="3" placeholder="AI에게 보낼 테스트 메시지"></textarea><button id="admin-ai-chat-send-btn" class="admin-primary-btn" type="button">전송</button></div>
+                 <div class="admin-ai-chat-compose"><textarea id="admin-ai-chat-input" rows="3" maxlength="2000" placeholder="AI에게 보낼 테스트 메시지"></textarea><button id="admin-ai-chat-send-btn" class="admin-primary-btn" type="button">전송</button></div>
                </section>
              </section>
           </section>
@@ -652,12 +652,12 @@
                 <button id="menu-ai-translate-btn" class="learning-game-card game-ai is-coming-soon" type="button" disabled><span class="game-card-preview"><i></i></span><span class="game-card-copy"><strong>AI 문장 해석하기</strong><small>개발 중입니다.</small></span></button>
               </div></section>
               <section class="learning-method-section"><h3>게임</h3><div class="learning-method-grid">
-                <button id="menu-memory-btn" class="learning-game-card game-memory"><span class="game-card-preview"><i></i><i></i><i></i><i></i></span><span class="game-card-copy"><strong>메모리</strong><small>같은 의미의 카드를 기억해 찾습니다.</small></span></button>
                 <button id="menu-speed-match-btn" class="learning-game-card game-match"><span class="game-card-preview"><i></i><i></i></span><span class="game-card-copy"><strong>짝맞추기</strong><small>단어와 뜻을 빠르게 연결합니다.</small></span></button>
                 <button id="menu-speed-btn" class="learning-game-card game-speed"><span class="game-card-preview"><i></i><i></i><i></i></span><span class="game-card-copy"><strong>심플퀴즈</strong><small>제한 시간 안에 정답을 선택합니다.</small></span></button>
                 <button id="menu-chunk-btn" class="learning-game-card game-chunk"><span class="game-card-preview"><i></i><i></i><i></i></span><span class="game-card-copy"><strong>문장 해석 게임</strong><small>문장 조각을 순서대로 완성합니다.</small></span></button>
-                <button id="menu-fish-btn" class="learning-game-card game-fish"><span class="game-card-preview"><i></i><i></i><i></i></span><span class="game-card-copy"><strong>이모지 낚시</strong><small>움직이는 카드를 찾아 잡습니다.</small></span></button>
-                <button id="menu-pokemon-btn" class="learning-game-card game-pokemon" type="button"><span class="game-card-preview"><i></i></span><span class="game-card-copy"><strong>포켓몬 잡기</strong><small>야생 몬스터와 전투를 시작합니다.</small></span></button>
+                <button id="menu-memory-btn" class="learning-game-card game-memory is-coming-soon" type="button" disabled><span class="game-card-preview"><i></i><i></i><i></i><i></i></span><span class="game-card-copy"><strong>메모리</strong><small>개편 준비 중입니다.</small></span></button>
+                <button id="menu-fish-btn" class="learning-game-card game-fish is-coming-soon" type="button" disabled><span class="game-card-preview"><i></i><i></i><i></i></span><span class="game-card-copy"><strong>이모지 낚시</strong><small>개편 준비 중입니다.</small></span></button>
+                <button id="menu-pokemon-btn" class="learning-game-card game-pokemon is-coming-soon" type="button" disabled><span class="game-card-preview"><i></i></span><span class="game-card-copy"><strong>포켓몬 잡기</strong><small>개편 준비 중입니다.</small></span></button>
               </div></section>
             </div>
           </section>

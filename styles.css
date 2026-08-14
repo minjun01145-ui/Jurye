@@ -1177,9 +1177,9 @@ body * {
 .admin-ai-settings { max-width: 720px; }
 .admin-ai-settings label { display: block; margin: 0 0 5px; font-size: 14px; font-weight: 600; }
 .admin-ai-settings input,.admin-ai-settings select { display: block !important; width: min(600px,100%) !important; box-sizing: border-box !important; margin: 0 0 18px !important; }
-.admin-ai-settings .admin-ai-proxy-option { display:flex;align-items:center;gap:7px;margin:0 0 5px;font-weight:500; }
-.admin-ai-settings .admin-ai-proxy-option input { display:inline !important;width:auto !important;margin:0 !important; }
-.admin-ai-proxy-option span,.admin-ai-proxy-help { color:#6b776f;font-size:12px;font-weight:400; }
+.admin-ai-cloud-notice { display:flex;flex-direction:column;gap:5px;width:min(600px,100%);margin:0 0 22px;padding:14px 16px;box-sizing:border-box;border:1px solid #cfe2d5;border-radius:8px;background:#f2f8f4;color:#2d5f3e; }
+.admin-ai-cloud-notice span,.admin-ai-proxy-help { color:#6b776f;font-size:12px;font-weight:400; }
+.admin-ai-cloud-notice code,.admin-ai-proxy-help code { font-family:monospace; }
 .admin-ai-proxy-help { margin:0 0 14px;line-height:1.5; }
 .admin-ai-status { margin: 14px 0 0; color: #444; font-size: 14px; font-weight: 400; }
 .admin-ai-status.is-success { color:#267848; }
@@ -1191,7 +1191,7 @@ body * {
 .admin-ai-chat-header { display:flex;align-items:flex-start;justify-content:space-between;gap:15px; }
 .admin-ai-chat-header h2 { margin:0 0 5px;color:#263b2e;font-size:18px; }
 .admin-ai-chat-header p { margin:0;color:#6b776f;font-size:12px;line-height:1.5; }
-.admin-ai-chat-header .admin-text-action { margin:0;white-space:nowrap; }
+.admin-ai-connection { padding:5px 8px;border-radius:999px;background:#edf6ef;color:#267848;font-size:11px;font-weight:700;white-space:nowrap; }
 .admin-ai-chat-log { display:flex;min-height:150px;max-height:310px;margin-top:14px;padding:12px;overflow-y:auto;box-sizing:border-box;flex-direction:column;gap:9px;border:1px solid #d7e3da;border-radius:8px;background:#f8fbf9; }
 .admin-ai-chat-empty { margin:auto;color:#7e8b82;font-size:13px;text-align:center; }
 .admin-ai-message { max-width:85%;padding:10px 12px;border-radius:10px;font-size:14px;line-height:1.5;white-space:pre-wrap;word-break:break-word; }
@@ -1452,7 +1452,7 @@ body * {
 .learning-method-section + .learning-method-section { margin-top: 28px; padding-top: 2px; }
 .learning-method-section h3 { display: flex; align-items: center; gap: 14px; margin: 0 0 14px; color: #285d3a; font-size: 20px; font-weight: 750; letter-spacing: -.2px; }
 .learning-method-section h3::after { content: ""; flex: 1; height: 1px; background: #d9e8de; }
-#menu-screen .learning-game-card.is-coming-soon { opacity: .58; cursor: default; }
+#menu-screen .learning-game-card.is-coming-soon { opacity: .7; cursor: not-allowed; filter: grayscale(1); }
 #menu-screen .learning-game-card.is-coming-soon:hover { transform: none; border-color: #dfe4ee; box-shadow: 0 5px 14px rgba(43,55,90,.07); }
 .game-ai .game-card-preview { background: #f1f2f4; }
 .game-ai .game-card-preview i { width: 54px; height: 42px; background: #8d96a3; }
