@@ -22,6 +22,24 @@ export function getDurationSeconds(durationValue, fallbackSeconds = 180) {
   return Math.round(n * 60);
 }
 
+export function getRemainingSeconds(endTime, now = Date.now()) {
+  const safeEndTime = Number(endTime);
+  const safeNow = Number(now);
+  if (!Number.isFinite(safeEndTime) || !Number.isFinite(safeNow)) return 0;
+  return Math.max(0, Math.floor((safeEndTime - safeNow) / 1000));
+}
+
+export function getMonotonicRemainingSeconds(currentSeconds, endTime, now = Date.now()) {
+  const safeEndTime = Number(endTime);
+  const safeNow = Number(now);
+  const serverRemaining = Number.isFinite(safeEndTime) && Number.isFinite(safeNow)
+    ? Math.max(0, Math.ceil((safeEndTime - safeNow) / 1000))
+    : 0;
+  const current = Number(currentSeconds);
+  if (!Number.isFinite(current) || current < 0) return serverRemaining;
+  return Math.min(Math.floor(current), serverRemaining);
+}
+
 
 
 /**
