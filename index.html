@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>주례여중 게임기</title>
     <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="src/games/pokemon-catch.css" />
 <link rel="icon" href="data:,">
     <style>
       body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
@@ -123,7 +124,7 @@
             <option value="speed-match">짝맞추기</option>
             <option value="speed">심플퀴즈</option>
             <option value="fish">이모지 낚시</option>
-            <option value="chunk">문장 해석</option>
+            <option value="chunk">문장 만들기</option>
           </select></label>
           <div class="ranking-filter-group"><span>기간</span><div><button class="solo-ranking-filter is-active" data-filter="period" data-value="today" type="button">오늘 순위 보기</button><button class="solo-ranking-filter" data-filter="period" data-value="all" type="button">역대 순위 보기</button></div></div>
           <div class="ranking-filter-group"><span>범위</span><div><button class="solo-ranking-filter is-active" data-filter="scope" data-value="class" type="button">우리반만</button><button class="solo-ranking-filter" data-filter="scope" data-value="grade" type="button">학년 전체</button></div></div>
@@ -479,11 +480,19 @@
             <select id="teacher-game-mode-select" style="width: 100%; font-size: 16px; padding: 8px; border-radius: 8px; border: 2px solid #9C27B0; font-family: inherit;">
               <option value="speed">심플퀴즈</option>
               <option value="speed-match">짝맞추기</option>
-              <option value="chunk">문장 해석 게임</option>
+              <option value="chunk">문장 만들기 게임</option>
               <option value="highfive" disabled>하이파이브 조편성 (준비 중)</option>
               <option value="create" disabled>문제 만들기 (준비 중)</option>
               <option value="custom_game" disabled>학생 출제 세트 게임 (준비 중)</option>
               <option value="boss" disabled>보스 레이드 (준비 중)</option>
+            </select>
+          </div>
+          <div id="teacher-chunk-mode-container" style="display: none; background: rgba(255,255,255,0.7); padding: 15px; border-radius: 8px; border: 2px dashed #3F51B5; margin-bottom: 10px;">
+            <label style="font-weight: bold; color: #3F51B5; display: block; margin-bottom: 5px;">🧩 문장 만들기 방식</label>
+            <select id="teacher-chunk-mode-select" style="width: 100%; font-size: 16px; padding: 8px; border-radius: 8px; border: 2px solid #3F51B5; font-family: inherit;">
+              <option value="compose">기본 모드 (한글 뜻 보고 영어 문장 만들기)</option>
+              <option value="translate">해석하기 모드 (영어 문장 보고 한글 뜻 만들기)</option>
+              <option value="blind-compose">완전 영작 모드 (뜻 없이 영어 문장 만들기)</option>
             </select>
           </div>
           <div id="teacher-boss-options-container" style="display: none; background: rgba(0,0,0,0.8); padding: 15px; border-radius: 8px; border: 2px dashed #f44336; margin-bottom: 10px;">
@@ -494,7 +503,7 @@
             <label style="font-weight: bold; color: #FFEB3B; display: block; margin-bottom: 5px;">⚔️ 세부 게임 모드</label>
             <select id="teacher-boss-submode-select" style="width: 100%; font-size:16px; padding:8px; border-radius:8px; font-family:inherit;">
               <option value="speed">⚡ 심플 스피드퀴즈</option>
-              <option value="chunk">🧩 문장 해석 게임</option>
+              <option value="chunk">🧩 문장 만들기 게임</option>
               <option value="custom_infinite">✨ 학생 출제 무한 퀴즈</option>
             </select>
           </div>
@@ -663,10 +672,10 @@
               <section class="learning-method-section"><h3>게임</h3><div class="learning-method-grid">
                 <button id="menu-speed-match-btn" class="learning-game-card game-match"><span class="game-card-preview"><i></i><i></i></span><span class="game-card-copy"><strong>짝맞추기</strong><small>단어와 뜻을 빠르게 연결합니다.</small></span></button>
                 <button id="menu-speed-btn" class="learning-game-card game-speed"><span class="game-card-preview"><i></i><i></i><i></i></span><span class="game-card-copy"><strong>심플퀴즈</strong><small>제한 시간 안에 정답을 선택합니다.</small></span></button>
-                <button id="menu-chunk-btn" class="learning-game-card game-chunk"><span class="game-card-preview"><i></i><i></i><i></i></span><span class="game-card-copy"><strong>문장 해석 게임</strong><small>문장 조각을 순서대로 완성합니다.</small></span></button>
+                <button id="menu-chunk-btn" class="learning-game-card game-chunk"><span class="game-card-preview"><i></i><i></i><i></i></span><span class="game-card-copy"><strong>문장 만들기 게임</strong><small>문장 조각을 순서대로 완성합니다.</small></span></button>
                 <button id="menu-memory-btn" class="learning-game-card game-memory is-coming-soon" type="button" disabled><span class="game-card-preview"><i></i><i></i><i></i><i></i></span><span class="game-card-copy"><strong>메모리</strong><small>개편 준비 중입니다.</small></span></button>
                 <button id="menu-fish-btn" class="learning-game-card game-fish is-coming-soon" type="button" disabled><span class="game-card-preview"><i></i><i></i><i></i></span><span class="game-card-copy"><strong>이모지 낚시</strong><small>개편 준비 중입니다.</small></span></button>
-                <button id="menu-pokemon-btn" class="learning-game-card game-pokemon is-coming-soon" type="button" disabled><span class="game-card-preview"><i></i></span><span class="game-card-copy"><strong>포켓몬 잡기</strong><small>개편 준비 중입니다.</small></span></button>
+                <button id="menu-pokemon-btn" class="learning-game-card game-pokemon" type="button"><span class="game-card-preview"><i></i></span><span class="game-card-copy"><strong>포켓몬 잡기</strong><small>문제를 풀고 야생 포켓몬을 잡습니다.</small></span></button>
               </div></section>
             </div>
           </section>
@@ -747,25 +756,28 @@
         <div class="pokemon-battle-stage">
           <div class="pokemon-sky" aria-hidden="true"></div>
           <div class="pokemon-enemy-status">
-            <div><strong>풀숲몬</strong><span>Lv. 5</span></div>
-            <div class="pokemon-hp-row"><span>HP</span><i><b></b></i></div>
+            <div><strong id="pokemon-enemy-name">야생 포켓몬</strong><span id="pokemon-enemy-level">Lv. 5</span></div>
+            <div class="pokemon-hp-row"><span>HP</span><i><b id="pokemon-enemy-hp-bar"></b></i></div>
           </div>
           <div class="pokemon-enemy-platform" aria-hidden="true"></div>
-          <div class="pokemon-pixel-monster" aria-label="야생 풀숲몬">
-            <i class="monster-ear monster-ear-left"></i><i class="monster-ear monster-ear-right"></i>
-            <i class="monster-body"></i><i class="monster-face"></i><i class="monster-eye monster-eye-left"></i><i class="monster-eye monster-eye-right"></i>
-            <i class="monster-foot monster-foot-left"></i><i class="monster-foot monster-foot-right"></i><i class="monster-tail"></i>
-          </div>
-          <div class="pokemon-player-platform" aria-label="플레이어 뒷모습이 들어갈 빈 자리"></div>
+          <div id="pokemon-enemy-sprite-wrap" class="pokemon-enemy-sprite-wrap"><img id="pokemon-enemy-sprite" alt="야생 포켓몬"></div>
+          <div class="pokemon-player-platform" aria-hidden="true"></div>
+          <div class="pokemon-trainer-back" aria-label="포켓몬 트레이너의 뒷모습"><i></i><b></b><span></span></div>
           <div class="pokemon-command-box">
-            <p>무엇을 할까?</p>
+            <p id="pokemon-battle-message">야생 포켓몬을 찾는 중...</p><i class="pokemon-text-cursor" aria-hidden="true"></i>
             <div class="pokemon-command-menu" aria-label="전투 메뉴">
-              <button type="button">문제 풀기</button>
-              <button type="button">아이템 사용</button>
-              <button type="button">포켓볼 던지기</button>
-              <button type="button">포기하기</button>
+              <button id="pokemon-quiz-btn" type="button">문제 풀기</button>
+              <button id="pokemon-item-btn" type="button">상태 보기</button>
+              <button id="pokemon-ball-btn" type="button">포켓볼 던지기</button>
+              <button id="pokemon-run-btn" type="button">도망가기</button>
             </div>
           </div>
+          <div id="pokemon-quiz-panel" class="pokemon-quiz-panel" hidden>
+            <strong id="pokemon-quiz-question">문제</strong>
+            <div id="pokemon-quiz-choices"></div>
+          </div>
+          <div id="pokemon-loading" class="pokemon-loading">야생 포켓몬을 찾는 중...</div>
+          <div id="pokemon-pokeball" class="pokemon-thrown-ball" aria-hidden="true"></div>
           <div class="pokemon-encounter-transition" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><span></span></div>
         </div>
       </section>
@@ -871,7 +883,7 @@
 
     <div id="chunk-screen" class="screen" style="padding:0;background:transparent;">
       <div id="chunk-solo-settings" class="sm-solo-settings" hidden>
-        <header><div><h2>문장 해석 게임</h2><p>게임 설정을 선택하세요.</p></div><button id="chunk-solo-close-btn" type="button">닫기</button></header>
+        <header><div><h2>문장 만들기 게임</h2><p>게임 설정을 선택하세요.</p></div><button id="chunk-solo-close-btn" type="button">닫기</button></header>
         <div class="sm-setting-group"><strong>시간</strong><div><button data-chunk-option="time" data-value="unlimited" type="button">시간 제한 없이</button><button data-chunk-option="time" data-value="test10" type="button">10초 테스트</button><button data-chunk-option="time" data-value="3" type="button">3분 모드</button></div></div>
         <div class="sm-setting-group"><strong>점수</strong><div><button data-chunk-option="score" data-value="off" type="button">점수 없이</button><button data-chunk-option="score" data-value="on" type="button">점수 포함</button></div></div>
         <div class="sm-setting-group"><strong>보물상자</strong><div><button data-chunk-option="treasure" data-value="on" type="button">보물상자 등장</button><button data-chunk-option="treasure" data-value="off" type="button">보물상자 없이</button></div></div>
@@ -893,7 +905,7 @@
         <section id="chunk-solo-result" class="sm-solo-result" hidden aria-labelledby="chunk-solo-result-title">
           <div class="sm-result-mark" aria-hidden="true">✓</div>
           <span class="sm-result-label">GAME COMPLETE</span>
-          <h2 id="chunk-solo-result-title">문장 해석 완료</h2>
+          <h2 id="chunk-solo-result-title">문장 만들기 완료</h2>
           <p id="chunk-solo-result-message">수고했어요! 이번 기록을 확인해 보세요.</p>
           <div class="sm-result-score-card"><span>최종 점수</span><strong id="chunk-solo-final-score">0점</strong></div>
           <div class="sm-result-summary">

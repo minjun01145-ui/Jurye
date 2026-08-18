@@ -32,6 +32,7 @@ import {
   parseChunkGameSentence
 } from "./src/games/question-generators.js";
 import { getGameCountdownDurationMs, startCountdownSequence } from "./src/games/countdown.js";
+import { createPokemonCatchGame } from "./src/games/pokemon-catch.js";
 
 //2. 파이어베이스 세팅
 // 🚀 [접속 안정화 FIX1]
@@ -2166,7 +2167,7 @@ async function renderAdminSoloHistory(student) {
   const list = document.getElementById("admin-solo-history-list");
   if (!list) return;
   list.innerHTML = `<p>${student.stdId} ${student.name} 학생의 기록을 불러오는 중...</p>`;
-  const gameNames = { fc: "학습 목록 보기", memory: "메모리", "speed-match": "짝맞추기", speed: "스피드퀴즈", fish: "이모지 낚시", chunk: "문장 해석" };
+  const gameNames = { fc: "학습 목록 보기", memory: "메모리", "speed-match": "짝맞추기", speed: "스피드퀴즈", fish: "이모지 낚시", chunk: "문장 만들기" };
   try {
     const snapshot = await recordData.listScoresForStudent(student.stdId);
     const records = [];
@@ -2366,36 +2367,12 @@ bindClick("list-back-btn", () => { playSound("click"); document.getElementById("
 document.getElementById("list-screen")?.addEventListener("click", event => {
   if (event.target === event.currentTarget) event.currentTarget.hidden = true;
 });
-let pokemonEncounterTimer = null;
-
-function closePokemonBattle() {
-  clearTimeout(pokemonEncounterTimer);
-  pokemonEncounterTimer = null;
-  const overlay = document.getElementById("pokemon-battle-overlay");
-  if (overlay) overlay.hidden = true;
-}
-
-function openPokemonBattle() {
-  const overlay = document.getElementById("pokemon-battle-overlay");
-  const modal = overlay?.querySelector(".pokemon-battle-modal");
-  if (!overlay || !modal) return;
-  clearTimeout(pokemonEncounterTimer);
-  overlay.hidden = false;
-  modal.classList.remove("is-battle");
-  void modal.offsetWidth;
-  modal.classList.add("is-encounter");
-  pokemonEncounterTimer = setTimeout(() => {
-    modal.classList.remove("is-encounter");
-    modal.classList.add("is-battle");
-    pokemonEncounterTimer = null;
-  }, 1900);
-}
-
-bindClick("menu-pokemon-btn", () => { playSound("click"); openPokemonBattle(); });
-bindClick("pokemon-battle-close-btn", () => { playSound("click"); closePokemonBattle(); });
-document.getElementById("pokemon-battle-overlay")?.addEventListener("click", event => {
-  if (event.target === event.currentTarget) closePokemonBattle();
+const pokemonCatchGame = createPokemonCatchGame({
+  root: document,
+  getQuestionWords: () => wordList,
+  playUiSound: playSound
 });
+bindClick("menu-pokemon-btn", () => pokemonCatchGame.open());
 document.addEventListener("keydown", event => {
   if (event.key === "Escape") {
     const overlay = document.getElementById("list-screen");
@@ -2406,8 +2383,7 @@ document.addEventListener("keydown", event => {
     if (chunkPracticeOverlay && !chunkPracticeOverlay.hidden) chunkPracticeOverlay.hidden = true;
     const aiTranslateOverlay = document.getElementById("ai-translate-overlay");
     if (aiTranslateOverlay && !aiTranslateOverlay.hidden && !aiTranslateBusy) aiTranslateOverlay.hidden = true;
-    const pokemonBattleOverlay = document.getElementById("pokemon-battle-overlay");
-    if (pokemonBattleOverlay && !pokemonBattleOverlay.hidden) closePokemonBattle();
+    if (pokemonCatchGame.isOpen()) pokemonCatchGame.close();
   }
 });
 
@@ -2905,6 +2881,7 @@ let soloChunkActive = false;
 let soloChunkStage = "setup";
 let soloChunkFinishing = false;
 let multiChunkPopupActive = false;
+let multiChunkMode = "compose";
 let soloChunkSentences = [];
 let soloChunkCompletedCount = 0;
 let soloChunkPieces = [];
@@ -2929,7 +2906,7 @@ function setSoloChunkStage(stage) {
 
 function showChunkGameUnsupported() {
   showSiteConfirm("문장(끊어읽기) 세트에 /로 나눈 문장이 두 조각 이상 있어야 합니다.", () => {}, {
-    title: "문장 해석 게임을 지원하지 않는 세트예요.", okText: "확인", hideCancel: true
+    title: "문장 만들기 게임을 지원하지 않는 세트예요.", okText: "확인", hideCancel: true
   });
 }
 
@@ -2956,7 +2933,8 @@ function openSoloChunkSetup() {
   document.getElementById("chunk-score").style.display = "";
   document.getElementById("chunk-score").innerText = "점수 설정";
   document.getElementById("chunk-game-meaning").innerText = "문장의 뜻";
-  document.getElementById("chunk-game-progress").innerText = "문장 해석 게임";
+  document.getElementById("chunk-game-meaning").style.visibility = "visible";
+  document.getElementById("chunk-game-progress").innerText = "문장 만들기 게임";
   moveInventoryToSoloGame("chunk-game-area");
   clearGameInventory();
   soloChunkFinishing = false;
@@ -3240,10 +3218,12 @@ function startMultiSpeedMatch(duration) {
   });
 }
 
-function startMultiChunkGame(duration) {
-  const questions = buildChunkGameQuestions(wordList);
+function startMultiChunkGame(duration, chunkMode = "compose") {
+  multiChunkMode = ["compose", "translate", "blind-compose"].includes(chunkMode) ? chunkMode : "compose";
+  const questions = buildChunkGameQuestions(wordList)
+    .filter(question => multiChunkMode !== "translate" || question.parsed.koParts.length >= 2);
   if (!questions.length) {
-    document.getElementById("result-detail").innerText = "문장 해석 게임을 시작할 수 있는 문장이 없습니다.";
+    document.getElementById("result-detail").innerText = "문장 만들기 게임을 시작할 수 있는 문장이 없습니다.";
     goResult();
     return;
   }
@@ -4509,18 +4489,19 @@ function updateChunkUI() {
 function startChunkLogic() {
   const validChunkWords = soloChunkActive
     ? soloChunkSentences
-    : buildChunkGameQuestions(wordList);
+    : buildChunkGameQuestions(wordList)
+        .filter(question => multiChunkMode !== "translate" || question.parsed.koParts.length >= 2);
   if(validChunkWords.length === 0) { alert("현재 세트에는 슬래시(/)로 구분된 문장이 없습니다. 다른 세트를 선택해 주세요."); clearInterval(gameTimerInterval); showScreen("menu-screen"); return; }
   currentChunkIndex = 0; soloChunkCompletedCount = 0; updateChunkUI();
   const unlimited = soloChunkActive && soloChunkOptions.time === "unlimited";
   if (!unlimited) gameTimerInterval = setInterval(() => {
     if (globalMultiEndTime) {
        gameTimeRemaining = getMonotonicRemainingSeconds(gameTimeRemaining, globalMultiEndTime); updateChunkUI();
-       if (gameTimeRemaining <= 0) { clearInterval(gameTimerInterval); currentUser.score = gameScore; document.getElementById("result-detail").innerText = `제한 시간 종료! 획득한 해석 점수입니다!`; goResult(); }
+       if (gameTimeRemaining <= 0) { clearInterval(gameTimerInterval); currentUser.score = gameScore; document.getElementById("result-detail").innerText = `제한 시간 종료! 획득한 문장 만들기 점수입니다!`; goResult(); }
     } else {
        if (!isGamePaused) {
          gameTimeRemaining--; updateChunkUI();
-         if (gameTimeRemaining <= 0) { clearInterval(gameTimerInterval); currentUser.score = gameScore; document.getElementById("result-detail").innerText = `제한 시간 종료! 획득한 해석 점수입니다!`; goResult(); }
+         if (gameTimeRemaining <= 0) { clearInterval(gameTimerInterval); currentUser.score = gameScore; document.getElementById("result-detail").innerText = `제한 시간 종료! 획득한 문장 만들기 점수입니다!`; goResult(); }
        }
     }
   }, 1000); 
@@ -4529,13 +4510,20 @@ function startChunkLogic() {
 function loadNextChunkQuiz(validChunkWords) {
   const sentence = validChunkWords[currentChunkIndex];
   const parsed = sentence.parsed || parseChunkGameSentence(sentence.word || sentence);
-  const enParts = parsed.enParts;
-  chunkLength = enParts.length;
+  const activeChunkMode = multiChunkPopupActive ? multiChunkMode : "compose";
+  const isTranslateMode = activeChunkMode === "translate";
+  const pieces = isTranslateMode ? parsed.koParts : parsed.enParts;
+  chunkLength = pieces.length;
   const container = document.getElementById("chunk-container"); const btnContainer = document.getElementById("chunk-buttons-container");
-  container.innerHTML = ""; btnContainer.innerHTML = ""; chunkAnswers = []; soloChunkPieces = enParts; soloChunkSelected = [];
-  document.getElementById("chunk-game-progress").innerText = `문장 ${currentChunkIndex + 1} / ${validChunkWords.length}`;
-  document.getElementById("chunk-game-meaning").innerText = parsed.koText;
-  document.getElementById("chunk-game-feedback").innerText = "아래 조각을 순서대로 선택하세요.";
+  container.innerHTML = ""; btnContainer.innerHTML = ""; chunkAnswers = []; soloChunkPieces = pieces; soloChunkSelected = [];
+  const modeLabel = isTranslateMode ? "해석하기" : activeChunkMode === "blind-compose" ? "완전 영작" : "문장 만들기";
+  document.getElementById("chunk-game-progress").innerText = `${modeLabel} ${currentChunkIndex + 1} / ${validChunkWords.length}`;
+  const prompt = document.getElementById("chunk-game-meaning");
+  prompt.innerText = isTranslateMode ? parsed.enText : parsed.koText;
+  prompt.style.visibility = activeChunkMode === "blind-compose" ? "hidden" : "visible";
+  document.getElementById("chunk-game-feedback").innerText = isTranslateMode
+    ? "한글 뜻 조각을 순서대로 선택하세요."
+    : "영어 문장 조각을 순서대로 선택하세요.";
   container.className = "chunk-game-answer is-empty";
 
   soloChunkShuffledIndices = createShuffledPieceIndices(chunkLength);
@@ -5048,7 +5036,7 @@ if (currentGroupingActive && currentMultiRoomGroupPlayMode === "one-player" && !
         startMultiSpeedQuiz(room.duration);
       } else if (room.subMode === "chunk") {
         currentGameMode = "chunk";
-        startMultiChunkGame(room.duration);
+        startMultiChunkGame(room.duration, room.chunkMode);
       } else if (room.subMode === "custom_infinite") {
         currentGameMode = "custom_infinite";
         startCountdown(room.duration, "custom-infinite-screen", () => { startCustomInfiniteLogic(); });
@@ -5062,7 +5050,7 @@ if (currentGroupingActive && currentMultiRoomGroupPlayMode === "one-player" && !
       } else if (room.gameMode === "speed-match") {
         startMultiSpeedMatch(room.duration);
       } else if (room.gameMode === "chunk") {
-        startMultiChunkGame(room.duration);
+        startMultiChunkGame(room.duration, room.chunkMode);
       } else if (room.gameMode === "highfive") {
         startHighFiveLogic(room.endTime);
       } else if (room.gameMode === "create") {
@@ -5500,13 +5488,13 @@ if (currentGroupingActive && currentMultiRoomGroupPlayMode === "one-player" && !
              isBossRaid = true;
              multiUseSpecialItems = false; // 보스전 팀킬 금지
              if (room.subMode === "speed") { currentGameMode = "speed"; startMultiSpeedQuiz(room.duration); }
-             else if (room.subMode === "chunk") { currentGameMode = "chunk"; startMultiChunkGame(room.duration); }
+             else if (room.subMode === "chunk") { currentGameMode = "chunk"; startMultiChunkGame(room.duration, room.chunkMode); }
              else if (room.subMode === "custom_infinite") { currentGameMode = "custom_infinite"; startCountdown(room.duration, "custom-infinite-screen", () => { startCustomInfiniteLogic(); }); }
          } else {
              isBossRaid = false; 
              if (room.gameMode === "speed") { startMultiSpeedQuiz(room.duration); } 
              else if (room.gameMode === "speed-match") { startMultiSpeedMatch(room.duration); } 
-             else if (room.gameMode === "chunk") { startMultiChunkGame(room.duration); }
+             else if (room.gameMode === "chunk") { startMultiChunkGame(room.duration, room.chunkMode); }
              else if (room.gameMode === "highfive") { startHighFiveLogic(room.endTime); }
              else if (room.gameMode === "create") { startCreateLogic(room); }
              else if (room.gameMode === "custom_infinite") { startCountdown(room.duration, "custom-infinite-screen", () => { startCustomInfiniteLogic(); }); }
@@ -6035,6 +6023,7 @@ function updateTeacherMenuVisibility() {
     toggleDisplay("teacher-disband-group-btn", currentGroupingActive);
 
     toggleDisplay("teacher-boss-options-container", isBoss); 
+    toggleDisplay("teacher-chunk-mode-container", mode === "chunk");
     toggleDisplay("teacher-time-container", !(isHf || isCreate)); 
     toggleDisplay("teacher-item-container", !(isHf || isCreate || isBoss)); 
     
@@ -6255,7 +6244,11 @@ if (mode === "boss") {
   const selectedSet = wordSets.find(s => s.id === setId); 
   if(!selectedSet) return alert("게임을 진행할 학습 세트를 찾을 수 없습니다.");
   if (mode === "chunk" && buildChunkGameQuestions(selectedSet.words).length === 0) {
-      return alert("문장 해석 게임은 슬래시(/)로 두 조각 이상 나눈 문장 세트가 필요합니다.");
+      return alert("문장 만들기 게임은 슬래시(/)로 두 조각 이상 나눈 문장 세트가 필요합니다.");
+  }
+  const chunkMode = mode === "chunk" ? (document.getElementById("teacher-chunk-mode-select")?.value || "compose") : null;
+  if (chunkMode === "translate" && !buildChunkGameQuestions(selectedSet.words).some(question => question.parsed.koParts.length >= 2)) {
+      return alert("해석하기 모드는 한글 뜻도 슬래시(/)로 두 조각 이상 나눈 문장이 필요합니다.");
   }
 
   let groupPlayMode = null; let representatives = {};
@@ -6272,6 +6265,7 @@ if (mode === "boss") {
       status: "playing", gameMode: mode, duration: duration, setId: setId, setTitle: selectedSet.title, 
       useBuffItems: buffOption, useSpecialItems: attackOption, endTime: targetEndTime,
       roundId, startedAt: Date.now(),
+      chunkMode: chunkMode,
       groupPlayMode: groupPlayMode, representatives: representatives
   }, { verifyRound: true }); 
 });

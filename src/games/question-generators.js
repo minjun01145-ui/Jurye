@@ -35,9 +35,10 @@ export function buildSimpleQuizQuestions(words, setType = "") {
 
 export function parseChunkGameSentence(word) {
   const enParts = String(word?.en || "").split("/").map(part => part.trim()).filter(Boolean);
-  const koText = String(word?.ko || "").split("/").map(part => part.trim()).filter(Boolean).join(" ");
+  const koParts = String(word?.ko || "").split("/").map(part => part.trim()).filter(Boolean);
+  const koText = koParts.join(" ");
   if (enParts.length < 2 || !koText) return null;
-  return { enParts, koText };
+  return { enParts, enText: enParts.join(" "), koParts, koText };
 }
 
 export function buildChunkGameQuestions(words) {
