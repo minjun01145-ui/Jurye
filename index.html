@@ -399,6 +399,13 @@
               <label for="admin-ai-reasoning">추론 강도</label>
               <select id="admin-ai-reasoning"><option value="none">없음</option><option value="low" selected>낮음 (테스트 권장)</option><option value="medium">보통</option><option value="high">높음</option></select>
               <p class="admin-ai-proxy-help">Gateway가 제공하는 전체 HTTPS 주소를 입력하세요. Responses API라면 보통 <code>/v1/responses</code>, Chat Completions라면 <code>/v1/chat/completions</code>로 끝납니다. 주소의 origin은 Cloud Function의 <code>LLM_GATEWAY_ORIGIN</code>과 일치해야 합니다.</p>
+              <section class="admin-ai-prompt-editor" aria-labelledby="admin-ai-prompt-title">
+                <div class="admin-ai-prompt-heading"><div><h2 id="admin-ai-prompt-title">게임 모드별 시스템 프롬프트</h2><p>저장한 프롬프트는 다음 게임부터 실제 AI 채점에 적용됩니다.</p></div><button id="admin-ai-prompt-reset-btn" class="admin-text-action" type="button">기본값 복원</button></div>
+                <label for="admin-ai-game-mode">게임 모드</label>
+                <select id="admin-ai-game-mode"><option value="aiTranslation">AI 문장 해석하기</option></select>
+                <label for="admin-ai-game-prompt">시스템 프롬프트</label>
+                <textarea id="admin-ai-game-prompt" rows="16" maxlength="12000" spellcheck="false" placeholder="AI가 따라야 할 채점 규칙을 입력하세요."></textarea>
+              </section>
                <div><button id="admin-ai-save-btn" class="admin-text-action" type="button">설정 저장</button><button id="admin-ai-test-btn" class="admin-text-action" type="button">연결 테스트</button></div>
                <p id="admin-ai-status" class="admin-ai-status"></p>
                <details id="admin-ai-error-details" class="admin-ai-error-details" hidden><summary>연결 오류 상세</summary><pre id="admin-ai-error-detail"></pre></details>
@@ -479,8 +486,10 @@
             <label style="font-weight: bold; color: #7B1FA2; display: block; margin-bottom: 5px;">🎯 진행할 게임 모드 선택</label>
             <select id="teacher-game-mode-select" style="width: 100%; font-size: 16px; padding: 8px; border-radius: 8px; border: 2px solid #9C27B0; font-family: inherit;">
               <option value="speed">심플퀴즈</option>
+              <option value="tugofwar">줄다리기</option>
               <option value="speed-match">짝맞추기</option>
               <option value="chunk">문장 만들기 게임</option>
+              <option value="ai-translate">AI 문장 해석하기</option>
               <option value="highfive" disabled>하이파이브 조편성 (준비 중)</option>
               <option value="create" disabled>문제 만들기 (준비 중)</option>
               <option value="custom_game" disabled>학생 출제 세트 게임 (준비 중)</option>

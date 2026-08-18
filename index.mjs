@@ -7,8 +7,8 @@
 // - currentUser, wordSets, studentList 등 핵심 상태
 // =====================================================
 
-import { testAiConnectionFunction, adminAiChatFunction, getAiSettings, saveAiSettings } from "./src/firebase/ai.js";
-import { userData, gameData, lobbyData, recordData } from "./src/firebase/data.js";
+import { DEFAULT_AI_TRANSLATION_PROMPT, testAiConnectionFunction, adminAiChatFunction, judgeTranslationFunction, getAiSettings, saveAiSettings } from "./src/firebase/ai.js";
+import { userData, gameData, lobbyData, recordData, assignTugTeams, contributeTugPower, finishTugRound } from "./src/firebase/data.js";
 import { stopInterval, stopTimeout, stopSubscription } from "./src/runtime/resources.js";
 import {
   getDurationSeconds as getDurationSecondsCore,
@@ -33,6 +33,12 @@ import {
 } from "./src/games/question-generators.js";
 import { getGameCountdownDurationMs, startCountdownSequence } from "./src/games/countdown.js";
 import { createPokemonCatchGame } from "./src/games/pokemon-catch.js";
+import { createGameSession } from "./src/games/runtime/game-session.js";
+import { createSimpleQuizEngine } from "./src/games/simple-quiz/engine.js";
+import { createSimpleQuizView } from "./src/games/simple-quiz/view.js";
+import { createSimpleQuizController } from "./src/games/simple-quiz/controller.js";
+import { createTugOfWarGame, assignBalancedTeams, TUG_DURATION_MS } from "./src/games/tugofwar/tugofwar.js";
+import { createAiTranslationMultiplayer } from "./src/games/ai-translation/multiplayer.js";
 
 //2. 파이어베이스 세팅
 // 🚀 [접속 안정화 FIX1]
@@ -110,6 +116,13 @@ let teacherHeartbeatInterval = null;
 const TEACHER_HEARTBEAT_MS = 10000;
 const TEACHER_LEASE_TIMEOUT_MS = 45000;
 let multiRoomUnsubscribe = null;
+const aiTranslationMultiplayer = createAiTranslationMultiplayer({
+  judge: async payload => (await judgeTranslationFunction(payload)).data,
+  updateScore: async score => {
+    currentUser.score = score;
+    if (myLobbyDocId) await lobbyData.saveUser(myLobbyDocId, { score }, { merge: true });
+  }
+});
 
 // 🚑 멀티 안정화: onSnapshot + REST 보조 감시
 let multiRoomRestWatchInterval = null;
@@ -944,7 +957,7 @@ bindClick("teacher-toggle-name-btn", () => {
         btn.style.boxShadow = "0 4px 0 #455A64";
     }
     // 버튼을 누르는 즉시 화면 리렌더링 강제 호출
-    if (window.teacherLobbyStatus === "playing") {
+    if (window.teacherLobbyStatus === "playing" && currentGameMode !== "tugofwar") {
         renderTeacherLiveLeaderboard(window.globalLobbyPlayers);
     } else {
         renderTeacherVisualLobby(window.globalLobbyPlayers);
@@ -1121,6 +1134,8 @@ initWalkingEmojis();
 
 
 function resetGameStates() {
+  aiTranslationMultiplayer.stop();
+  tugOfWarGame.stop();
   // 🚀 [멀티 자물쇠 완전 해제] 게임 초기화 시 상태를 깨끗이 비워줍니다.
   window.isMultiGameActive = false; 
   if (typeof window.isCountdownActive !== 'undefined') window.isCountdownActive = false;
@@ -1184,13 +1199,13 @@ bindClick("back-to-menu-btn", async () => {
     soloChunkStage = "setup";
     soloChunkFinishing = false;
   }
-  if (soloSpeedActive) {
+  if (simpleQuizSession.active && simpleQuizSession.context === "solo") {
     const speedScreen = document.getElementById("speed-solo-screen");
     speedScreen.classList.remove("speed-solo-mode", "speed-solo-setup-mode", "speed-solo-playing-mode", "speed-solo-result-mode");
     document.getElementById("speed-solo-settings").hidden = true;
     document.getElementById("speed-solo-result").hidden = true;
     restoreBuffMessageOverlay(); restoreGameInventory();
-    soloSpeedActive = false; soloSpeedStage = "setup"; soloSpeedFinishing = false;
+    simpleQuizSession.reset();
   }
   
   if (myLobbyDocId) {
@@ -2217,6 +2232,7 @@ async function loadAdminAiSettings() {
     document.getElementById("admin-ai-model").value = settings.model;
     document.getElementById("admin-ai-format").value = settings.apiFormat;
     document.getElementById("admin-ai-reasoning").value = settings.reasoningEffort;
+    document.getElementById("admin-ai-game-prompt").value = settings.gamePrompts?.aiTranslation || DEFAULT_AI_TRANSLATION_PROMPT;
     if (status) status.innerText = "";
   } catch (error) {
     if (status) status.innerText = "AI 설정을 불러오지 못했습니다.";
@@ -2228,9 +2244,17 @@ function readAdminAiSettings() {
     endpoint: document.getElementById("admin-ai-endpoint").value.trim(),
     model: document.getElementById("admin-ai-model").value.trim(),
     apiFormat: document.getElementById("admin-ai-format").value,
-    reasoningEffort: document.getElementById("admin-ai-reasoning").value
+    reasoningEffort: document.getElementById("admin-ai-reasoning").value,
+    gamePrompts: {
+      aiTranslation: document.getElementById("admin-ai-game-prompt").value.trim() || DEFAULT_AI_TRANSLATION_PROMPT
+    }
   };
 }
+
+bindClick("admin-ai-prompt-reset-btn", () => {
+  document.getElementById("admin-ai-game-prompt").value = DEFAULT_AI_TRANSLATION_PROMPT;
+  setAdminAiStatus("AI 문장 해석하기 기본 프롬프트를 불러왔습니다. 저장 버튼을 눌러 적용하세요.");
+});
 
 bindClick("admin-ai-save-btn", async () => {
   const settings = readAdminAiSettings();
@@ -3005,12 +3029,43 @@ bindClick("menu-fish-btn", () => { playSound("click"); currentGameMode = "fish";
 bindClick("time-option-back-btn", () => { playSound("click"); showScreen("menu-screen"); }); 
 bindClick("menu-chunk-btn", () => { playSound("click"); openSoloChunkSetup(); });
 
-const soloSpeedOptions = { time: null, score: null, treasure: null };
-let soloSpeedActive = false;
-let soloSpeedStage = "setup";
-let soloSpeedFinishing = false;
-let soloSpeedQuestions = [];
-let soloSpeedCompletedCount = 0;
+const simpleQuizSession = createGameSession({
+  mode: "speed",
+  optionDefaults: { time: null, score: null, treasure: null }
+});
+const simpleQuizEngine = createSimpleQuizEngine({ getQuestions: () => simpleQuizSession.questions });
+const simpleQuizView = createSimpleQuizView({ root: document });
+const tugOfWarGame = createTugOfWarGame({
+  gameData,
+  lobbyData,
+  contributePower: contributeTugPower,
+  finishRound: finishTugRound,
+  buildQuestions: buildSimpleQuizQuestions,
+  playSound
+});
+const simpleQuizController = createSimpleQuizController({
+  session: simpleQuizSession,
+  engine: simpleQuizEngine,
+  view: simpleQuizView,
+  getStatus: () => ({
+    unlimited: !multiSpeedPopupActive && simpleQuizSession.options.time === "unlimited",
+    remainingSeconds: gameTimeRemaining,
+    scoreVisible: multiSpeedPopupActive || simpleQuizSession.options.score !== "off",
+    scoreHtml: isBossRaid ? `내 총 데미지: ${gameScore}` : `점수: ${gameScore}${multiSpeedPopupActive ? getGroupScoreText() : ""}`
+  }),
+  getQuestionKind: () => wordSets.find(set => String(set.id) === String(currentSetId))?.type === "문장(끊어읽기)" ? "영어 끊어읽기 덩어리" : "영어 단어",
+  isPaused: () => isGamePaused,
+  setPaused: value => { isGamePaused = value; },
+  playSound,
+  calculateScore: calcSpeedBonus,
+  changeScore: amount => { gameScore += amount; },
+  shouldTrackScore: () => multiSpeedPopupActive || simpleQuizSession.options.score === "on",
+  shouldAllowTreasure: () => multiSpeedPopupActive || (simpleQuizSession.options.score === "on" && simpleQuizSession.options.treasure === "on"),
+  triggerTreasure: callback => triggerTreasureEvent(callback),
+  showPraise: earned => showGamePraise(earned),
+  scheduleTask: scheduleGameTask,
+  syncScore: () => { if (multiSpeedPopupActive) window.syncScoreToServer(); }
+});
 let multiSpeedPopupActive = false;
 
 function isMultiSpeedPopupOpen() {
@@ -3021,12 +3076,15 @@ function isMultiSpeedPopupOpen() {
 function isModernMultiGamePopupOpen() {
   const speedMatchScreen = document.getElementById("speed-match-screen");
   const chunkScreen = document.getElementById("chunk-screen");
+  const aiTranslationOverlay = document.getElementById("ai-multi-overlay");
   return isMultiSpeedPopupOpen() ||
     (multiSpeedMatchPopupActive && speedMatchScreen && speedMatchScreen.style.display !== "none") ||
-    (multiChunkPopupActive && chunkScreen && chunkScreen.style.display !== "none");
+    (multiChunkPopupActive && chunkScreen && chunkScreen.style.display !== "none") ||
+    (currentGameMode === "ai-translate" && aiTranslationOverlay && !aiTranslationOverlay.hidden);
 }
 
 function closeModernMultiGamePopup() {
+  if (currentGameMode === "ai-translate") aiTranslationMultiplayer.stop();
   if (multiSpeedPopupActive) {
     document.getElementById("speed-solo-screen")?.classList.remove("speed-solo-mode", "speed-multi-mode", "speed-solo-playing-mode", "speed-solo-result-mode");
   }
@@ -3041,113 +3099,48 @@ function closeModernMultiGamePopup() {
   multiSpeedPopupActive = false;
   multiSpeedMatchPopupActive = false;
   multiChunkPopupActive = false;
+  if (simpleQuizSession.context === "multi") {
+    simpleQuizController.reset();
+    simpleQuizSession.reset();
+  }
 }
 
 function setSoloSpeedStage(stage) {
-  soloSpeedStage = stage;
-  const screen = document.getElementById("speed-solo-screen");
-  const actionButton = document.getElementById("speed-solo-start-btn");
-  const closeButton = document.getElementById("speed-solo-close-btn");
-  screen.classList.toggle("speed-solo-setup-mode", stage === "setup");
-  screen.classList.toggle("speed-solo-playing-mode", stage === "playing");
-  screen.classList.toggle("speed-solo-result-mode", stage === "result");
-  actionButton.innerText = stage === "setup" ? "시작하기!" : stage === "playing" ? "게임 중단하기" : "다시하기";
-  actionButton.classList.toggle("is-stop", stage === "playing");
-  actionButton.classList.toggle("is-finish", stage === "result");
-  actionButton.disabled = stage === "setup" ? !Object.values(soloSpeedOptions).every(Boolean) : false;
-  closeButton.hidden = stage === "playing";
-  closeButton.innerText = stage === "result" ? "끝내기" : "닫기";
+  simpleQuizSession.stage = stage;
+  simpleQuizView.setStage(stage, { optionsComplete: simpleQuizSession.hasCompleteOptions() });
 }
 
 function openSoloSpeedSetup() {
   const selectedSet = wordSets.find(set => String(set.id) === String(currentSetId));
   if (!selectedSet || !Array.isArray(selectedSet.words)) return;
-  soloSpeedQuestions = buildSimpleQuizQuestions(selectedSet.words, selectedSet.type);
-  if (!soloSpeedQuestions.length) {
+  const questions = buildSimpleQuizQuestions(selectedSet.words, selectedSet.type);
+  if (!questions.length) {
     if (selectedSet.type === "문장(끊어읽기)") showSiteConfirm("영어와 한국어 조각이 같은 수로 나뉜 문장이 두 개 이상의 서로 다른 뜻을 포함해야 합니다.", () => {}, { title: "심플퀴즈를 지원하지 않는 세트예요.", okText: "확인", hideCancel: true });
     return;
   }
-  currentGameMode = "speed"; soloSpeedActive = true;
+  currentGameMode = "speed";
+  simpleQuizSession.begin("solo", { questions });
   multiSpeedPopupActive = false;
-  soloSpeedOptions.time = null; soloSpeedOptions.score = null; soloSpeedOptions.treasure = null;
-  const screen = document.getElementById("speed-solo-screen");
-  screen.style.display = "grid"; screen.classList.add("speed-solo-mode"); screen.classList.remove("speed-multi-mode", "speed-solo-playing-mode", "speed-solo-result-mode");
-  document.getElementById("speed-solo-settings").hidden = false;
-  document.getElementById("speed-solo-game-area").classList.add("is-preview");
-  document.getElementById("speed-solo-preview-message").hidden = false;
-  document.getElementById("speed-solo-result").hidden = true;
-  document.getElementById("speed-solo-question").innerText = "Question";
-  document.getElementById("speed-solo-options").innerHTML = "";
-  document.getElementById("speed-solo-timer").innerText = "시간 설정";
-  document.getElementById("speed-solo-score").style.display = "";
-  document.getElementById("speed-solo-score").innerText = "점수 설정";
+  simpleQuizController.reset();
+  simpleQuizView.openSoloSetup();
   moveInventoryToSoloGame("speed-solo-game-area"); clearGameInventory();
-  soloSpeedFinishing = false; setSoloSpeedStage("setup");
-  document.querySelectorAll("#speed-solo-settings [data-speed-option]").forEach(button => { button.classList.remove("selected"); button.disabled = false; });
+  setSoloSpeedStage("setup");
 }
 
 function closeSoloSpeed() {
   stopCoreGameTimers(); closeTreasureOverlay(false);
-  const countdown = document.getElementById("speed-solo-inline-countdown"); if (countdown) countdown.hidden = true;
-  const screen = document.getElementById("speed-solo-screen");
-  screen.classList.remove("speed-solo-mode", "speed-solo-setup-mode", "speed-solo-playing-mode", "speed-solo-result-mode"); screen.style.display = "none";
-  document.getElementById("speed-solo-settings").hidden = true; document.getElementById("speed-solo-game-area").classList.remove("is-preview"); document.getElementById("speed-solo-result").hidden = true;
-  restoreBuffMessageOverlay(); restoreGameInventory(); soloSpeedActive = false; soloSpeedStage = "setup"; soloSpeedFinishing = false; currentGameMode = ""; isGamePaused = false;
-}
-
-function updateSoloSpeedUI() {
-  const unlimited = !multiSpeedPopupActive && soloSpeedOptions.time === "unlimited";
-  const minutes = String(Math.floor(gameTimeRemaining / 60)).padStart(2, "0"); const seconds = String(gameTimeRemaining % 60).padStart(2, "0");
-  document.getElementById("speed-solo-timer").innerText = unlimited ? "시간 제한 없음" : `🕒 ${minutes}:${seconds}`;
-  document.getElementById("speed-solo-score").style.display = !multiSpeedPopupActive && soloSpeedOptions.score === "off" ? "none" : "";
-  document.getElementById("speed-solo-score").innerHTML = isBossRaid
-    ? `내 총 데미지: ${gameScore}`
-    : `점수: ${gameScore}${multiSpeedPopupActive ? getGroupScoreText() : ""}`;
-  if (multiSpeedPopupActive) window.syncScoreToServer();
-}
-
-function loadNextSoloSpeedQuiz() {
-  const validQuestions = soloSpeedQuestions.filter(question => soloSpeedQuestions.some(candidate => candidate.id !== question.id && candidate.ko.replace(/\s+/g, " ") !== question.ko.replace(/\s+/g, " ")));
-  const question = validQuestions[Math.floor(Math.random() * validQuestions.length)];
-  const wrongChoices = soloSpeedQuestions.filter(candidate => candidate.id !== question.id && candidate.ko.replace(/\s+/g, " ") !== question.ko.replace(/\s+/g, " "));
-  const wrong = wrongChoices[Math.floor(Math.random() * wrongChoices.length)];
-  const questionBox = document.getElementById("speed-solo-question");
-  const options = document.getElementById("speed-solo-options");
-  const selectedSet = wordSets.find(set => String(set.id) === String(currentSetId));
-  document.getElementById("speed-solo-question-kind").innerText = selectedSet?.type === "문장(끊어읽기)" ? "영어 끊어읽기 덩어리" : "영어 단어";
-  questionBox.innerText = question.en;
-  options.innerHTML = "";
-  [{ text: question.ko, correct: true }, { text: wrong.ko, correct: false }].sort(() => Math.random() - .5).forEach(choice => {
-    const button = document.createElement("button"); button.type = "button"; button.innerText = choice.text;
-    button.onclick = () => {
-      if (isGamePaused) return;
-      if (choice.correct) {
-        playSound("success"); const earned = calcSpeedBonus();
-        if (multiSpeedPopupActive || soloSpeedOptions.score === "on") gameScore += earned;
-        soloSpeedCompletedCount++; updateSoloSpeedUI(); document.getElementById("speed-solo-feedback").innerText = "정답입니다!"; showGamePraise(earned);
-        const allowTreasure = multiSpeedPopupActive || (soloSpeedOptions.score === "on" && soloSpeedOptions.treasure === "on");
-        if (allowTreasure && Math.random() < .3) { isGamePaused = true; triggerTreasureEvent(() => { isGamePaused = false; loadNextSoloSpeedQuiz(); }); } else loadNextSoloSpeedQuiz();
-      } else {
-        playSound("wrong"); isGamePaused = true; const penalty = calcSpeedBonus();
-        if (multiSpeedPopupActive || soloSpeedOptions.score === "on") gameScore -= penalty;
-        updateSoloSpeedUI(); document.getElementById("speed-solo-feedback").innerText = soloSpeedOptions.score === "on" ? `오답입니다. 정답: ${question.ko}` : `오답입니다. 정답: ${question.ko}`;
-        options.classList.add("is-wrong");
-        scheduleGameTask(() => { options.classList.remove("is-wrong"); isGamePaused = false; loadNextSoloSpeedQuiz(); }, 900);
-      }
-    };
-    options.appendChild(button);
-  });
+  simpleQuizView.close();
+  restoreBuffMessageOverlay(); restoreGameInventory(); simpleQuizController.reset(); simpleQuizSession.reset(); currentGameMode = ""; isGamePaused = false;
 }
 
 function startSoloSpeedLogic() {
-  soloSpeedCompletedCount = 0; updateSoloSpeedUI();
-  if (multiSpeedPopupActive || soloSpeedOptions.time !== "unlimited") gameTimerInterval = setInterval(() => {
+  simpleQuizController.start();
+  if (multiSpeedPopupActive || simpleQuizSession.options.time !== "unlimited") gameTimerInterval = setInterval(() => {
     if (multiSpeedPopupActive && globalMultiEndTime) gameTimeRemaining = getMonotonicRemainingSeconds(gameTimeRemaining, globalMultiEndTime);
     else if (!isGamePaused) gameTimeRemaining--;
-    updateSoloSpeedUI();
+    simpleQuizController.updateStatus();
     if (gameTimeRemaining <= 0) { clearInterval(gameTimerInterval); currentUser.score = gameScore; document.getElementById("result-detail").innerText = "제한 시간 종료! 획득한 퀴즈 점수입니다!"; goResult(); }
   }, 1000);
-  loadNextSoloSpeedQuiz();
 }
 
 function runInlineGameCountdown(overlayId, onComplete) {
@@ -3250,26 +3243,21 @@ function startMultiChunkGame(duration, chunkMode = "compose") {
 
 function startMultiSpeedQuiz(duration) {
   const selectedSet = wordSets.find(set => String(set.id) === String(currentSetId));
-  soloSpeedQuestions = buildSimpleQuizQuestions(selectedSet?.words || wordList, selectedSet?.type || "");
-  if (!soloSpeedQuestions.length) {
+  const questions = buildSimpleQuizQuestions(selectedSet?.words || wordList, selectedSet?.type || "");
+  if (!questions.length) {
     console.error("멀티 심플퀴즈를 시작할 수 있는 문제가 부족합니다.");
     document.getElementById("result-detail").innerText = "심플퀴즈를 시작할 수 있는 문제가 부족합니다.";
     goResult();
     return;
   }
-  soloSpeedActive = false;
+  simpleQuizSession.begin("multi", {
+    questions,
+    options: { time: String(duration), score: "on", treasure: "on" },
+    stage: "playing"
+  });
+  simpleQuizController.reset();
   multiSpeedPopupActive = true;
-  soloSpeedOptions.time = String(duration);
-  soloSpeedOptions.score = "on";
-  soloSpeedOptions.treasure = "on";
-  const screen = document.getElementById("speed-solo-screen");
-  screen.classList.add("speed-solo-mode", "speed-multi-mode");
-  screen.classList.remove("speed-solo-setup-mode", "speed-solo-result-mode");
-  document.getElementById("speed-solo-settings").hidden = true;
-  document.getElementById("speed-solo-result").hidden = true;
-  document.getElementById("speed-solo-game-area").classList.remove("is-preview");
-  document.getElementById("speed-solo-preview-message").hidden = true;
-  document.getElementById("speed-solo-feedback").innerText = "알맞은 뜻을 고르세요.";
+  simpleQuizView.openMultiplayer();
   moveInventoryToSoloGame("speed-solo-game-area");
   prepareModernMultiGameRound({
     screenId: "speed-solo-screen",
@@ -3279,26 +3267,40 @@ function startMultiSpeedQuiz(duration) {
   });
 }
 
+function startMultiTugOfWar(room) {
+  const selectedSet = wordSets.find(set => String(set.id) === String(room.setId));
+  const questions = buildSimpleQuizQuestions(selectedSet?.words || wordList, selectedSet?.type || "");
+  if (!questions.length) {
+    window.customAlert("줄다리기에 사용할 수 있는 심플퀴즈 문제가 없습니다.");
+    return;
+  }
+  currentGameMode = "tugofwar";
+  globalMultiEndTime = room.tugEndsAt || room.endTime;
+  tugOfWarGame.startStudent({ room, userId: myLobbyDocId, questions }).catch(error => {
+    console.error("줄다리기 시작 실패", error);
+    window.customAlert("줄다리기 게임에 들어가지 못했습니다. 연결 복구를 눌러 주세요.");
+  });
+}
+
 function startSoloSpeedRound() {
-  document.getElementById("speed-solo-result").hidden = true; setSoloSpeedStage("playing");
-  document.querySelectorAll("#speed-solo-settings [data-speed-option]").forEach(button => { button.disabled = true; });
-  document.getElementById("speed-solo-game-area").classList.remove("is-preview"); document.getElementById("speed-solo-preview-message").hidden = true;
+  setSoloSpeedStage("playing");
+  simpleQuizView.preparePlaying();
   gameScore = 0; globalScoreMultiplier = 1; isGamePaused = false; lastMatchTime = Date.now();
-  gameTimeRemaining = soloSpeedOptions.time === "unlimited" ? 0 : soloSpeedOptions.time === "test10" ? 10 : 180; clearGameInventory();
+  gameTimeRemaining = simpleQuizSession.options.time === "unlimited" ? 0 : simpleQuizSession.options.time === "test10" ? 10 : 180; clearGameInventory();
   cdInterval = stopInterval(cdInterval);
   runInlineGameCountdown("speed-solo-inline-countdown", startSoloSpeedLogic);
 }
 
 bindClick("speed-solo-close-btn", () => { playSound("click"); closeSoloSpeed(); });
 document.querySelectorAll("#speed-solo-settings [data-speed-option]").forEach(button => button.addEventListener("click", () => {
-  playSound("click"); const option = button.dataset.speedOption; soloSpeedOptions[option] = button.dataset.value;
-  document.querySelectorAll(`#speed-solo-settings [data-speed-option="${option}"]`).forEach(item => item.classList.toggle("selected", item === button));
-  document.getElementById("speed-solo-start-btn").disabled = !Object.values(soloSpeedOptions).every(Boolean);
+  playSound("click"); const option = button.dataset.speedOption; simpleQuizSession.options[option] = button.dataset.value;
+  simpleQuizView.selectOption(option, button);
+  document.getElementById("speed-solo-start-btn").disabled = !simpleQuizSession.hasCompleteOptions();
 }));
 bindClick("speed-solo-start-btn", () => {
-  if (soloSpeedStage === "playing") { if (soloSpeedFinishing) return; document.getElementById("result-detail").innerText = "게임을 중단한 시점까지의 기록입니다."; goResult(); return; }
-  if (soloSpeedStage === "result") { playSound("click"); startSoloSpeedRound(); return; }
-  if (!Object.values(soloSpeedOptions).every(Boolean)) return;
+  if (simpleQuizSession.stage === "playing") { if (simpleQuizSession.finishing) return; document.getElementById("result-detail").innerText = "게임을 중단한 시점까지의 기록입니다."; goResult(); return; }
+  if (simpleQuizSession.stage === "result") { playSound("click"); startSoloSpeedRound(); return; }
+  if (!simpleQuizSession.hasCompleteOptions()) return;
   playSound("success"); startSoloSpeedRound();
 });
 bindClick("menu-speed-btn", () => { playSound("click"); openSoloSpeedSetup(); });
@@ -3379,7 +3381,7 @@ function startCountdown(minutes, screenId, logicCallback) {
 
 function showGamePraise(earnedScore, customMsg, customColor) {
   const overlay = document.getElementById("game-praise-overlay"); overlay.style.color = customColor || "#FF4081";
-  overlay.classList.toggle("is-popup-praise", soloSpeedActive || soloSpeedMatchActive || soloChunkActive || multiSpeedPopupActive || multiSpeedMatchPopupActive || multiChunkPopupActive);
+  overlay.classList.toggle("is-popup-praise", simpleQuizSession.active || soloSpeedMatchActive || soloChunkActive || multiSpeedPopupActive || multiSpeedMatchPopupActive || multiChunkPopupActive);
   if (customMsg) overlay.innerHTML = customMsg;
   else {
      const randPraise = praises[Math.floor(Math.random() * praises.length)];
@@ -3467,7 +3469,7 @@ function triggerTreasureEvent(callback, options = {}) {
     ? document.getElementById("chunk-game-area")
     : soloSpeedMatchActive || multiSpeedMatchPopupActive
       ? document.getElementById("sm-game-area")
-      : soloSpeedActive || multiSpeedPopupActive
+      : simpleQuizSession.active || multiSpeedPopupActive
         ? document.getElementById("speed-solo-game-area")
         : null);
   if (target) { target.appendChild(overlay); overlay.classList.add("is-contained"); }
@@ -3527,7 +3529,7 @@ function executeNormalTreasureEffect(effectType, callback) {
 function refreshGameModeUI() {
   if(currentGameMode === "memory") updateMemoryUI(); 
   else if(currentGameMode === "speed-match") updateSpeedMatchUI(); 
-  else if(currentGameMode === "speed") updateSoloSpeedUI();
+  else if(currentGameMode === "speed") simpleQuizController.updateStatus();
   else if(currentGameMode === "chunk") updateChunkUI();
   // 🚀 [초긴급 픽스] 무한 퀴즈 모드에서도 아이템/공격 점수 새로고침이 작동하도록 추가!!
   else if(currentGameMode === "custom_infinite") updateCiUI(); 
@@ -3980,7 +3982,7 @@ function moveFishes(currentTime) {
 async function goResult() {
   const useSoloSpeedMatchResult = soloSpeedMatchActive && currentGameMode === "speed-match" && !myLobbyDocId;
   const useSoloChunkResult = soloChunkActive && currentGameMode === "chunk" && !myLobbyDocId;
-  const useSoloSpeedResult = soloSpeedActive && currentGameMode === "speed" && !myLobbyDocId;
+  const useSoloSpeedResult = simpleQuizSession.active && simpleQuizSession.context === "solo" && currentGameMode === "speed" && !myLobbyDocId;
   const useModernMultiPopupResult = isModernMultiGamePopupOpen() && Boolean(myLobbyDocId);
   if (useSoloSpeedMatchResult) {
     if (soloSpeedMatchFinishing) return;
@@ -3995,8 +3997,8 @@ async function goResult() {
     document.getElementById("chunk-solo-start-btn").disabled = true;
   }
   if (useSoloSpeedResult) {
-    if (soloSpeedFinishing) return;
-    soloSpeedFinishing = true;
+    if (simpleQuizSession.finishing) return;
+    simpleQuizSession.finishing = true;
     setSoloSpeedStage("result");
     document.getElementById("speed-solo-start-btn").disabled = true;
   }
@@ -4019,7 +4021,7 @@ async function goResult() {
   document.getElementById("top-left-controls").style.display = "none"; 
   if (useModernMultiPopupResult) closeModernMultiGamePopup();
 
-  const shouldSaveScore = !((useSoloSpeedMatchResult && soloSpeedMatchOptions.score === "off") || (useSoloChunkResult && soloChunkOptions.score === "off") || (useSoloSpeedResult && soloSpeedOptions.score === "off"));
+  const shouldSaveScore = !((useSoloSpeedMatchResult && soloSpeedMatchOptions.score === "off") || (useSoloChunkResult && soloChunkOptions.score === "off") || (useSoloSpeedResult && simpleQuizSession.options.score === "off"));
   if (shouldSaveScore) {
     try {
       await recordData.addScore({
@@ -4153,18 +4155,18 @@ let earnedJR = Math.max(0, Math.floor(currentUser.score / 100));
   }
 
   if (useSoloSpeedResult) {
-    const scoreEnabled = soloSpeedOptions.score === "on";
+    const scoreEnabled = simpleQuizSession.options.score === "on";
     document.getElementById("speed-solo-game-area").classList.remove("is-preview");
     document.getElementById("speed-solo-preview-message").hidden = true;
     document.getElementById("speed-solo-final-score").innerText = scoreEnabled ? `${finalDisplayScore}점` : "점수를 비활성화했습니다";
-    document.getElementById("speed-solo-final-count").innerText = soloSpeedCompletedCount;
+    document.getElementById("speed-solo-final-count").innerText = simpleQuizSession.completedCount;
     document.getElementById("speed-solo-final-reward").innerText = `${earnedJR} JR`;
     document.getElementById("speed-solo-final-balance").innerText = `${currentUser.jr} JR`;
     document.getElementById("speed-solo-ranking-btn").hidden = !scoreEnabled;
     document.getElementById("speed-solo-result-message").innerText = document.getElementById("result-detail").innerText || "수고했어요! 이번 기록을 확인해 보세요.";
     document.getElementById("speed-solo-result").hidden = false;
     document.querySelectorAll("#speed-solo-settings [data-speed-option]").forEach(button => { button.disabled = false; });
-    soloSpeedFinishing = false;
+    simpleQuizSession.finishing = false;
     setSoloSpeedStage("result");
     playSound("success");
     return;
@@ -5047,10 +5049,14 @@ if (currentGroupingActive && currentMultiRoomGroupPlayMode === "one-player" && !
 
       if (room.gameMode === "speed") {
         startMultiSpeedQuiz(room.duration);
+      } else if (room.gameMode === "tugofwar") {
+        startMultiTugOfWar(room);
       } else if (room.gameMode === "speed-match") {
         startMultiSpeedMatch(room.duration);
       } else if (room.gameMode === "chunk") {
         startMultiChunkGame(room.duration, room.chunkMode);
+      } else if (room.gameMode === "ai-translate") {
+        aiTranslationMultiplayer.start({ sentences: selectedSet?.words || wordList, endTime: Number(room.endTime) });
       } else if (room.gameMode === "highfive") {
         startHighFiveLogic(room.endTime);
       } else if (room.gameMode === "create") {
@@ -5171,7 +5177,14 @@ async function enterMultiLobbyAsStudent({ skipGameWait = false } = {}) {
         preflightRoom.status === "playing" &&
         preflightRoom.endTime &&
         Date.now() < Number(preflightRoom.endTime);
-      if (gameStillRunning && !isCompletedMultiRound(preflightRoom)) {
+      let canRejoinTug = false;
+      if (gameStillRunning && preflightRoom.gameMode === "tugofwar") {
+        const stableId = `student_${encodeURIComponent(String(currentUser.stdId || currentUser.nickname))}`;
+        const existing = await lobbyData.getUserLite(stableId);
+        const data = existing.exists() ? existing.data() : {};
+        canRejoinTug = data.tugRoundId === preflightRoom.tugRoundId && ["blue", "red"].includes(data.tugTeam);
+      }
+      if (gameStillRunning && !canRejoinTug && !isCompletedMultiRound(preflightRoom)) {
         isStudentLobbyEntering = false;
         waitForCurrentMultiGameToFinish();
         return;
@@ -5186,6 +5199,7 @@ async function enterMultiLobbyAsStudent({ skipGameWait = false } = {}) {
     // 👻 [소형 안전 패치 2] 재입장 전에 내 유령을 지우되, 기존 조 번호(groupId)는 최대한 보존합니다.
     // 조편성 후 튕겼다가 다시 들어온 학생이 "조 없음" 상태가 되는 것을 막기 위한 패치입니다.
     let restoredGroupId = null;
+    let restoredTugState = null;
 
     try {
       const roomSnap = await gameData.getLite("multiRoom");
@@ -5221,6 +5235,14 @@ async function enterMultiLobbyAsStudent({ skipGameWait = false } = {}) {
         // 내 예전 유령 문서가 있으면, 지우기 전에 groupId를 기억합니다.
         if (p.stdId === currentUser.stdId) {
           if (p.groupId) restoredGroupId = p.groupId;
+          if (roomData.gameMode === "tugofwar" && roomData.tugRoundId && p.tugRoundId === roomData.tugRoundId && ["blue", "red"].includes(p.tugTeam)) {
+            restoredTugState = {
+              tugTeam: p.tugTeam,
+              tugContribution: Number(p.tugContribution || 0),
+              tugRoundId: p.tugRoundId,
+              tugLastAnswerToken: p.tugLastAnswerToken || null
+            };
+          }
           ghostDeletePromises.push(lobbyData.deleteUserLite(d.id).catch(e => e));
         }
       });
@@ -5274,6 +5296,7 @@ async function enterMultiLobbyAsStudent({ skipGameWait = false } = {}) {
     if (restoredGroupId) {
       newLobbyData.groupId = restoredGroupId;
     }
+    if (restoredTugState) Object.assign(newLobbyData, restoredTugState);
 
     newLobbyData.clientSessionId =
       `${currentUser.stdId}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -5493,8 +5516,10 @@ if (currentGroupingActive && currentMultiRoomGroupPlayMode === "one-player" && !
          } else {
              isBossRaid = false; 
              if (room.gameMode === "speed") { startMultiSpeedQuiz(room.duration); } 
+             else if (room.gameMode === "tugofwar") { startMultiTugOfWar(room); }
              else if (room.gameMode === "speed-match") { startMultiSpeedMatch(room.duration); } 
              else if (room.gameMode === "chunk") { startMultiChunkGame(room.duration, room.chunkMode); }
+             else if (room.gameMode === "ai-translate") { aiTranslationMultiplayer.start({ sentences: selectedSet?.words || wordList, endTime: Number(room.endTime) }); }
              else if (room.gameMode === "highfive") { startHighFiveLogic(room.endTime); }
              else if (room.gameMode === "create") { startCreateLogic(room); }
              else if (room.gameMode === "custom_infinite") { startCountdown(room.duration, "custom-infinite-screen", () => { startCustomInfiniteLogic(); }); }
@@ -5589,7 +5614,7 @@ if (currentGroupingActive && currentMultiRoomGroupPlayMode === "one-player" && !
           // 🚑 모든 게임 모드는 공통 REST watchdog이 보조합니다.
           startStudentMultiFallbackWatchers();
 
-if (currentGameMode === "speed" || currentGameMode === "speed-match" || currentGameMode === "chunk" || currentGameMode === "create" || currentGameMode === "custom_infinite" || currentGameMode === "showcase" || isBossRaid) {
+if (currentGameMode === "speed" || currentGameMode === "speed-match" || currentGameMode === "chunk" || currentGameMode === "ai-translate" || currentGameMode === "create" || currentGameMode === "custom_infinite" || currentGameMode === "showcase" || isBossRaid) {
             
             if (isBossRaid) {
                 currentUser.score = gameScore; 
@@ -5891,7 +5916,18 @@ async function enterMultiLobbyAsTeacher() {
               // 🎵 게임 모드에 맞는 BGM 자동 재생!
               playTeacherBGM(data.gameMode);
               
-              if (data.gameMode === "showcase") {
+              if (data.gameMode === "tugofwar") {
+                  if (!tugOfWarGame.isActiveRound(data.tugRoundId)) setupTeacherLiveMatch(data.tugEndsAt || data.endTime);
+                  tugOfWarGame.startTeacher({
+                      room: data,
+                      container: document.getElementById("teacher-live-leaderboard"),
+                      onFinished: finishedRoom => {
+                          clearInterval(teacherMatchInterval);
+                          const timer = document.getElementById("teacher-match-timer");
+                          if (timer) timer.innerText = finishedRoom.tugResult === "draw" ? "DRAW" : `${finishedRoom.tugResult === "blue" ? "🔵 BLUE" : "🔴 RED"} TEAM WIN!`;
+                      }
+                  });
+              } else if (data.gameMode === "showcase") {
                   startShowcaseLogic(data.showcaseChar);
 } else if (data.gameMode === "boss") {
                   // 👈 보스전 렌더링 시작!
@@ -5908,6 +5944,7 @@ async function enterMultiLobbyAsTeacher() {
                   }
               }
           } else {
+              tugOfWarGame.stop();
               window.teacherLobbyStatus = "waiting";
               window.isTeacherBossMatchRunning = false; 
               cleanupTeacherLiveMatch();
@@ -5987,7 +6024,7 @@ if (wasBoss) {
   if(teacherRenderInterval) clearInterval(teacherRenderInterval);
   teacherRenderInterval = setInterval(() => {
       if(!isTeacherMode) return;
-      if (window.teacherLobbyStatus === "playing") {
+      if (window.teacherLobbyStatus === "playing" && currentGameMode !== "tugofwar") {
           renderTeacherLiveLeaderboard(window.globalLobbyPlayers);
       }
   }, 500); 
@@ -6002,6 +6039,8 @@ function updateTeacherMenuVisibility() {
     const isCreate = (mode === "create");
     const isCustom = (mode === "custom_game");
     const isBoss = (mode === "boss"); 
+    const isTug = (mode === "tugofwar");
+    const isAiTranslate = (mode === "ai-translate");
     const bossSub = document.getElementById("teacher-boss-submode-select")?.value;
     
     const toggleDisplay = (id, condition) => {
@@ -6015,7 +6054,7 @@ function updateTeacherMenuVisibility() {
         if (isCustom || (isBoss && bossSub === "custom_infinite")) {
             setSelect.innerHTML = wordSets.filter(s => s.isCustomSet).map(set => `<option value="${set.id}">✨ ${set.title} (${set.words.length}문제)</option>`).join("");
         } else {
-            setSelect.innerHTML = wordSets.filter(s => !s.isCustomSet).map(set => `<option value="${set.id}">${set.title} (${set.words.length}개)</option>`).join("");
+            setSelect.innerHTML = wordSets.filter(s => !s.isCustomSet && (!isAiTranslate || s.type === "문장(끊어읽기)")).map(set => `<option value="${set.id}">${set.title} (${set.words.length}개)</option>`).join("");
         }
     }
 
@@ -6024,11 +6063,15 @@ function updateTeacherMenuVisibility() {
 
     toggleDisplay("teacher-boss-options-container", isBoss); 
     toggleDisplay("teacher-chunk-mode-container", mode === "chunk");
-    toggleDisplay("teacher-time-container", !(isHf || isCreate)); 
-    toggleDisplay("teacher-item-container", !(isHf || isCreate || isBoss)); 
+    toggleDisplay("teacher-time-container", !(isHf || isCreate || isTug)); 
+    toggleDisplay("teacher-item-container", !(isHf || isCreate || isBoss || isTug || isAiTranslate)); 
     
     // 🚀 하이파이브와 문제만들기를 제외하고는 무조건 세트 창을 통합 노출시킵니다! (증발 버그 완전 해결)
     toggleDisplay("teacher-set-container", !(isHf || isCreate)); 
+    const timeSelect = document.getElementById("teacher-game-time-select");
+    const testTimeOption = timeSelect?.querySelector('option[value="test10"]');
+    if (testTimeOption) testTimeOption.hidden = isAiTranslate;
+    if (isAiTranslate && timeSelect?.value === "test10") timeSelect.value = "3";
     toggleDisplay("teacher-custom-options-container", isCustom);
 
     // 중복되는 구형 커스텀 드롭다운 요소들은 강제로 숨김 처리
@@ -6051,7 +6094,7 @@ function updateTeacherMenuVisibility() {
     let showPlayMode = false;
     if (isCustom) showPlayMode = (customPlaySelect && customPlaySelect.value === "group");
     else if (isCreate) showPlayMode = currentGroupingActive; 
-    else showPlayMode = (currentGroupingActive && !isHf);
+    else showPlayMode = (currentGroupingActive && !isHf && !isTug);
     toggleDisplay("teacher-group-play-mode-container", showPlayMode);
 
     const playMode = document.getElementById("teacher-group-play-mode-select")?.value;
@@ -6076,7 +6119,7 @@ const bossSubBox = document.getElementById("teacher-boss-submode-select");
 if(bossSubBox) bossSubBox.addEventListener("change", updateTeacherMenuVisibility);
 // 🚀 게임 시작 및 모드 처리 (옵션 분리 버전)
 // 🚀 교사 전용: 게임 시작 버튼 핸들러 (버그 및 학생 세트 연동 완전 해결판)
-const READY_TEACHER_MULTI_GAME_MODES = new Set(["speed", "speed-match", "chunk"]);
+const READY_TEACHER_MULTI_GAME_MODES = new Set(["speed", "speed-match", "chunk", "tugofwar", "ai-translate"]);
 bindClick("teacher-game-start-btn", async () => {
   const modeSelect = document.getElementById("teacher-game-mode-select");
   if (!modeSelect) return;
@@ -6100,7 +6143,59 @@ bindClick("teacher-game-start-btn", async () => {
           lobbyData.saveUser(d.id, { score: 0, items: "", createdCount: 0, isSubmitted: false }, { merge: true }).catch(e=>e);
       });
   } catch(e) { console.error("점수 초기화 에러", e); }
+
+  if (mode === "ai-translate") {
+    const setId = document.getElementById("teacher-game-set-select")?.value;
+    const selectedSet = wordSets.find(set => String(set.id) === String(setId));
+    if (!selectedSet || selectedSet.type !== "문장(끊어읽기)") return alert("AI 문장 해석하기는 문장(끊어읽기) 세트만 사용할 수 있습니다.");
+    const sentences = (selectedSet.words || []).filter(item => String(item.en || "").includes("/") && String(item.ko || "").trim());
+    if (!sentences.length) return alert("슬래시로 끊어 읽기가 지정된 문장이 없습니다.");
+    try {
+      const settings = await getAiSettings(true);
+      if (!settings.endpoint || !settings.model) return alert("AI 관리에서 API 주소와 모델을 먼저 설정해 주세요.");
+      await testAiConnectionFunction();
+    } catch (error) {
+      console.error("AI multiplayer preflight failed", error);
+      return alert("AI API 연결을 확인하지 못했습니다. AI 관리 설정을 확인해 주세요.");
+    }
+    const duration = document.getElementById("teacher-game-time-select")?.value || "3";
+    const durationSeconds = getDurationSeconds(duration, 180);
+    const startedAt = Date.now();
+    await writeMultiRoomControlState({
+      status: "playing", gameMode: mode, duration, setId, setTitle: selectedSet.title,
+      endTime: startedAt + durationSeconds * 1000, roundId: createMultiRoundId(mode), startedAt,
+      groupingActive: false, groupPlayMode: null, representatives: null,
+      useBuffItems: "off", useSpecialItems: "off"
+    }, { verifyRound: true });
+    return;
+  }
   
+  if (mode === "tugofwar") {
+      const setId = document.getElementById("teacher-game-set-select")?.value;
+      const selectedSet = wordSets.find(set => String(set.id) === String(setId));
+      const questions = buildSimpleQuizQuestions(selectedSet?.words || [], selectedSet?.type || "");
+      if (!selectedSet || !questions.length) return alert("줄다리기에 사용할 수 있는 심플퀴즈 문제 세트를 선택해 주세요.");
+      const players = (window.globalLobbyPlayers || []).filter(player => player.docId);
+      if (!players.length) return alert("줄다리기에 참가할 학생이 없습니다.");
+      const roundId = createMultiRoundId("tugofwar");
+      const assignments = assignBalancedTeams(players).map(player => ({ documentId: player.docId, team: player.team }));
+      await assignTugTeams(assignments, roundId);
+      const blueTeamCount = assignments.filter(item => item.team === "blue").length;
+      const redTeamCount = assignments.length - blueTeamCount;
+      const startedAt = Date.now();
+      await writeMultiRoomControlState({
+          status: "playing", gameMode: "tugofwar", gameType: "tugofwar",
+          setId, setTitle: selectedSet.title, duration: 3,
+          endTime: startedAt + TUG_DURATION_MS, roundId, startedAt,
+          bluePower: 0, redPower: 0, blueTeamCount, redTeamCount,
+          tugStartedAt: startedAt, tugEndsAt: startedAt + TUG_DURATION_MS,
+          tugRoundId: roundId, tugStatus: "playing", tugResult: null, tugEndReason: null,
+          groupingActive: false, groupPlayMode: null, representatives: null,
+          useBuffItems: "off", useSpecialItems: "off"
+      }, { verifyRound: true });
+      return;
+  }
+
 if (mode === "boss") {
       const bossHpRaw = document.getElementById("teacher-boss-hp-select")?.value || "";
       const bossHp = parseInt(String(bossHpRaw).replace(/,/g, "").trim(), 10);
@@ -6477,7 +6572,7 @@ renderList = Object.values(groupData).map(g => ({
         row.querySelector(".live-rank-badge").innerText = medal;
         row.querySelector(".live-rank-user").innerHTML = `${p.icon} ${p.title} ${p.subtitle}`;
         row.querySelector(".live-rank-items").innerText = p.items;
-        row.querySelector(".live-rank-score").innerText = p.score + "점";
+        row.querySelector(".live-rank-score").innerText = currentGameMode === "ai-translate" ? `${p.score}문장` : `${p.score}점`;
         row.querySelector(".live-rank-score").style.color = "#ff4081"; 
     });
 }

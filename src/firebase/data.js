@@ -2,7 +2,7 @@ import {
   db, dbLite, doc, setDoc, updateDoc, getDoc, collection, addDoc, getDocs,
   onSnapshot, query, where, orderBy, limit, deleteDoc, liteDoc, liteGetDoc,
   liteSetDoc, liteAddDoc, liteDeleteDoc, liteCollection, liteGetDocs,
-  liteQuery, liteWhere
+  liteQuery, liteWhere, runTransaction, writeBatch
 } from "./firebase.js";
 
 const paths = Object.freeze({
@@ -18,6 +18,7 @@ const paths = Object.freeze({
 
 const gameDocument = (name) => doc(db, paths.gameData, name);
 const liteGameDocument = (name) => liteDoc(dbLite, paths.gameData, name);
+const lobbyUserDocument = documentId => doc(db, paths.lobbyUsers, documentId);
 
 export const userData = {
   get: (userId) => getDoc(doc(db, paths.users, userId)),
@@ -58,6 +59,55 @@ export const lobbyData = {
   deleteChat: (documentId) => deleteDoc(doc(db, paths.lobbyChat, documentId)),
   subscribeChat: (next, error) => onSnapshot(query(collection(db, paths.lobbyChat), orderBy("timestamp", "asc")), next, error)
 };
+
+export async function assignTugTeams(assignments, roundId) {
+  const batch = writeBatch(db);
+  assignments.forEach(({ documentId, team }) => {
+    batch.set(lobbyUserDocument(documentId), {
+      tugTeam: team,
+      tugContribution: 0,
+      tugRoundId: roundId,
+      tugLastAnswerToken: null
+    }, { merge: true });
+  });
+  await batch.commit();
+}
+
+export async function contributeTugPower({ documentId, roundId, answerToken }) {
+  return runTransaction(db, async transaction => {
+    const roomRef = gameDocument("multiRoom");
+    const userRef = lobbyUserDocument(documentId);
+    const [roomSnap, userSnap] = await Promise.all([transaction.get(roomRef), transaction.get(userRef)]);
+    const room = roomSnap.data() || {};
+    const user = userSnap.data() || {};
+    if (room.status !== "playing" || room.gameMode !== "tugofwar" || room.tugRoundId !== roundId || room.tugStatus !== "playing") return false;
+    if (user.tugRoundId !== roundId || !["blue", "red"].includes(user.tugTeam)) return false;
+    if (user.tugLastAnswerToken === answerToken) return false;
+    const powerField = user.tugTeam === "blue" ? "bluePower" : "redPower";
+    transaction.update(roomRef, { [powerField]: Number(room[powerField] || 0) + 1 });
+    transaction.update(userRef, {
+      tugLastAnswerToken: answerToken,
+      tugContribution: Number(user.tugContribution || 0) + 1
+    });
+    return true;
+  });
+}
+
+export async function finishTugRound(roundId, result, reason) {
+  return runTransaction(db, async transaction => {
+    const roomRef = gameDocument("multiRoom");
+    const snap = await transaction.get(roomRef);
+    const room = snap.data() || {};
+    if (room.gameMode !== "tugofwar" || room.tugRoundId !== roundId || room.tugStatus !== "playing") return false;
+    transaction.update(roomRef, {
+      tugStatus: "finished",
+      tugResult: result,
+      tugEndReason: reason,
+      tugFinishedAt: Date.now()
+    });
+    return true;
+  });
+}
 
 export const recordData = {
   addScore: (data) => addDoc(collection(db, paths.scores), data),
