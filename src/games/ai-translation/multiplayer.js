@@ -1,4 +1,5 @@
 const READY_MESSAGE = "문장을 해석할 준비가 되셨으면 네라고 해 주세요.";
+const WORD_READY_MESSAGE = "단어 시험을 시작할 준비가 되셨으면 네라고 해 주세요.";
 
 const normalizeReadyAnswer = value => String(value || "").trim().replace(/[.!?\s]/g, "");
 const restoreSentence = value => String(value || "").split("/").map(part => part.trim()).filter(Boolean).join(" ").replace(/\s+([.,!?;:])/g, "$1");
@@ -15,7 +16,7 @@ export function createAiTranslationMultiplayer({ root = document, judge, updateS
     overlay.hidden = true;
     overlay.innerHTML = `
       <section class="ai-multi-dialog" role="dialog" aria-modal="true" aria-labelledby="ai-multi-title">
-        <header><div><span>AI TRANSLATION</span><h2 id="ai-multi-title">AI 문장 해석하기</h2></div><div class="ai-multi-status"><strong id="ai-multi-score">0문장 정답</strong><strong id="ai-multi-timer">00:00</strong></div></header>
+        <header><div><span id="ai-multi-kicker">AI TRANSLATION</span><h2 id="ai-multi-title">AI 문장 해석하기</h2></div><div class="ai-multi-status"><strong id="ai-multi-score">0문장 정답</strong><strong id="ai-multi-timer">00:00</strong></div></header>
         <div id="ai-multi-correct-effect" class="ai-multi-correct-effect" aria-hidden="true"><span>✓</span><strong>정답!</strong></div>
         <div id="ai-multi-log" class="ai-multi-log" role="log" aria-live="polite"></div>
         <form id="ai-multi-form" class="ai-multi-compose"><input id="ai-multi-input" maxlength="1000" autocomplete="off" placeholder="답변을 입력하세요" /><button type="submit">보내기</button></form>
@@ -34,8 +35,8 @@ export function createAiTranslationMultiplayer({ root = document, judge, updateS
   }
 
   function showQuestion() {
-    const sentence = state.sentences[state.index];
-    addMessage("assistant", restoreSentence(sentence.en), "question");
+    const item = state.items[state.index];
+    addMessage("assistant", state.mode === "word" ? String(item.en).trim() : restoreSentence(item.en), "question");
   }
 
   function showCorrectEffect() {
@@ -50,7 +51,7 @@ export function createAiTranslationMultiplayer({ root = document, judge, updateS
 
   function renderScore() {
     const score = root.getElementById("ai-multi-score");
-    if (score && state) score.innerText = `${state.score}문장 정답`;
+    if (score && state) score.innerText = `${state.score}${state.unit} 정답`;
   }
 
   function finish() {
@@ -59,7 +60,7 @@ export function createAiTranslationMultiplayer({ root = document, judge, updateS
     const input = root.getElementById("ai-multi-input");
     input.disabled = true; input.placeholder = "게임이 종료되었습니다.";
     root.querySelector("#ai-multi-form button").disabled = true;
-    addMessage("assistant", `게임이 끝났습니다. 맞힌 문장은 ${state.score}개입니다.`, "finished");
+    addMessage("assistant", `게임이 끝났습니다. 맞힌 ${state.unit}는 ${state.score}개입니다.`, "finished");
     onFinished?.(state.score);
   }
 
@@ -71,7 +72,7 @@ export function createAiTranslationMultiplayer({ root = document, judge, updateS
     input.value = ""; addMessage("user", answer);
     if (!state.ready) {
       if (normalizeReadyAnswer(answer) !== "네") {
-        addMessage("assistant", READY_MESSAGE);
+        addMessage("assistant", state.readyMessage);
         return;
       }
       state.ready = true; showQuestion(); return;
@@ -79,39 +80,48 @@ export function createAiTranslationMultiplayer({ root = document, judge, updateS
     state.busy = true; input.disabled = true;
     const button = root.querySelector("#ai-multi-form button"); button.disabled = true; button.innerText = "채점 중…";
     try {
-      const sentence = state.sentences[state.index];
+      const item = state.items[state.index];
       state.attempts += 1;
-      const result = await judge({ sentence: restoreSentence(sentence.en), reference: String(sentence.ko || "").split("/").map(v => v.trim()).join(" "), answer, attempt: state.attempts });
+      const result = await judge({
+        mode: state.mode,
+        sentence: state.mode === "word" ? String(item.en).trim() : restoreSentence(item.en),
+        reference: String(item.ko || "").split("/").map(v => v.trim()).join(" "),
+        answer,
+        attempt: state.attempts
+      });
       addMessage("assistant", result.feedback, result.verdict);
       if (result.verdict === "correct") {
         state.score += 1; state.attempts = 0; renderScore(); showCorrectEffect();
         await updateScore?.(state.score);
-        state.index = (state.index + 1) % state.sentences.length;
+        state.index = (state.index + 1) % state.items.length;
         const activeState = state;
         await new Promise(resolve => setTimeout(resolve, 650));
         if (state === activeState && !state.finished) showQuestion();
       }
     } catch (error) {
-      console.error("AI translation judging failed", error);
-      addMessage("assistant", "AI 채점 연결이 잠시 불안정합니다. 같은 해석을 다시 보내 주세요.", "retry");
+      console.error("AI answer judging failed", error);
+      addMessage("assistant", `AI 채점 연결이 잠시 불안정합니다. 같은 ${state.mode === "word" ? "뜻을" : "해석을"} 다시 보내 주세요.`, "retry");
     } finally {
       state.busy = false;
       if (!state.finished) { input.disabled = false; button.disabled = false; button.innerText = "보내기"; input.focus(); }
     }
   }
 
-  function start({ sentences, endTime }) {
+  function start({ sentences, endTime, mode = "translation" }) {
     if (state && !state.finished && Number(state.endTime) === Number(endTime)) return;
     stop();
     const valid = (sentences || []).filter(item => String(item.en || "").trim() && String(item.ko || "").trim());
-    if (!valid.length) throw new Error("AI 해석에 사용할 문장이 없습니다.");
-    state = { sentences: valid.sort(() => Math.random() - .5), index: 0, score: 0, attempts: 0, ready: false, busy: false, finished: false, endTime, timer: null };
+    if (!valid.length) throw new Error(mode === "word" ? "AI 단어 시험에 사용할 단어가 없습니다." : "AI 해석에 사용할 문장이 없습니다.");
+    const isWordMode = mode === "word";
+    state = { mode: isWordMode ? "word" : "translation", items: valid.sort(() => Math.random() - .5), index: 0, score: 0, attempts: 0, ready: false, busy: false, finished: false, endTime, timer: null, unit: isWordMode ? "단어" : "문장", readyMessage: isWordMode ? WORD_READY_MESSAGE : READY_MESSAGE };
     const overlay = ensureView(); overlay.hidden = false;
+    root.getElementById("ai-multi-kicker").innerText = isWordMode ? "AI VOCABULARY TEST" : "AI TRANSLATION";
+    root.getElementById("ai-multi-title").innerText = isWordMode ? "AI 단어시험" : "AI 문장 해석하기";
     root.getElementById("ai-multi-log").innerHTML = "";
     const input = root.getElementById("ai-multi-input"); input.disabled = false;
     const button = root.querySelector("#ai-multi-form button"); button.disabled = false; button.innerText = "보내기";
     renderScore();
-    addMessage("assistant", READY_MESSAGE);
+    addMessage("assistant", state.readyMessage);
     const tick = () => {
       const remaining = Math.max(0, Math.ceil((state.endTime - Date.now()) / 1000));
       root.getElementById("ai-multi-timer").innerText = `${String(Math.floor(remaining / 60)).padStart(2,"0")}:${String(remaining % 60).padStart(2,"0")}`;

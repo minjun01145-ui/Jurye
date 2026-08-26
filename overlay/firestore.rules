@@ -1,0 +1,43 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // 현재 클라이언트가 실제로 사용하는 컬렉션만 허용합니다.
+    // Firebase Auth 익명 세션이 만들어진 뒤에만 접근할 수 있습니다.
+    match /gameData/{document=**} {
+      allow read, write: if signedIn();
+    }
+
+    match /users/{document=**} {
+      allow read, write: if signedIn();
+    }
+
+    match /attendance/{document=**} {
+      allow read, write: if signedIn();
+    }
+
+    match /royalties/{document=**} {
+      allow read, write: if signedIn();
+    }
+
+    match /scores/{document=**} {
+      allow read, write: if signedIn();
+    }
+
+    match /feedback/{document=**} {
+      allow read, write: if signedIn();
+    }
+
+    match /lobbyUsers/{document=**} {
+      allow read, write: if signedIn();
+    }
+
+    match /lobbyChat/{document=**} {
+      allow read, write: if signedIn();
+    }
+  }
+}

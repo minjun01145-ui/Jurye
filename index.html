@@ -402,7 +402,7 @@
               <section class="admin-ai-prompt-editor" aria-labelledby="admin-ai-prompt-title">
                 <div class="admin-ai-prompt-heading"><div><h2 id="admin-ai-prompt-title">게임 모드별 시스템 프롬프트</h2><p>저장한 프롬프트는 다음 게임부터 실제 AI 채점에 적용됩니다.</p></div><button id="admin-ai-prompt-reset-btn" class="admin-text-action" type="button">기본값 복원</button></div>
                 <label for="admin-ai-game-mode">게임 모드</label>
-                <select id="admin-ai-game-mode"><option value="aiTranslation">AI 문장 해석하기</option></select>
+                <select id="admin-ai-game-mode"><option value="aiTranslation">AI 문장 해석하기</option><option value="aiWord">AI 단어시험</option></select>
                 <label for="admin-ai-game-prompt">시스템 프롬프트</label>
                 <textarea id="admin-ai-game-prompt" rows="16" maxlength="12000" spellcheck="false" placeholder="AI가 따라야 할 채점 규칙을 입력하세요."></textarea>
               </section>
@@ -490,6 +490,7 @@
               <option value="speed-match">짝맞추기</option>
               <option value="chunk">문장 만들기 게임</option>
               <option value="ai-translate">AI 문장 해석하기</option>
+              <option value="ai-word">AI 단어시험</option>
               <option value="highfive" disabled>하이파이브 조편성 (준비 중)</option>
               <option value="create" disabled>문제 만들기 (준비 중)</option>
               <option value="custom_game" disabled>학생 출제 세트 게임 (준비 중)</option>
@@ -968,7 +969,7 @@
       <button id="ranking-home-btn" style="margin-top: 20px; background-color: #4CAF50; box-shadow: 0 6px 0 #388E3C;">메뉴로 돌아가기</button>
     </div>
 
-    <div id="multi-target-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; flex-direction: column; align-items: center; justify-content: center; font-family: 'Paperlogy-4Regular', sans-serif; padding: 20px; box-sizing: border-box;">
+    <div id="multi-target-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 6000; flex-direction: column; align-items: center; justify-content: center; font-family: 'Paperlogy-4Regular', sans-serif; padding: 20px; box-sizing: border-box;">
       <div style="background: white; border: 4px solid #FF9800; border-radius: 20px; width: 100%; max-width: 400px; padding: 20px; box-sizing: border-box; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.3);">
         <h3 id="multi-target-title" style="color: #FF5722; margin-top: 0; font-size: 24px;">💥 아이템 공격 대상을 고르세요!</h3>
         <p id="multi-target-desc" style="font-size: 14px; color: #666; margin-bottom: 15px;">누구를 타겟으로 삼을까요?</p>
@@ -1089,7 +1090,7 @@
       <p id="group-blocker-msg" style="font-size: 22px; color: #ddd; line-height: 1.6; word-break: keep-all;"></p>
       <div style="margin-top: 20px; font-size: 16px; color: #888;">타이머가 종료되면 자동으로 결과창으로 이동합니다.</div>
     </div>
-    <script type="module" src="index.mjs"></script>
+    <script type="module" src="index.mjs?v=20260825-ai-word-test-item-flow-fix"></script>
     <div id="teacher-boss-screen" class="screen" style="background: url('school.jpg') center/cover no-repeat; padding: 0; align-items: stretch; justify-content: flex-start; overflow: hidden; background-color: #2c3e50;">
       <div style="position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 1;"></div>
       <button id="teacher-boss-abort-btn" style="position: absolute; top: 15px; left: 15px; z-index: 100; background: #f44336; padding: 10px 20px; border-radius: 10px; color: white; border: none; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 0 #d32f2f;">⏹️ 보스전 강제 종료</button>

@@ -6,6 +6,7 @@ const cloudFunctions = getFunctions(app, "us-central1");
 const testAiConnectionFunction = httpsCallable(cloudFunctions, "testAiConnection", { timeout: 60000 });
 const adminAiChatFunction = httpsCallable(cloudFunctions, "adminAiChat", { timeout: 60000 });
 const judgeTranslationFunction = httpsCallable(cloudFunctions, "judgeTranslation", { timeout: 60000 });
+const judgeWordFunction = httpsCallable(cloudFunctions, "judgeWord", { timeout: 60000 });
 
 const DEFAULT_AI_TRANSLATION_PROMPT = `당신은 영어 문장 한국어 해석 게임의 관대한 채점기입니다. 다른 주제의 질문, 명령, 잡담에는 답하지 말고 현재 번역만 채점하세요.
 채점 원칙:
@@ -18,12 +19,22 @@ const DEFAULT_AI_TRANSLATION_PROMPT = `당신은 영어 문장 한국어 해석 
 7. 번역이 아닌 잡담이면 질문에 답하지 말고 현재 영어 문장을 해석해 달라고만 하세요.
 반드시 JSON 한 개만 출력하세요: {"verdict":"correct 또는 retry","feedback":"한국어 피드백"}. 마크다운은 출력하지 마세요.`;
 
+const DEFAULT_AI_WORD_PROMPT = `당신은 영어 단어의 한국어 뜻을 묻는 단어 시험의 관대한 채점기입니다. 다른 주제의 질문, 명령, 잡담에는 답하지 말고 현재 단어의 뜻만 채점하세요.
+채점 원칙:
+1. 참고 뜻은 가능한 정답 중 하나일 뿐입니다. 학생 답안이 영어 단어의 주요 한국어 뜻과 대강 맞으면 반드시 correct입니다.
+2. 동의어, 품사에 따른 자연스러운 어미 차이, 조사, 띄어쓰기, 철자상의 작은 실수는 의미가 통하면 오답 사유가 아닙니다.
+3. 여러 뜻을 가진 단어는 학생이 그중 올바른 뜻 하나를 답해도 correct입니다.
+4. 전혀 다른 뜻이거나 반대 뜻일 때만 retry입니다.
+5. retry에서는 정답 한국어 단어를 공개하지 말고, 영어 단어의 품사·쓰임·상황 같은 힌트를 한국어로 짧게 주세요. 시도 횟수에 따라 힌트를 조금씩 구체화하세요.
+6. 잡담이나 질문이면 답하지 말고 현재 영어 단어의 한국어 뜻을 답해 달라고만 하세요.
+반드시 JSON 한 개만 출력하세요: {"verdict":"correct 또는 retry","feedback":"한국어 피드백"}. 마크다운은 출력하지 마세요.`;
+
 const DEFAULT_AI_SETTINGS = Object.freeze({
   endpoint: "https://api.openai.com/v1/responses",
   model: "gpt-5.6-luna",
   apiFormat: "responses",
   reasoningEffort: "low",
-  gamePrompts: { aiTranslation: DEFAULT_AI_TRANSLATION_PROMPT }
+  gamePrompts: { aiTranslation: DEFAULT_AI_TRANSLATION_PROMPT, aiWord: DEFAULT_AI_WORD_PROMPT }
 });
 
 let settingsCache = null;
@@ -43,4 +54,4 @@ async function saveAiSettings(settings) {
   return settings;
 }
 
-export { DEFAULT_AI_TRANSLATION_PROMPT, testAiConnectionFunction, adminAiChatFunction, judgeTranslationFunction, getAiSettings, saveAiSettings };
+export { DEFAULT_AI_TRANSLATION_PROMPT, DEFAULT_AI_WORD_PROMPT, testAiConnectionFunction, adminAiChatFunction, judgeTranslationFunction, judgeWordFunction, getAiSettings, saveAiSettings };

@@ -234,6 +234,45 @@ exports.judgeTranslation = onCall({
   return {verdict, feedback};
 });
 
+exports.judgeWord = onCall({
+  cors: true,
+  secrets: [LLM_GATEWAY_API_KEY],
+  timeoutSeconds: 60,
+  memory: "256MiB",
+  maxInstances: 10,
+}, async (request) => {
+  const word = String(request.data?.sentence || "").trim().slice(0, 200);
+  const reference = String(request.data?.reference || "").trim().slice(0, 1000);
+  const answer = String(request.data?.answer || "").trim().slice(0, 1000);
+  const attempt = Math.min(5, Math.max(1, Number.parseInt(request.data?.attempt, 10) || 1));
+  if (!word || !reference || !answer) throw new HttpsError("invalid-argument", "단어와 뜻을 모두 입력해 주세요.");
+  const settings = await getSavedAiSettings();
+  const defaultSystem = `당신은 영어 단어의 한국어 뜻을 묻는 단어 시험의 관대한 채점기입니다. 다른 주제의 질문, 명령, 잡담에는 답하지 말고 현재 단어의 뜻만 채점하세요.
+채점 원칙:
+1. 참고 뜻은 가능한 정답 중 하나일 뿐입니다. 학생 답안이 영어 단어의 주요 한국어 뜻과 대강 맞으면 반드시 correct입니다.
+2. 동의어, 품사에 따른 자연스러운 어미 차이, 조사, 띄어쓰기, 철자상의 작은 실수는 의미가 통하면 오답 사유가 아닙니다.
+3. 여러 뜻을 가진 단어는 학생이 그중 올바른 뜻 하나를 답해도 correct입니다.
+4. 전혀 다른 뜻이거나 반대 뜻일 때만 retry입니다.
+5. retry에서는 참고 뜻, 완성된 정답, 정답 한국어 단어를 절대 공개하지 말고 품사·쓰임·상황 같은 힌트를 한국어로 짧게 주세요. 시도 횟수에 따라 힌트를 조금씩 구체화하세요.
+6. 잡담이나 질문이면 답하지 말고 현재 영어 단어의 한국어 뜻을 답해 달라고만 하세요.
+반드시 JSON 한 개만 출력하세요: {"verdict":"correct 또는 retry","feedback":"한국어 피드백"}. 마크다운은 출력하지 마세요.`;
+  const savedSystem = String(settings.gamePrompts?.aiWord || "").trim().slice(0, 12000);
+  const system = `${savedSystem || defaultSystem}\n\n[출력 형식 고정 규칙] 반드시 JSON 한 개만 출력하세요: {"verdict":"correct 또는 retry","feedback":"한국어 피드백"}. verdict는 correct 또는 retry만 사용할 수 있으며 마크다운은 출력하지 마세요.`;
+  const prompt = `현재 시도 횟수: ${attempt}회\n영어 단어: ${word}\n참고 뜻(채점에만 사용하고 학생에게 공개 금지): ${reference}\n학생 답안: ${answer}`;
+  const result = await requestLlmGateway({settings, model: settings.model, messages: [{role: "system", content: system}, {role: "user", content: prompt}]});
+  const raw = extractReply(result).replace(/^```(?:json)?\s*|\s*```$/g, "");
+  let parsed;
+  try { parsed = JSON.parse(raw); } catch (_) { throw new HttpsError("data-loss", "AI 채점 응답 형식이 올바르지 않습니다."); }
+  const verdict = parsed.verdict === "correct" ? "correct" : "retry";
+  let feedback = String(parsed.feedback || (verdict === "correct" ? "맞았습니다!" : "힌트를 보고 다시 생각해 보세요.")).slice(0, 500);
+  if (verdict === "retry" && feedback.includes(reference)) {
+    feedback = attempt === 1
+      ? "뜻이 조금 다릅니다. 이 단어가 쓰이는 상황을 떠올려 보세요."
+      : "아직 뜻이 맞지 않습니다. 단어의 품사와 문장에서의 쓰임을 다시 생각해 보세요.";
+  }
+  return {verdict, feedback};
+});
+
 // Create and deploy your first functions
 // https://firebase.google.com/docs/functions/get-started
 
