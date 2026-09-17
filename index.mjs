@@ -7,7 +7,7 @@
 // - currentUser, wordSets, studentList 등 핵심 상태
 // =====================================================
 
-import { DEFAULT_AI_TRANSLATION_PROMPT, testAiConnectionFunction, adminAiChatFunction, judgeTranslationFunction, getAiSettings, saveAiSettings } from "./src/firebase/ai.js";
+import { DEFAULT_AI_TRANSLATION_PROMPT, DEFAULT_AI_WORD_PROMPT, testAiConnectionFunction, adminAiChatFunction, judgeTranslationFunction, judgeWordFunction, getAiSettings, saveAiSettings } from "./src/firebase/ai.js";
 import { userData, gameData, lobbyData, recordData, assignTugTeams, contributeTugPower, finishTugRound } from "./src/firebase/data.js";
 import { stopInterval, stopTimeout, stopSubscription } from "./src/runtime/resources.js";
 import {
@@ -117,7 +117,7 @@ const TEACHER_HEARTBEAT_MS = 10000;
 const TEACHER_LEASE_TIMEOUT_MS = 45000;
 let multiRoomUnsubscribe = null;
 const aiTranslationMultiplayer = createAiTranslationMultiplayer({
-  judge: async payload => (await judgeTranslationFunction(payload)).data,
+  judge: async payload => (await (payload.mode === "word" ? judgeWordFunction(payload) : judgeTranslationFunction(payload))).data,
   updateScore: async score => {
     currentUser.score = score;
     if (myLobbyDocId) await lobbyData.saveUser(myLobbyDocId, { score }, { merge: true });
@@ -2223,6 +2223,15 @@ document.getElementById("admin-attendance-period")?.addEventListener("change", e
   if (monthInput) monthInput.disabled = event.target.value !== "specific-month";
 });
 
+const ADMIN_AI_PROMPT_DEFAULTS = { aiTranslation: DEFAULT_AI_TRANSLATION_PROMPT, aiWord: DEFAULT_AI_WORD_PROMPT };
+let adminAiGamePrompts = { ...ADMIN_AI_PROMPT_DEFAULTS };
+let adminAiSelectedPromptKey = "aiTranslation";
+
+function storeCurrentAdminAiPrompt() {
+  const editor = document.getElementById("admin-ai-game-prompt");
+  if (editor) adminAiGamePrompts[adminAiSelectedPromptKey] = editor.value.trim() || ADMIN_AI_PROMPT_DEFAULTS[adminAiSelectedPromptKey];
+}
+
 async function loadAdminAiSettings() {
   const status = document.getElementById("admin-ai-status");
   if (status) status.innerText = "설정을 불러오는 중...";
@@ -2232,7 +2241,9 @@ async function loadAdminAiSettings() {
     document.getElementById("admin-ai-model").value = settings.model;
     document.getElementById("admin-ai-format").value = settings.apiFormat;
     document.getElementById("admin-ai-reasoning").value = settings.reasoningEffort;
-    document.getElementById("admin-ai-game-prompt").value = settings.gamePrompts?.aiTranslation || DEFAULT_AI_TRANSLATION_PROMPT;
+    adminAiGamePrompts = { ...ADMIN_AI_PROMPT_DEFAULTS, ...(settings.gamePrompts || {}) };
+    adminAiSelectedPromptKey = document.getElementById("admin-ai-game-mode")?.value || "aiTranslation";
+    document.getElementById("admin-ai-game-prompt").value = adminAiGamePrompts[adminAiSelectedPromptKey];
     if (status) status.innerText = "";
   } catch (error) {
     if (status) status.innerText = "AI 설정을 불러오지 못했습니다.";
@@ -2240,20 +2251,27 @@ async function loadAdminAiSettings() {
 }
 
 function readAdminAiSettings() {
+  storeCurrentAdminAiPrompt();
   return {
     endpoint: document.getElementById("admin-ai-endpoint").value.trim(),
     model: document.getElementById("admin-ai-model").value.trim(),
     apiFormat: document.getElementById("admin-ai-format").value,
     reasoningEffort: document.getElementById("admin-ai-reasoning").value,
-    gamePrompts: {
-      aiTranslation: document.getElementById("admin-ai-game-prompt").value.trim() || DEFAULT_AI_TRANSLATION_PROMPT
-    }
+    gamePrompts: { ...adminAiGamePrompts }
   };
 }
 
 bindClick("admin-ai-prompt-reset-btn", () => {
-  document.getElementById("admin-ai-game-prompt").value = DEFAULT_AI_TRANSLATION_PROMPT;
-  setAdminAiStatus("AI 문장 해석하기 기본 프롬프트를 불러왔습니다. 저장 버튼을 눌러 적용하세요.");
+  document.getElementById("admin-ai-game-prompt").value = ADMIN_AI_PROMPT_DEFAULTS[adminAiSelectedPromptKey];
+  adminAiGamePrompts[adminAiSelectedPromptKey] = ADMIN_AI_PROMPT_DEFAULTS[adminAiSelectedPromptKey];
+  const label = adminAiSelectedPromptKey === "aiWord" ? "AI 단어시험" : "AI 문장 해석하기";
+  setAdminAiStatus(`${label} 기본 프롬프트를 불러왔습니다. 저장 버튼을 눌러 적용하세요.`);
+});
+
+document.getElementById("admin-ai-game-mode")?.addEventListener("change", event => {
+  storeCurrentAdminAiPrompt();
+  adminAiSelectedPromptKey = event.target.value in ADMIN_AI_PROMPT_DEFAULTS ? event.target.value : "aiTranslation";
+  document.getElementById("admin-ai-game-prompt").value = adminAiGamePrompts[adminAiSelectedPromptKey] || ADMIN_AI_PROMPT_DEFAULTS[adminAiSelectedPromptKey];
 });
 
 bindClick("admin-ai-save-btn", async () => {
@@ -3080,11 +3098,11 @@ function isModernMultiGamePopupOpen() {
   return isMultiSpeedPopupOpen() ||
     (multiSpeedMatchPopupActive && speedMatchScreen && speedMatchScreen.style.display !== "none") ||
     (multiChunkPopupActive && chunkScreen && chunkScreen.style.display !== "none") ||
-    (currentGameMode === "ai-translate" && aiTranslationOverlay && !aiTranslationOverlay.hidden);
+    (["ai-translate", "ai-word"].includes(currentGameMode) && aiTranslationOverlay && !aiTranslationOverlay.hidden);
 }
 
 function closeModernMultiGamePopup() {
-  if (currentGameMode === "ai-translate") aiTranslationMultiplayer.stop();
+  if (["ai-translate", "ai-word"].includes(currentGameMode)) aiTranslationMultiplayer.stop();
   if (multiSpeedPopupActive) {
     document.getElementById("speed-solo-screen")?.classList.remove("speed-solo-mode", "speed-multi-mode", "speed-solo-playing-mode", "speed-solo-result-mode");
   }
@@ -3405,10 +3423,17 @@ function restoreBuffMessageOverlay() {
 
 function showBuffMsg(text, subText, r, g, b) {
   const overlay = document.getElementById("buff-msg-overlay");
+  if (!overlay) {
+    console.warn("[아이템 복구] 버프 메시지 영역을 찾지 못해 표시를 건너뜁니다.");
+    return;
+  }
   if (!buffMessageHomeParent) { buffMessageHomeParent = overlay.parentElement; buffMessageHomeNextSibling = overlay.nextSibling; }
   if (soloSpeedMatchActive || multiSpeedMatchPopupActive || soloChunkActive || multiChunkPopupActive) {
-    document.getElementById(soloChunkActive || multiChunkPopupActive ? "chunk-game-area" : "sm-game-area").appendChild(overlay);
-    overlay.classList.add("is-contained");
+    const gameArea = document.getElementById(soloChunkActive || multiChunkPopupActive ? "chunk-game-area" : "sm-game-area");
+    if (gameArea) {
+      gameArea.appendChild(overlay);
+      overlay.classList.add("is-contained");
+    }
   } else {
     restoreBuffMessageOverlay();
   }
@@ -3427,43 +3452,102 @@ function calcSpeedBonus() {
 function addInventoryItem(type) {
   let color, text;
   if(type === 'double_current') { color = '#2196F3'; text = '🔵 x2'; } else if(type === 'half_current') { color = '#F44336'; text = '🔴 ÷2'; } else if(type === 'double_future') { color = '#FFC107'; text = '🟡 버프'; }
-  let el = document.createElement("div"); el.className = "inventory-item"; el.style.background = color; el.innerText = text; document.getElementById("pile-" + type).appendChild(el);
+  const pile = document.getElementById("pile-" + type);
+  if (!pile) {
+    console.warn(`[아이템 복구] 인벤토리 영역을 찾지 못해 ${type} 표시를 건너뜁니다.`);
+    return;
+  }
+  let el = document.createElement("div"); el.className = "inventory-item"; el.style.background = color; el.innerText = text; pile.appendChild(el);
 }
 
 let activeTreasureCallback = null;
+let treasureRecoveryTimeout = null;
 let treasureHomeParent = null;
 let treasureHomeNextSibling = null;
+const TREASURE_RECOVERY_MS = 15000;
+
+function hideMultiTargetModal() {
+  const modal = document.getElementById("multi-target-modal");
+  if (modal) modal.style.display = "none";
+}
 
 function restoreTreasureOverlay() {
   const overlay = document.getElementById("treasure-overlay");
   if (!overlay) return;
   overlay.style.display = "none";
+  overlay.style.pointerEvents = "none";
   overlay.classList.remove("is-contained");
   overlay.querySelectorAll(".treasure-chest").forEach(chest => {
     chest.onclick = null;
     chest.classList.remove("chest-explode");
   });
   if (treasureHomeParent && overlay.parentElement !== treasureHomeParent) {
-    treasureHomeParent.insertBefore(overlay, treasureHomeNextSibling);
+    const nextSibling = treasureHomeNextSibling?.parentElement === treasureHomeParent ? treasureHomeNextSibling : null;
+    treasureHomeParent.insertBefore(overlay, nextSibling);
   }
 }
 
 function closeTreasureOverlay(runCallback = false) {
-  restoreTreasureOverlay();
   const callback = activeTreasureCallback;
+  if (runCallback && typeof callback === "function") {
+    callback();
+    return;
+  }
   activeTreasureCallback = null;
-  isGamePaused = false;
-  if (runCallback && typeof callback === "function") callback();
+  treasureRecoveryTimeout = stopTimeout(treasureRecoveryTimeout);
+  try {
+    restoreTreasureOverlay();
+    hideMultiTargetModal();
+  } catch (error) {
+    console.error("아이템 화면 정리 실패", error);
+  } finally {
+    isGamePaused = false;
+  }
 }
 
 function triggerTreasureEvent(callback, options = {}) {
   if (myLobbyDocId && window.multiUseBuffItems === false) {
-      callback();
+      if (typeof callback === "function") callback();
       return;
   }
-  
-  isGamePaused = true; playSound("treasure");
+
   const overlay = document.getElementById("treasure-overlay");
+  let completed = false;
+  const continueGame = () => {
+    if (completed || activeTreasureCallback !== continueGame) return;
+    completed = true;
+    treasureRecoveryTimeout = stopTimeout(treasureRecoveryTimeout);
+    activeTreasureCallback = null;
+    try {
+      restoreTreasureOverlay();
+      hideMultiTargetModal();
+    } catch (error) {
+      console.error("아이템 화면 복구 실패", error);
+    } finally {
+      isGamePaused = false;
+    }
+    try {
+      if (typeof callback === "function") callback();
+    } catch (error) {
+      console.error("아이템 종료 후 게임 화면 복구 실패", error);
+    }
+  };
+
+  activeTreasureCallback = continueGame;
+  treasureRecoveryTimeout = scheduleGameTask(() => {
+    console.warn("[아이템 복구] 아이템 선택이 완료되지 않아 게임을 자동으로 재개합니다.");
+    continueGame();
+  }, TREASURE_RECOVERY_MS);
+
+  if (!overlay) {
+    console.warn("[아이템 복구] 보물상자 화면을 찾지 못해 게임을 바로 재개합니다.");
+    continueGame();
+    return;
+  }
+
+  isGamePaused = true;
+  try { playSound("treasure"); }
+  catch (error) { console.warn("보물상자 효과음 재생 실패", error); }
   if (!treasureHomeParent) { treasureHomeParent = overlay.parentElement; treasureHomeNextSibling = overlay.nextSibling; }
   const target = options.container || (soloChunkActive || multiChunkPopupActive
     ? document.getElementById("chunk-game-area")
@@ -3473,15 +3557,29 @@ function triggerTreasureEvent(callback, options = {}) {
         ? document.getElementById("speed-solo-game-area")
         : null);
   if (target) { target.appendChild(overlay); overlay.classList.add("is-contained"); }
-  activeTreasureCallback = callback;
+  overlay.style.pointerEvents = "auto";
   overlay.style.display = "flex";
   const chests = overlay.querySelectorAll(".treasure-chest");
+
+  // 오래된 HTML이 캐시에 남은 기기에서도 게임이 잠긴 채 멈추지 않게 한다.
+  if (!chests.length) {
+    console.warn("[아이템 복구] 선택할 보물상자가 없어 게임을 바로 재개합니다.");
+    activeTreasureCallback = continueGame;
+    continueGame();
+    return;
+  }
+
+  activeTreasureCallback = continueGame;
   
   chests.forEach(chest => {
     chest.onclick = () => {
       chests.forEach(c => c.onclick = null);
 
-      playSound("click"); chest.classList.add("chest-explode");
+      try {
+        playSound("click"); chest.classList.add("chest-explode");
+      } catch (error) {
+        console.error("보물상자 선택 효과 처리 실패", error);
+      }
 
       // 🚀 [초강력 멈춤 방지 픽스] 
       // 서버에서 점수를 가져오라고 명령만 던져놓고, "절대 기다리지 않음(No Await)!"
@@ -3495,35 +3593,40 @@ function triggerTreasureEvent(callback, options = {}) {
       }
 
       // 무조건 0.4초 뒤에 상자 닫고 게임 재개 (절대 멈추지 않음)
-      setTimeout(() => { 
-        overlay.style.display = "none"; chest.classList.remove("chest-explode");
-        
-        if (myLobbyDocId && multiUseSpecialItems && typeof openTargetSelectionModal === "function") {
-          let multiItemType = Math.floor(Math.random() * 5);
-          if (multiItemType <= 2) {
-            restoreTreasureOverlay();
-            activeTreasureCallback = null;
+      scheduleGameTask(() => {
+        try {
+          overlay.style.display = "none"; chest.classList.remove("chest-explode");
+
+          if (myLobbyDocId && multiUseSpecialItems && typeof openTargetSelectionModal === "function") {
+            const multiItemType = Math.floor(Math.random() * 5);
+            if (multiItemType <= 2) restoreTreasureOverlay();
+            if (multiItemType === 0) { openTargetSelectionModal("swap", "🔄 점수 뒤바꾸기 공격!", "점수를 강제로 맞교환할 타겟을 선택하세요.", continueGame); }
+            else if (multiItemType === 1) { openTargetSelectionModal("steal50", "💥 점수 50% 강탈 공격!", "점수의 절반을 내 점수로 뺏어올 대상을 고르세요.", continueGame); }
+            else if (multiItemType === 2) { openTargetSelectionModal("blind", "🕶️ 3초 화면 암전 블라인드 공격!", "화면을 3초간 암전시켜 방해할 대상을 고르세요.", continueGame); }
+            else { executeNormalTreasureEffect(Math.floor(Math.random() * 2) === 0 ? 0 : 2, continueGame); }
+          } else {
+            executeNormalTreasureEffect(Math.floor(Math.random() * 3), continueGame);
           }
-          if (multiItemType === 0) { openTargetSelectionModal("swap", "🔄 점수 뒤바꾸기 공격!", "점수를 강제로 맞교환할 타겟을 선택하세요.", callback); } 
-          else if (multiItemType === 1) { openTargetSelectionModal("steal50", "💥 점수 50% 강탈 공격!", "점수의 절반을 내 점수로 뺏어올 대상을 고르세요.", callback); } 
-          else if (multiItemType === 2) { openTargetSelectionModal("blind", "🕶️ 3초 화면 암전 블라인드 공격!", "화면을 3초간 암전시켜 방해할 대상을 고르세요.", callback); } 
-          else { executeNormalTreasureEffect(Math.floor(Math.random() * 2) === 0 ? 0 : 2, callback); }
-        } else {
-          executeNormalTreasureEffect(Math.floor(Math.random() * 3), callback);
+        } catch (error) {
+          console.error("아이템 효과 처리 실패 - 게임을 복구합니다.", error);
+          continueGame();
         }
-      }, 400); 
+      }, 400);
     };
   });
 }
 function executeNormalTreasureEffect(effectType, callback) {
-  if (effectType === 0) { gameScore *= 2; addInventoryItem("double_current"); showBuffMsg("버프 획득!", "현재 점수 2배!", 33, 150, 243); } 
-  else if (effectType === 1) { gameScore = Math.floor(gameScore / 2); addInventoryItem("half_current"); showBuffMsg("앗, 함정!", "현재 점수 반토막...", 244, 67, 54); } 
-  else if (effectType === 2) { globalScoreMultiplier *= 2; addInventoryItem("double_future"); showBuffMsg("슈퍼 버프 획득!", "앞으로 얻는 모든 점수 2배!", 255, 193, 7); }
-  
-  refreshGameModeUI();
-  activeTreasureCallback = null;
-  restoreTreasureOverlay();
-  isGamePaused = false; callback();
+  try {
+    if (effectType === 0) { gameScore *= 2; addInventoryItem("double_current"); showBuffMsg("버프 획득!", "현재 점수 2배!", 33, 150, 243); }
+    else if (effectType === 1) { gameScore = Math.floor(gameScore / 2); addInventoryItem("half_current"); showBuffMsg("앗, 함정!", "현재 점수 반토막...", 244, 67, 54); }
+    else if (effectType === 2) { globalScoreMultiplier *= 2; addInventoryItem("double_future"); showBuffMsg("슈퍼 버프 획득!", "앞으로 얻는 모든 점수 2배!", 255, 193, 7); }
+    refreshGameModeUI();
+  } catch (error) {
+    console.error("일반 아이템 효과 처리 실패 - 게임을 계속 진행합니다.", error);
+  } finally {
+    isGamePaused = false;
+    if (typeof callback === "function") callback();
+  }
 }
 
 function refreshGameModeUI() {
@@ -5057,6 +5160,8 @@ if (currentGroupingActive && currentMultiRoomGroupPlayMode === "one-player" && !
         startMultiChunkGame(room.duration, room.chunkMode);
       } else if (room.gameMode === "ai-translate") {
         aiTranslationMultiplayer.start({ sentences: selectedSet?.words || wordList, endTime: Number(room.endTime) });
+      } else if (room.gameMode === "ai-word") {
+        aiTranslationMultiplayer.start({ sentences: selectedSet?.words || wordList, endTime: Number(room.endTime), mode: "word" });
       } else if (room.gameMode === "highfive") {
         startHighFiveLogic(room.endTime);
       } else if (room.gameMode === "create") {
@@ -5520,6 +5625,7 @@ if (currentGroupingActive && currentMultiRoomGroupPlayMode === "one-player" && !
              else if (room.gameMode === "speed-match") { startMultiSpeedMatch(room.duration); } 
              else if (room.gameMode === "chunk") { startMultiChunkGame(room.duration, room.chunkMode); }
              else if (room.gameMode === "ai-translate") { aiTranslationMultiplayer.start({ sentences: selectedSet?.words || wordList, endTime: Number(room.endTime) }); }
+             else if (room.gameMode === "ai-word") { aiTranslationMultiplayer.start({ sentences: selectedSet?.words || wordList, endTime: Number(room.endTime), mode: "word" }); }
              else if (room.gameMode === "highfive") { startHighFiveLogic(room.endTime); }
              else if (room.gameMode === "create") { startCreateLogic(room); }
              else if (room.gameMode === "custom_infinite") { startCountdown(room.duration, "custom-infinite-screen", () => { startCustomInfiniteLogic(); }); }
@@ -5614,7 +5720,7 @@ if (currentGroupingActive && currentMultiRoomGroupPlayMode === "one-player" && !
           // 🚑 모든 게임 모드는 공통 REST watchdog이 보조합니다.
           startStudentMultiFallbackWatchers();
 
-if (currentGameMode === "speed" || currentGameMode === "speed-match" || currentGameMode === "chunk" || currentGameMode === "ai-translate" || currentGameMode === "create" || currentGameMode === "custom_infinite" || currentGameMode === "showcase" || isBossRaid) {
+if (currentGameMode === "speed" || currentGameMode === "speed-match" || currentGameMode === "chunk" || currentGameMode === "ai-translate" || currentGameMode === "ai-word" || currentGameMode === "create" || currentGameMode === "custom_infinite" || currentGameMode === "showcase" || isBossRaid) {
             
             if (isBossRaid) {
                 currentUser.score = gameScore; 
@@ -6041,6 +6147,8 @@ function updateTeacherMenuVisibility() {
     const isBoss = (mode === "boss"); 
     const isTug = (mode === "tugofwar");
     const isAiTranslate = (mode === "ai-translate");
+    const isAiWord = (mode === "ai-word");
+    const isAiMode = isAiTranslate || isAiWord;
     const bossSub = document.getElementById("teacher-boss-submode-select")?.value;
     
     const toggleDisplay = (id, condition) => {
@@ -6054,7 +6162,7 @@ function updateTeacherMenuVisibility() {
         if (isCustom || (isBoss && bossSub === "custom_infinite")) {
             setSelect.innerHTML = wordSets.filter(s => s.isCustomSet).map(set => `<option value="${set.id}">✨ ${set.title} (${set.words.length}문제)</option>`).join("");
         } else {
-            setSelect.innerHTML = wordSets.filter(s => !s.isCustomSet && (!isAiTranslate || s.type === "문장(끊어읽기)")).map(set => `<option value="${set.id}">${set.title} (${set.words.length}개)</option>`).join("");
+            setSelect.innerHTML = wordSets.filter(s => !s.isCustomSet && (!isAiTranslate || s.type === "문장(끊어읽기)") && (!isAiWord || !["문장", "문장(끊어읽기)"].includes(s.type))).map(set => `<option value="${set.id}">${set.title} (${set.words.length}개)</option>`).join("");
         }
     }
 
@@ -6064,14 +6172,14 @@ function updateTeacherMenuVisibility() {
     toggleDisplay("teacher-boss-options-container", isBoss); 
     toggleDisplay("teacher-chunk-mode-container", mode === "chunk");
     toggleDisplay("teacher-time-container", !(isHf || isCreate || isTug)); 
-    toggleDisplay("teacher-item-container", !(isHf || isCreate || isBoss || isTug || isAiTranslate)); 
+    toggleDisplay("teacher-item-container", !(isHf || isCreate || isBoss || isTug || isAiMode));
     
     // 🚀 하이파이브와 문제만들기를 제외하고는 무조건 세트 창을 통합 노출시킵니다! (증발 버그 완전 해결)
     toggleDisplay("teacher-set-container", !(isHf || isCreate)); 
     const timeSelect = document.getElementById("teacher-game-time-select");
     const testTimeOption = timeSelect?.querySelector('option[value="test10"]');
-    if (testTimeOption) testTimeOption.hidden = isAiTranslate;
-    if (isAiTranslate && timeSelect?.value === "test10") timeSelect.value = "3";
+    if (testTimeOption) testTimeOption.hidden = isAiMode;
+    if (isAiMode && timeSelect?.value === "test10") timeSelect.value = "3";
     toggleDisplay("teacher-custom-options-container", isCustom);
 
     // 중복되는 구형 커스텀 드롭다운 요소들은 강제로 숨김 처리
@@ -6119,7 +6227,7 @@ const bossSubBox = document.getElementById("teacher-boss-submode-select");
 if(bossSubBox) bossSubBox.addEventListener("change", updateTeacherMenuVisibility);
 // 🚀 게임 시작 및 모드 처리 (옵션 분리 버전)
 // 🚀 교사 전용: 게임 시작 버튼 핸들러 (버그 및 학생 세트 연동 완전 해결판)
-const READY_TEACHER_MULTI_GAME_MODES = new Set(["speed", "speed-match", "chunk", "tugofwar", "ai-translate"]);
+const READY_TEACHER_MULTI_GAME_MODES = new Set(["speed", "speed-match", "chunk", "tugofwar", "ai-translate", "ai-word"]);
 bindClick("teacher-game-start-btn", async () => {
   const modeSelect = document.getElementById("teacher-game-mode-select");
   if (!modeSelect) return;
@@ -6144,12 +6252,14 @@ bindClick("teacher-game-start-btn", async () => {
       });
   } catch(e) { console.error("점수 초기화 에러", e); }
 
-  if (mode === "ai-translate") {
+  if (mode === "ai-translate" || mode === "ai-word") {
     const setId = document.getElementById("teacher-game-set-select")?.value;
     const selectedSet = wordSets.find(set => String(set.id) === String(setId));
-    if (!selectedSet || selectedSet.type !== "문장(끊어읽기)") return alert("AI 문장 해석하기는 문장(끊어읽기) 세트만 사용할 수 있습니다.");
-    const sentences = (selectedSet.words || []).filter(item => String(item.en || "").includes("/") && String(item.ko || "").trim());
-    if (!sentences.length) return alert("슬래시로 끊어 읽기가 지정된 문장이 없습니다.");
+    const isAiWord = mode === "ai-word";
+    if (!selectedSet || (!isAiWord && selectedSet.type !== "문장(끊어읽기)")) return alert("AI 문장 해석하기는 문장(끊어읽기) 세트만 사용할 수 있습니다.");
+    if (isAiWord && ["문장", "문장(끊어읽기)"].includes(selectedSet.type)) return alert("AI 단어시험은 단어 세트만 사용할 수 있습니다.");
+    const questions = (selectedSet.words || []).filter(item => String(item.en || "").trim() && String(item.ko || "").trim() && (isAiWord || String(item.en).includes("/")));
+    if (!questions.length) return alert(isAiWord ? "영어 단어와 한국어 뜻이 있는 단어가 없습니다." : "슬래시로 끊어 읽기가 지정된 문장이 없습니다.");
     try {
       const settings = await getAiSettings(true);
       if (!settings.endpoint || !settings.model) return alert("AI 관리에서 API 주소와 모델을 먼저 설정해 주세요.");
@@ -6572,7 +6682,7 @@ renderList = Object.values(groupData).map(g => ({
         row.querySelector(".live-rank-badge").innerText = medal;
         row.querySelector(".live-rank-user").innerHTML = `${p.icon} ${p.title} ${p.subtitle}`;
         row.querySelector(".live-rank-items").innerText = p.items;
-        row.querySelector(".live-rank-score").innerText = currentGameMode === "ai-translate" ? `${p.score}문장` : `${p.score}점`;
+        row.querySelector(".live-rank-score").innerText = currentGameMode === "ai-translate" ? `${p.score}문장` : currentGameMode === "ai-word" ? `${p.score}단어` : `${p.score}점`;
         row.querySelector(".live-rank-score").style.color = "#ff4081"; 
     });
 }
@@ -7133,19 +7243,32 @@ if(chatInput) { chatInput.onkeydown = (e) => { if(e.key === "Enter") { document.
 // ==========================================
 window.openTargetSelectionModal = function(attackType, title, desc, callback) {
     const modal = document.getElementById("multi-target-modal");
-    if(!modal) { isGamePaused = false; callback(); return; } 
-    
-    document.getElementById("multi-target-title").innerText = title;
-    document.getElementById("multi-target-desc").innerText = desc;
+    const finishTargetSelection = () => {
+        if (modal) modal.style.display = "none";
+        isGamePaused = false;
+        if (typeof callback === "function") callback();
+    };
+    const titleEl = document.getElementById("multi-target-title");
+    const descEl = document.getElementById("multi-target-desc");
     const listEl = document.getElementById("multi-target-list");
+    const cancelButton = document.getElementById("multi-target-cancel-btn");
+    if (!modal || !titleEl || !descEl || !listEl || !cancelButton) {
+        console.warn("[아이템 복구] 공격 대상 선택 화면이 완전하지 않아 게임을 바로 재개합니다.");
+        finishTargetSelection();
+        return;
+    }
+
+    titleEl.innerText = title;
+    descEl.innerText = desc;
     listEl.innerHTML = "";
     
-    let targets = window.globalLobbyPlayers ? window.globalLobbyPlayers.filter(p => p.stdId !== currentUser.stdId) : [];
+    let targets = Array.isArray(window.globalLobbyPlayers) ? window.globalLobbyPlayers.filter(p => p.stdId !== currentUser.stdId) : [];
     // 🚀 [타겟 정렬 픽스] 상대방 목록을 점수가 높은 순(내림차순)으로 완벽하게 정렬합니다!
     targets.sort((a, b) => (b.score || 0) - (a.score || 0));
     if (targets.length === 0) {
         alert("공격할 대상이 없어 일반 게임으로 계속 진행합니다!");
-        isGamePaused = false; callback(); return;
+        finishTargetSelection();
+        return;
     }
 
     targets.forEach(t => {
@@ -7156,50 +7279,66 @@ window.openTargetSelectionModal = function(attackType, title, desc, callback) {
         
         // 🚀 [초강력 멈춤 방지 유지됨]
         btn.onclick = () => {
-            playSound("pop"); modal.style.display = "none";
-            
-            let targetOldScore = t.score || 0;
+            try {
+                playSound("pop"); modal.style.display = "none";
+                const targetOldScore = Number(t.score) || 0;
 
-            // 🚀 서버에 공격 신호만 툭 던져놓고 절대 기다리지 않습니다!
-            lobbyData.saveUser(t.docId, {
-                attack: { type: attackType, fromId: currentUser.stdId, fromName: currentUser.nickname, myScore: gameScore, timestamp: Date.now() }
-            }, { merge: true }).catch(e => console.error("공격 통신 지연 (무시됨)"));
+                // 서버 응답은 기다리지 않되, 로컬 게임 진행은 반드시 끝낸다.
+                if (t.docId) {
+                    Promise.resolve(lobbyData.saveUser(t.docId, {
+                        attack: { type: attackType, fromId: currentUser.stdId, fromName: currentUser.nickname, myScore: gameScore, timestamp: Date.now() }
+                    }, { merge: true })).catch(error => console.error("공격 통신 지연 (무시됨)", error));
+                }
 
-            if (attackType === "swap") {
-                gameScore = targetOldScore;
-                showBuffMsg("점수 스왑 성공!", `${t.nickname}님과 점수가 바뀌었습니다!`, 156, 39, 176);
-            } else if (attackType === "steal50") {
-                const stolen = Math.floor(targetOldScore / 2);
-                gameScore += stolen;
-                showBuffMsg("점수 강탈 성공!", `${t.nickname}님의 점수 ${stolen}점을 뺏었습니다!`, 233, 30, 99);
-            } else if (attackType === "blind") {
-                showBuffMsg("블라인드 공격 성공!", `${t.nickname}님의 화면을 가렸습니다!`, 33, 33, 33);
+                if (attackType === "swap") {
+                    gameScore = targetOldScore;
+                    showBuffMsg("점수 스왑 성공!", `${t.nickname}님과 점수가 바뀌었습니다!`, 156, 39, 176);
+                } else if (attackType === "steal50") {
+                    const stolen = Math.floor(targetOldScore / 2);
+                    gameScore += stolen;
+                    showBuffMsg("점수 강탈 성공!", `${t.nickname}님의 점수 ${stolen}점을 뺏었습니다!`, 233, 30, 99);
+                } else if (attackType === "blind") {
+                    showBuffMsg("블라인드 공격 성공!", `${t.nickname}님의 화면을 가렸습니다!`, 33, 33, 33);
+                }
+
+                refreshGameModeUI();
+            } catch (error) {
+                console.error("공격 아이템 처리 실패 - 게임을 계속 진행합니다.", error);
+            } finally {
+                finishTargetSelection();
             }
-            
-            // 기다림 없이 무조건 즉각적으로 UI를 갱신하고 다음 문제로 넘어갑니다!
-            refreshGameModeUI(); isGamePaused = false; callback();
         };
         listEl.appendChild(btn);
     });
 
-    document.getElementById("multi-target-cancel-btn").onclick = () => {
-        playSound("click"); modal.style.display = "none"; isGamePaused = false; callback();
+    cancelButton.onclick = () => {
+        try { playSound("click"); }
+        finally { finishTargetSelection(); }
     };
     modal.style.display = "flex";
 };
 
 window.executeSteal10FromAll = async function(callback) {
-    let stolenTotal = 0;
-    const targets = window.globalLobbyPlayers ? window.globalLobbyPlayers.filter(p => p.stdId !== currentUser.stdId) : [];
-    targets.forEach(t => {
-        lobbyData.saveUser(t.docId, {
-            attack: { type: "steal10", fromId: currentUser.stdId, fromName: currentUser.nickname, timestamp: Date.now() }
-        }, { merge: true });
-        stolenTotal += 10;
-    });
-    gameScore += stolenTotal;
-    showBuffMsg("광역 공격 성공!", `모든 친구에게서 총 ${stolenTotal}점을 뺏어왔습니다!`, 255, 87, 34);
-    refreshGameModeUI(); isGamePaused = false; callback();
+    try {
+        let stolenTotal = 0;
+        const targets = Array.isArray(window.globalLobbyPlayers) ? window.globalLobbyPlayers.filter(p => p.stdId !== currentUser.stdId) : [];
+        targets.forEach(t => {
+            if (t.docId) {
+                Promise.resolve(lobbyData.saveUser(t.docId, {
+                    attack: { type: "steal10", fromId: currentUser.stdId, fromName: currentUser.nickname, timestamp: Date.now() }
+                }, { merge: true })).catch(error => console.error("광역 공격 통신 지연 (무시됨)", error));
+            }
+            stolenTotal += 10;
+        });
+        gameScore += stolenTotal;
+        showBuffMsg("광역 공격 성공!", `모든 친구에게서 총 ${stolenTotal}점을 뺏어왔습니다!`, 255, 87, 34);
+        refreshGameModeUI();
+    } catch (error) {
+        console.error("광역 공격 아이템 처리 실패 - 게임을 계속 진행합니다.", error);
+    } finally {
+        isGamePaused = false;
+        if (typeof callback === "function") callback();
+    }
 };
 
 window.handleIncomingAttack = function(atk) {

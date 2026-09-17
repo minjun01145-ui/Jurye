@@ -1,0 +1,44 @@
+--- a/src/firebase/firebase.js
++++ b/src/firebase/firebase.js
+@@
+ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
++import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
+@@
+ const app = initializeApp(firebaseConfig);
++const auth = getAuth(app);
++
++async function ensureFirebaseAuth() {
++  if (auth.currentUser) return auth.currentUser;
++  const credential = await signInAnonymously(auth);
++  return credential.user;
++}
++
++const firebaseAuthReady = ensureFirebaseAuth();
++await firebaseAuthReady;
++
+ const db = getFirestore(app);
+ const dbLite = getFirestoreLite(app);
+@@
+-export { app, db, dbLite, ... };
++export { app, auth, firebaseAuthReady, db, dbLite, ... };
+
+--- a/firebase.json
++++ b/firebase.json
+@@
+ {
++  "firestore": {
++    "rules": "firestore.rules"
++  },
+   "functions": [
+
+--- /dev/null
++++ b/firestore.rules
+@@
++rules_version = '2';
++service cloud.firestore {
++  match /databases/{database}/documents {
++    function signedIn() { return request.auth != null; }
++    // gameData/users/attendance/royalties/scores/feedback/lobbyUsers/lobbyChat
++    // 컬렉션은 인증된 Firebase 세션만 접근 허용.
++  }
++}
